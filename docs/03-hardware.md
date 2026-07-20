@@ -14,6 +14,7 @@ Requirements: readable at a glance, lives on a wall or shelf, no cable if possib
 | Seeed XIAO 7.5″ ePaper Panel | 7.5″ · 800×480 · B/W | ~$50 | Built-in 2000 mAh, ~3-month | Low | Cheaper Seeed sibling (XIAO ESP32-C3); panel + battery, ESPHome-ready; less case/fewer buttons than the E1001. |
 | LILYGO T5 4.7″ (S3) | 4.7″ · 960×540 · 16-grey | ~£45–55 | 18650/LiPo on-board, USB-C | Medium | Cheapest DIY board, lovely panel — but the **S3 needs a community ESPHome external component**, not a built-in driver. Plan-B. |
 | Waveshare 7.5″ + ESP32 driver board | 7.5″ · 800×480 · B/W | ~£55–65 | Add your own LiPo + charger board | Medium | Biggest screen per pound; DIY battery wiring; rock-solid `waveshare_epaper` support. |
+| **Inkplate 6 / 10** (Soldered) | 6″ 800×600 / 9.7″ 1200×825 · grey | ~$150 / ~$210 | Built-in LiPo charging; **~18–25 µA sleep** | Low | **Low-power champion** — native ESPHome, trivial to add solar/LiFePO4. Dearer, but a year+ on battery, or solar-forever. |
 | TRMNL | 7.5″ · 800×480 · B/W | ~$139 | Built-in, months per charge | Near zero | Polished, open, self-hostable "BYOS" mode our server could implement; dearest. |
 | Old Kindle / Android tablet | varies | Free if owned | Mains, realistically | Medium hack | £0 prototype (Android + Fully Kiosk on a dashboard URL); mains-tethered end state. |
 
@@ -54,6 +55,25 @@ deep_sleep:
 The flow: wake → Wi-Fi → download the server-rendered PNG → draw → report battery → sleep. All layout lives server-side, so the screen design can change forever without touching the device.
 
 Mounting: a picture frame or 3D-printed stand; magnets on the fridge also work. STL links can go in `firmware/` once the board variant is in hand.
+
+## Powering it — including a "never recharge" build
+
+The display's load is tiny (one wake/day ≈ 0.25 mAh; everything else is deep-sleep trickle), which opens three routes to "never think about the battery":
+
+1. **Wired — guaranteed, zero-maintenance.** A thin USB-C cable to a wall socket. E-ink sips power, so even always-on it's negligible. Only cost: a visible cable — fine if it mounts near an outlet.
+2. **Solar → effectively forever, cable-free.** A small 5–6 V panel + a **LiFePO4 cell** (charges simply, ~4× the cycles of Li-ion, feeds the ESP32's 3.3 V directly — no regulator) or a **supercapacitor** (never wears out) + a harvesting charger. A lean board averages ~0.1–0.3 mW, so a panel tops up far more than it draws. Near a window / bright kitchen it's easy; in dim indoor light (100–500 lux, ~200× less than daylight) it's marginal and wants a ≤~20 µA board plus a decent panel. This is a well-trodden ESP32 e-ink pattern (e.g. a 2 W panel + 18650 LiFePO4 runs indefinitely).
+3. **Big primary cell → "replace once a decade."** No harvesting: a large non-rechargeable lithium cell (Li-SOCl₂ D-cells) on a lean board waking once/day lasts many years.
+
+**Which board for max battery / solar?** Deep-sleep current is everything (it varies ~20× between boards), so the reTerminal (~0.9 mA sleep) is *not* the pick here:
+
+| Board | Deep sleep | For max-life / solar |
+|---|---|---|
+| **Inkplate 6 / 10** | **~18–25 µA** | Best finished pick — LiPo charging + native ESPHome; add solar/LiFePO4 for forever |
+| Inkplate 2 | ~8 µA | Lowest of the range (small 2.9″ tri-colour) |
+| **DIY: bare ESP32-C3 + Waveshare 7.5″** | ~5 µA (chip) | Absolute minimum if you gate panel power and build it yourself; classic solar-harvest target |
+| reTerminal E1001 | ~0.9 mA | Sleep-limited → ~3 months regardless of wake rate; not for max-life |
+
+Either low-power board runs the **same** server-rendered dashboard — they're WiFi ESP32 boards with ESPHome `online_image` support, so only `firmware/*.yaml` and the resolution change. Least-hassle "never recharge": **Inkplate 6 + small solar panel + LiFePO4**. Absolute minimum power (a build project): **ESP32-C3 + Waveshare + supercap/LiFePO4 solar**.
 
 ## QR labels for decanted jars
 

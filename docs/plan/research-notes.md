@@ -74,6 +74,13 @@ Short answer: **no**, not for the recommended display — keep it on WiFi.
 - **Verdict: not worth it for the display — keep it on WiFi.** Matter/Thread is the right tool for *sensors/controls* (P9f), not a bitmap dashboard.
 - Sources: Matter device types (handbook.buildwithmatter.com, matterdevices.io); ESPHome Thread guide (smarthomescene.com).
 
+### Follow-up: can it run without recharging? (verified — yes)
+
+- The load is tiny (once/day wake ≈ 0.25 mAh; rest is deep-sleep trickle), so three routes give effectively-infinite runtime: **wired USB** (guaranteed); **solar + LiFePO4/supercap** (cable-free "forever" — proven ESP32 e-ink pattern, e.g. a 2 W 6 V panel + 18650 LiFePO4 runs indefinitely; supercap harvesters keep whole-system draw <150 µW); or a **big Li-SOCl₂ primary cell** (years).
+- Constraint is indoor light: 100–500 lux indoors is ~200× dimmer than daylight, so pure-ambient harvesting needs a very low-power board (≤~20 µA) + a decent panel; near a window it's easy.
+- **Deep-sleep current is the lever** (varies ~20× across boards): Inkplate 6/10 ~18–25 µA (Inkplate 2 ~8 µA); bare **ESP32-C3 ~5 µA**; reTerminal E1001 ~0.9 mA is **not** a low-power/solar pick. All are WiFi ESP32 → run the same server-rendered dashboard; only firmware + resolution change. Reflected in the [hardware doc](../03-hardware.md) "Powering it" section.
+- Sources: Inkplate specs (soldered.com, developer.espressif.com); solar+LiFePO4 ESP32 (community.home-assistant.io); LightInk solar e-ink watch (cnx-software.com); indoor-harvesting analysis (nunrg.eu).
+
 ## `@resvg/resvg-js` vs `sharp`
 
 Chose resvg-js: prebuilt napi binary for `linux-arm64-musl` (the Pi/Alpine target) exists and needs no compilation; `sharp`'s SVG rendering leans on librsvg where musl-arm64 coverage has historically been patchy. resvg-js renders our hand-built SVG string → PNG at exact panel resolution, supports `fontFiles` + `loadSystemFonts:false` for deterministic output.
