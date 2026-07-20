@@ -20,7 +20,7 @@ This directory is the **machine-executable plan**. It was researched and written
 | P3 | [03-phase-camera-pwa.md](03-phase-camera-pwa.md) | Camera barcode scanning, installable PWA | webcam helps |
 | P4 | [04-phase-ha-addon.md](04-phase-ha-addon.md) | HA add-on packaging + bundled Tailscale HTTPS | 🖐 Pi to install |
 | P5 | [05-phase-qr-labels.md](05-phase-qr-labels.md) | QR labels for decanted jars, deep links, print sheet | printer helps |
-| P6 | [06-phase-eink-display.md](06-phase-eink-display.md) | `/api/display.png` renderer + ESPHome firmware | 🖐 reTerminal E1001 |
+| P6 | [06-phase-eink-display.md](06-phase-eink-display.md) | `/api/display.png` renderer + ESPHome firmware | 🖐 e-ink board (TBD; front-runner reTerminal E1001) |
 | P7 | [07-phase-recipes-shopping.md](07-phase-recipes-shopping.md) | Recipes, use-it-up ranking, shopping list | no |
 | P8 | [08-phase-push.md](08-phase-push.md) | Web Push notifications (iOS PWA) | 🖐 iPhone to verify |
 | P9 | [09-phase-stretch.md](09-phase-stretch.md) | Unspecced stretch ideas — needs a planning pass first | varies |

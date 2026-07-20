@@ -4,6 +4,8 @@
 
 Requirements: readable at a glance, lives on a wall or shelf, no cable if possible, and cheap enough that it's a fun peripheral rather than a commitment. E-ink fits perfectly: the image persists with zero power, so the device only wakes to fetch a new screen a few times a day and can run **months on one charge**.
 
+> **The specific board is NOT locked in — and it's deliberately cheap to defer.** You buy nothing until P6, and the display is *swappable by design*: the server renders a PNG and the firmware just fetches it, so switching boards only touches `firmware/*.yaml` and one render-resolution number — never the app, server, or data model. Treat the table below as a menu you pick from when you reach P6, not a decision you owe now. The starred row is only the best-*verified* starting point.
+
 ### Candidates
 
 | Device | Screen | Price (ish) | Power | Effort | Notes |
@@ -15,9 +17,9 @@ Requirements: readable at a glance, lives on a wall or shelf, no cable if possib
 | TRMNL | 7.5″ · 800×480 · B/W | ~$139 | Built-in, months per charge | Near zero | Polished, open, self-hostable "BYOS" mode our server could implement; dearest. |
 | Old Kindle / Android tablet | varies | Free if owned | Mains, realistically | Medium hack | £0 prototype (Android + Fully Kiosk on a dashboard URL); mains-tethered end state. |
 
-### Recommendation: Seeed reTerminal E1001
+### Leading candidate (not locked): Seeed reTerminal E1001
 
-The de-risked pick. It's a **finished device** — 7.5″ 800×480 panel, ESP32-S3, a 2000 mAh battery quoted at **~3 months** on a 6-hour refresh, buttons and a case — for ~$79, and crucially it has **first-class ESPHome support with pins Seeed documents** (verified July 2026). So the firmware in P6 is known-good YAML, not a community-component gamble. No soldering, no battery wiring, no case to print, and it also speaks Home Assistant/TRMNL natively if you ever change your mind.
+A safe default to *pencil in* — nothing more. It's a **finished device** — 7.5″ 800×480 panel, ESP32-S3, a 2000 mAh battery quoted at **~3 months** on a 6-hour refresh, buttons and a case — for ~$79, and crucially it has **first-class ESPHome support with pins Seeed documents** (verified July 2026). So the firmware in P6 would be known-good YAML, not a community-component gamble. That verification is the *only* reason it leads. If price, size, colour, or using a board you already own matters more, any row in the table works — the plan doesn't depend on which you choose.
 
 Why not the LILYGO T5 4.7″ (the original draft pick)? Cheaper (~£50) with a lovely 16-grey panel, but the ESP32-**S3** revision needs a *community* ESPHome external component (`nickolay/esphome-lilygo-t547plus` or `AppForce1/…`) rather than a built-in driver — more moving parts for a first build. It stays a solid **plan-B**, especially if you already own one. Want to spend less? The **Seeed XIAO 7.5″ ePaper Panel** (~$50) is the same idea with fewer frills. Want zero tinkering? **TRMNL** (~$139) is polished and its self-hostable "BYOS" webhook our server could implement instead of `/api/display.png`.
 

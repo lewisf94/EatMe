@@ -69,7 +69,7 @@ sequenceDiagram
 All layout happens server-side so the firmware stays dumb (and never needs reflashing to change the design):
 
 1. A TS function builds an SVG string — "eat me first" top five, a use-it-up recipe, low-stock count, battery %, rendered date.
-2. `@resvg/resvg-js` rasterises it to a greyscale PNG at exactly the panel's resolution (800×480 for the reTerminal E1001), using a bundled font so output is identical on the fontless Pi.
+2. `@resvg/resvg-js` rasterises it to a greyscale PNG at exactly the panel's resolution (e.g. 800×480 for the front-runner reTerminal E1001 — swap this constant for a different board), using a bundled font so output is identical on the fontless Pi.
 3. The ESP32-S3 wakes on a timer, `GET /api/display.png` over plain LAN HTTP, draws it, reports battery, and deep-sleeps (~6h). Stale-by-hours is fine for a cupboard.
 
 A `?panel=` parameter (a P9 extension) lets a second/different display request its own resolution and layout.

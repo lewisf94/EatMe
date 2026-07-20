@@ -41,7 +41,7 @@ Three parts, all optional beyond the first:
 |---|---|
 | **Server** | TypeScript (Node 22 + Fastify + SQLite), packaged as a **Home Assistant add-on** so it runs on the HA Raspberry Pi already in the house. The inventory database lives in `/data`, so it is covered by normal HA backups. |
 | **Phone app** | A **PWA** served by the server and installed to the iPhone Home Screen — no App Store, no Apple Developer account. Camera barcode scanning, offline-tolerant, Web Push notifications (iOS 16.4+). |
-| **Display** | A **Seeed reTerminal E1001** (7.5″ e-paper, ESP32-S3, ~3-month battery) running ~60 lines of **ESPHome YAML**. It wakes a few times a day, fetches a server-rendered image, and goes back to deep sleep. |
+| **Display** | Any battery e-paper board that runs **ESPHome** (~60 lines of YAML) — it wakes a few times a day, fetches a server-rendered image, and deep-sleeps. Board choice is deferred and swappable; the current front-runner is the **Seeed reTerminal E1001** (7.5″, ESP32-S3, ~3-month battery). |
 
 ## Repo layout (planned)
 

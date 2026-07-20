@@ -4,15 +4,17 @@
 
 **Prerequisites:** P1 green (needs items + status). Nicer after P7 (recipe line). Hardware verification is 🖐.
 
-## Hardware (verified — see research-notes)
+## Hardware — pick at the start of this phase (not pre-committed)
 
-**Seeed reTerminal E1001** — 7.5″ mono, **800×480**, ESP32-S3, built-in 2000 mAh (~3-month battery @ 6 h refresh), enclosure + buttons, ~$79, official ESPHome support. LILYGO T5 4.7″ (S3) is the cheaper DIY alternative but needs a community external component — only if Lewis already owns one.
+**The board is a P6 decision, and it's swappable.** The server/API/data model are display-agnostic; a different board changes only this file's `firmware/*.yaml` and the render resolution constant (`DISPLAY_W`/`DISPLAY_H`, default 800×480). So don't treat any board as fixed — confirm Lewis's actual choice before ordering, then adjust the two knobs.
+
+Front-runner (best-verified, see [research-notes](research-notes.md) + [hardware doc](../03-hardware.md)): **Seeed reTerminal E1001** — 7.5″ mono, **800×480**, ESP32-S3, built-in 2000 mAh (~3-month battery @ 6 h refresh), enclosure + buttons, ~$79, official ESPHome support with documented pins. The YAML below targets it. Other viable picks: Seeed XIAO 7.5″ (~$50, ESP32-C3), Waveshare 7.5″ + ESP32 (DIY), LILYGO T5 4.7″ (960×540, needs a community ESPHome component), or a colour panel (then also switch the renderer from grayscale — see below). Hardware verification is 🖐.
 
 ## Deliverables
 
 1. `services/display.ts` — builds an SVG dashboard string.
 2. `GET /api/display.png` — renders that SVG → 800×480 grayscale PNG via `@resvg/resvg-js`.
-3. `firmware/whattoeat-display.yaml` — ESPHome config for the reTerminal E1001.
+3. `firmware/whattoeat-display.yaml` — ESPHome config for the chosen board (front-runner config below is for the reTerminal E1001). Keep the render size in a single `DISPLAY_W`/`DISPLAY_H` constant so a board swap is a one-line change.
 4. Optional device auth: `?token=` checked against `DISPLAY_TOKEN` (so the display endpoint stays reachable even when `AUTH_TOKEN` is on).
 
 ## Server: render pipeline (SVG → PNG)
@@ -143,8 +145,8 @@ The reTerminal is quoted at ~3 months (2000 mAh, 6 h refresh) over WiFi. Two fre
 - [ ] With `DISPLAY_TOKEN` set, the endpoint 401s without `?token=` and serves with it.
 - [ ] Output renders with the **bundled font** (delete system fonts assumption: it works in the P4 container where no system fonts exist).
 - [ ] `?battery=42` persists and shows on the next render.
-- [ ] 🖐 Flash `firmware/whattoeat-display.yaml` to a reTerminal E1001 via the HA ESPHome dashboard; it shows the dashboard, refreshes on its wake cycle, and reports battery % into HA.
+- [ ] 🖐 Flash `firmware/whattoeat-display.yaml` to your chosen board (front-runner: reTerminal E1001) via the HA ESPHome dashboard; it shows the dashboard, refreshes on its wake cycle, and reports battery % into HA.
 
 ## Definition of done
 
-The kitchen display works end-to-end (server render proven automatically; device proven by Lewis). Commit `P6: e-ink display renderer + reTerminal ESPHome firmware`. **Stop.**
+The kitchen display works end-to-end (server render proven automatically; device proven by Lewis). Commit `P6: e-ink display renderer + ESPHome firmware`. **Stop.**

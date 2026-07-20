@@ -51,7 +51,7 @@ Install at these majors; let the minor float unless a phase pins tighter.
 
 Original draft picked the LILYGO T5 4.7". Research changed the primary pick:
 
-- **Seeed reTerminal E1001** — 7.5" mono, **800×480**, 4-level greyscale, **ESP32-S3**, **2000 mAh built-in, ~3-month battery** at a 6 h refresh, enclosure + buttons included, **$79**, **first-class ESPHome support with documented pins**. This is the recommendation because the pins and driver are *known-good and verified*, and there's no DIY battery/case work.
+- **Seeed reTerminal E1001** — 7.5" mono, **800×480**, 4-level greyscale, **ESP32-S3**, **2000 mAh built-in, ~3-month battery** at a 6 h refresh, enclosure + buttons included, **$79**, **first-class ESPHome support with documented pins**. It's the *front-runner* (not a locked choice — board is a deferred P6 decision) because the pins and driver are *known-good and verified*, and there's no DIY battery/case work.
 - Verified ESPHome essentials: board = ESP32-S3; `spi: { clk_pin: GPIO7, mosi_pin: GPIO9 }`; `display: platform: waveshare_epaper, model: 7.50inv2, cs_pin: GPIO10, dc_pin: GPIO11, reset_pin: GPIO12 (inverted:false), busy_pin: GPIO13 (inverted:true)`. If complex screens ghost, try `model: 7.50inv2alt`. Dashboards fetched via `online_image` (PNG, `type: GRAYSCALE`, `buffer_size: 65536`).
 - ⚠️ Battery-ADC pin not verified — P6 leaves it as a TODO to read off Seeed's "Buttons, Buzzer, LED, Battery & Low Power" cookbook.
 - LILYGO T5 4.7" (S3) stays as the cheaper DIY alternative but needs a **community external component** (`nickolay/esphome-lilygo-t547plus` or `AppForce1/...`) — more fragile, so it's plan-B only.
