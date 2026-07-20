@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fastify/static": "^10.0.0",
     "@whattoeat/shared": "workspace:*",
     "fastify": "^5.0.0",
     "zod": "^4.0.0"

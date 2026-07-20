@@ -4,12 +4,13 @@
   "engines": { "node": ">=22.5.0" },
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "check": "pnpm -r --if-present run check && prettier --check \"apps/**/*.ts\" \"packages/**/*.ts\"",
-    "format": "prettier --write \"apps/**/*.ts\" \"packages/**/*.ts\"",
+    "check": "pnpm -r --if-present run check && prettier --check \"{apps,packages}/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"{apps,packages}/**/*.{ts,tsx}\"",
     "test": "pnpm -r --if-present run test",
-    "dev": "pnpm --filter @whattoeat/server run dev"
+    "dev": "concurrently -n server,web -c blue,green \"pnpm --filter @whattoeat/server dev\" \"pnpm --filter @whattoeat/web dev\""
   },
   "devDependencies": {
+    "concurrently": "^9.0.0",
     "prettier": "^3.4.0",
     "typescript": "^5.9.0"
   }
