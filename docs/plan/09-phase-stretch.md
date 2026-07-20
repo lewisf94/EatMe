@@ -21,6 +21,9 @@ NTAG213 stickers storing the same `/i/:qrUid` URL; iPhones read them natively (n
 ### P9e · Second / multiple displays (needs P6)
 `GET /api/display.png` already takes params — add `?panel=` presets (resolution + layout) for a different device, and per-panel content (e.g. one shows fridge-only). Re-plan: parameterise layout by panel profile.
 
+### P9f · Low-power Thread cupboard sensors (uses the existing Thread border router; pairs with P9a)
+Lewis already runs a **Thread border router** on the Pi (an ESP32-C6/H2). Thread is a great fit for tiny, always-on, battery sensors — unlike the display, which stays on WiFi (see P6 for why). Good candidates: a **cupboard temp + humidity** sensor (humidity genuinely affects how fast spices/dry goods degrade — it could nudge the freshness model), a **door-open** sensor, or a **Matter button** to snooze/ack the "use me" nudges from the sofa. Build as an ESP32-C6 running **ESPHome-over-Thread** (2025.6+) or buy an off-the-shelf **Matter-over-Thread** sensor; surface it in WhatToEat via the P9a HA/MQTT bridge. Re-plan: pick the sensor, and decide whether measured humidity should adjust `openLifeDays` for affected categories.
+
 ## Protocol for P9
 
 For whichever you pick: **write a `docs/plan/09x-<name>.md`** mirroring the P1–P8 format (goal, verified facts + sources, code skeleton, acceptance checklist incl. 🖐 items), get it approved, then implement in a single session. Do **not** batch several P9 ideas into one change.

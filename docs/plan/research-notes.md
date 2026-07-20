@@ -56,6 +56,16 @@ Original draft picked the LILYGO T5 4.7". Research changed the primary pick:
 - ⚠️ Battery-ADC pin not verified — P6 leaves it as a TODO to read off Seeed's "Buttons, Buzzer, LED, Battery & Low Power" cookbook.
 - LILYGO T5 4.7" (S3) stays as the cheaper DIY alternative but needs a **community external component** (`nickolay/esphome-lilygo-t547plus` or `AppForce1/...`) — more fragile, so it's plan-B only.
 
+## Thread / 802.15.4 — does it help the display's battery? (asked during planning)
+
+Short answer: **no**, not for the recommended display — keep it on WiFi.
+
+- The **reTerminal E1001 is ESP32-S3** (`ESP32-S3R8`) — **WiFi 4 + BLE only, no 802.15.4 radio**, so it physically cannot join a Thread network. Only ESP32-C5/C6/H2/H4 have 802.15.4.
+- **ESPHome OpenThread exists since 2025.6** but **only on ESP32-C6/H2**, and it carries the **ESPHome native API over Thread's IPv6** — built for small sensor payloads, not an `online_image` HTTP PNG fetch. A full-screen image over a ~250 kbps 802.15.4 mesh keeps the radio on *longer* than WiFi (Mbps), so it would *hurt* battery.
+- A deep-sleep **wake→fetch→sleep** display is dominated by sleep current (radio-agnostic) + per-wake WiFi *association*. Thread's battery win is for *always-listening* devices, which this isn't. The levers are **static IP + fewer wakes** (see P6), not Thread.
+- Where the user's existing Thread border router *does* pay off: low-power always-on **companion sensors** (cupboard temp/humidity, door, snooze button) → P9f.
+- Sources: ESPHome OpenThread component + 2025.6 changelog (esphome.io); Seeed reTerminal E1001 spec (ESP32-S3R8, WiFi/BLE).
+
 ## `@resvg/resvg-js` vs `sharp`
 
 Chose resvg-js: prebuilt napi binary for `linux-arm64-musl` (the Pi/Alpine target) exists and needs no compilation; `sharp`'s SVG rendering leans on librsvg where musl-arm64 coverage has historically been patchy. resvg-js renders our hand-built SVG string → PNG at exact panel resolution, supports `fontFiles` + `loadSystemFonts:false` for deterministic output.

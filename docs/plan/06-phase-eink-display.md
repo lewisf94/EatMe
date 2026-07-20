@@ -127,6 +127,15 @@ deep_sleep:
 
 `firmware/secrets.yaml.example` documents `wifi_ssid`/`wifi_password` (real `secrets.yaml` git-ignored).
 
+### Battery & networking — keep it on WiFi (and why not Thread)
+
+The reTerminal is quoted at ~3 months (2000 mAh, 6 h refresh) over WiFi. Two free levers extend that:
+
+- **Static IP** — set `manual_ip:` in the `wifi:` block so the device skips DHCP on every wake. DHCP negotiation is usually the biggest slice of wake time, so this is the largest easy win. Also consider `fast_connect: true` and pinning `bssid:`/`channel:` to skip the scan.
+- **Fewer wakes** — food expiry moves slowly; `sleep_duration: 12h` (2×/day) roughly halves radio energy vs 6 h and is plenty for a cupboard.
+
+**Thread does not help this display** (verified — see the Thread section in [research-notes](research-notes.md)): the reTerminal is an **ESP32-S3 with no 802.15.4 radio**, so it can't join Thread; and even on a C6/H2, ESPHome carries only its native API over Thread — pulling a full-screen PNG over a ~250 kbps mesh would keep the radio on *longer* than WiFi. A wake→fetch→sleep device is dominated by sleep current + WiFi association, which static IP addresses directly. Thread's advantage is for always-listening sensors → see [P9f](09-phase-stretch.md).
+
 ## Acceptance checklist
 
 - [ ] `pnpm check` green.
