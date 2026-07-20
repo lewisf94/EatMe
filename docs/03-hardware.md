@@ -75,6 +75,8 @@ The display's load is tiny (one wake/day ≈ 0.25 mAh; everything else is deep-s
 
 Either low-power board runs the **same** server-rendered dashboard — they're WiFi ESP32 boards with ESPHome `online_image` support, so only `firmware/*.yaml` and the resolution change. Least-hassle "never recharge": **Inkplate 6 + small solar panel + LiFePO4**. Absolute minimum power (a build project): **ESP32-C3 + Waveshare + supercap/LiFePO4 solar**.
 
+**Chosen setup (Lewis): solar + LiPo backup + USB-C top-up.** One battery is the buffer; two sources keep it charged — a small solar panel (via a solar-LiPo charge input) for day-to-day, and USB-C as the manual fallback for a dark spell. Simplest build: a board with **USB-C + LiPo charging already on it** (Inkplate — confirm the revision is USB-C, some older ones were micro-USB), plus a solar panel into a small solar-LiPo charger on the same cell; both chargers are ordinary 4.2 V LiPo CC/CV, so they co-charge safely. Use a **standard LiPo** (what the board's USB-C charger expects) — LiFePO4 lasts longer under daily solar cycling but needs a LiFePO4-aware charger that complicates the built-in USB-C charging, so skip it unless you want to go deep. Panel sizing is forgiving: the device only needs ~0.7 mAh/day back, so a **0.5–1 W, 5–6 V panel** near a window is ample (go ~2 W if the spot is dim).
+
 ## QR labels for decanted jars
 
 Spice jars refilled from bags have no barcode, so the app generates one per item:
