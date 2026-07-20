@@ -95,7 +95,9 @@ Chose resvg-js: prebuilt napi binary for `linux-arm64-musl` (the Pi/Alpine targe
 
 ## Deviations
 
-*(empty — append dated entries here when reality diverges from the above. Format: `- YYYY-MM-DD (Pn): what differed, what you did.`)*
+- 2026-07-20 (P1): Build/dev env has **Node 22.22**, not 24. `node:sqlite` is present and works (emits a harmless `ExperimentalWarning`), so no code change needed; set `engines.node` to `>=22.5.0`. On the target Pi/Node 24 the warning goes away.
+- 2026-07-20 (P1): The **Open Food Facts domain is blocked by this sandbox's network allowlist** (agent proxy returns 403 for `world.openfoodfacts.org`). So the *live* `/api/lookup/:barcode` call can't be exercised here. The mapper (`mapOff`) is unit-tested, the cache path is covered, and the route degrades cleanly (HTTP 502, server stays up) — verified. Live OFF lookup will work wherever the domain is reachable (the Pi/home network, or once allowlisted). Acceptance: 15/15 non-network checks pass.
+- 2026-07-20 (P1): Minor — folded the `lookup_cache` access into `services/off.ts` instead of a separate `repo/lookupCache.ts`; and repos keep module-level prepared statements, so `src/index.ts` calls `migrate()`/`seedIfEmpty()` and then `await import("./app.js")` so those statements bind after the schema exists.
 
 ## Sources
 
