@@ -66,6 +66,14 @@ Short answer: **no**, not for the recommended display — keep it on WiFi.
 - Where the user's existing Thread border router *does* pay off: low-power always-on **companion sensors** (cupboard temp/humidity, door, snooze button) → P9f.
 - Sources: ESPHome OpenThread component + 2025.6 changelog (esphome.io); Seeed reTerminal E1001 spec (ESP32-S3R8, WiFi/BLE).
 
+### Follow-up: would Matter-over-Thread work for the display? (no)
+
+- **Matter has no display/image/text device type or cluster.** Its display-adjacent types are *controllers* (Echo Show, Nest Hub) and a Casting Video Player (media playback) — nothing that accepts a server-rendered dashboard bitmap. So our PNG cannot travel "over Matter" at all. (Verified against Matter device-type/cluster references, mid-2026.)
+- The only Thread-native alternative: an ESP32-C6/H2 joins Thread and receives a handful of **small text values** via ESPHome's native API (Thread is explicitly *low-bandwidth, minimal-data*), then renders the layout **on-device** with a `lambda:` + fonts. Coherent, but it **moves layout off the server into the firmware** — every design tweak = reflash — which is exactly the coupling the image-based design avoids, and it caps you at simple text, not the composed dashboard.
+- Battery gain is marginal anyway: WiFi + deep-sleep already idles ~99.98% of the time (~3-month battery); the fix for the per-wake WiFi cost is static IP + fewer wakes (P6), not a new radio.
+- **Verdict: not worth it for the display — keep it on WiFi.** Matter/Thread is the right tool for *sensors/controls* (P9f), not a bitmap dashboard.
+- Sources: Matter device types (handbook.buildwithmatter.com, matterdevices.io); ESPHome Thread guide (smarthomescene.com).
+
 ## `@resvg/resvg-js` vs `sharp`
 
 Chose resvg-js: prebuilt napi binary for `linux-arm64-musl` (the Pi/Alpine target) exists and needs no compilation; `sharp`'s SVG rendering leans on librsvg where musl-arm64 coverage has historically been patchy. resvg-js renders our hand-built SVG string → PNG at exact panel resolution, supports `fontFiles` + `loadSystemFonts:false` for deterministic output.
