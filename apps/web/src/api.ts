@@ -23,6 +23,9 @@ export type OffResult = {
   imageUrl?: string;
 };
 
+export const TOKEN_KEY = "whattoeat_token";
+const authToken = () => localStorage.getItem(TOKEN_KEY) || "";
+
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch("/api" + path, {
     ...opts,
@@ -30,6 +33,8 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
       // Only set JSON content-type when there's a body — Fastify 400s an empty
       // body that declares application/json (e.g. the bodyless archive POST).
       ...(opts?.body != null ? { "content-type": "application/json" } : {}),
+      // Sent only when the add-on's optional auth_token is configured.
+      ...(authToken() ? { authorization: `Bearer ${authToken()}` } : {}),
       ...(opts?.headers ?? {}),
     },
   });

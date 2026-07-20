@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import { config } from "./config.js";
 import { registerHealth } from "./routes/health.js";
 import { registerItems } from "./routes/items.js";
 import { registerTaxonomy } from "./routes/taxonomy.js";
@@ -8,6 +9,17 @@ import { registerLookup } from "./routes/lookup.js";
  *  repositories' prepared statements bind against existing tables. */
 export function buildApp(): FastifyInstance {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
+
+  // Optional bearer-token gate (belt-and-braces on top of LAN/tailnet-only
+  // reachability). Off by default; /api/health stays open for the HA watchdog.
+  if (config.authToken) {
+    app.addHook("onRequest", async (req, reply) => {
+      if (!req.url.startsWith("/api/") || req.url === "/api/health") return;
+      if (req.headers.authorization !== `Bearer ${config.authToken}`) {
+        return reply.code(401).send({ error: { message: "unauthorized" } });
+      }
+    });
+  }
 
   app.register(registerHealth, { prefix: "/api" });
   app.register(registerItems, { prefix: "/api" });

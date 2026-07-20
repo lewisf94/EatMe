@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Category, Location } from "@whattoeat/shared";
-import { api } from "../api";
+import { api, TOKEN_KEY } from "../api";
 import { cls } from "../ui";
 
 export default function Settings() {
@@ -8,6 +8,15 @@ export default function Settings() {
   const [locs, setLocs] = useState<Location[]>([]);
   const [newLoc, setNewLoc] = useState("");
   const [newCat, setNewCat] = useState("");
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) ?? "");
+  const [tokenSaved, setTokenSaved] = useState(false);
+
+  const saveToken = () => {
+    if (token.trim()) localStorage.setItem(TOKEN_KEY, token.trim());
+    else localStorage.removeItem(TOKEN_KEY);
+    setTokenSaved(true);
+    setTimeout(() => setTokenSaved(false), 2000);
+  };
 
   const reload = () => {
     void api.categories().then(setCats);
@@ -77,6 +86,26 @@ export default function Settings() {
           />
           <button className={cls.btn} onClick={addCategory}>
             Add
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <h3 className="mb-2 font-semibold">Access token</h3>
+        <p className="mb-2 text-sm text-slate-500">
+          Only needed if you set an <code>auth_token</code> in the Home Assistant add-on. Paste the
+          same value here so this device can reach the server.
+        </p>
+        <div className="flex gap-2">
+          <input
+            className={cls.input}
+            type="password"
+            placeholder="(none)"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+          />
+          <button className={cls.btn} onClick={saveToken}>
+            {tokenSaved ? "Saved" : "Save"}
           </button>
         </div>
       </section>
