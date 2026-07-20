@@ -8,15 +8,15 @@ TypeScript everywhere, one server, one database file, no cloud dependencies (Ope
 flowchart TB
     subgraph pi["Raspberry Pi · Home Assistant OS"]
         subgraph addon["WhatToEat add-on (Docker, managed by HA Supervisor)"]
+            ts["Bundled tailscaled<br/>tailscale serve → HTTPS:443"]
             api["Fastify API"]
             static["Static hosting of the built PWA"]
-            render["Display renderer<br/>SVG → sharp → PNG"]
+            render["Display renderer<br/>SVG → resvg → PNG"]
             jobs["Scheduled jobs<br/>status recompute · push digests"]
             db[("SQLite in /data<br/>(inside HA backups)")]
         end
-        tailscale["Tailscale add-on<br/>tailscale serve → HTTPS"]
     end
-    pwa["PWA on iPhone"] --> tailscale --> api
+    pwa["PWA on iPhone"] -->|"HTTPS (tailnet)"| ts --> api
     epaper["E-ink display (ESPHome)"] -->|"LAN HTTP"| render
     api --> db
     api -->|"cache-through"| off["Open Food Facts API"]
@@ -24,7 +24,7 @@ flowchart TB
 
 **Monorepo** (pnpm workspaces):
 
-- `apps/server` — Fastify, Drizzle + better-sqlite3, `sharp` for display rendering, `web-push`, in-process cron. Serves the built PWA so app and API share one origin (no CORS, one URL to remember).
+- `apps/server` — Fastify, `node:sqlite` (built-in — no ORM, no native module to compile for the Pi), `@resvg/resvg-js` for display rendering, `web-push`, in-process scheduler. Serves the built PWA so app and API share one origin (no CORS, one URL to remember).
 - `apps/web` — React + Vite + `vite-plugin-pwa`, Tailwind. Barcode scanning with the [`barcode-detector`](https://www.npmjs.com/package/barcode-detector) ponyfill (zxing-wasm) over a `getUserMedia` camera stream — iOS Safari has no native `BarcodeDetector`, so the ponyfill is load-bearing.
 - `packages/shared` — zod schemas for every API payload; server validates with them, web infers types from them.
 - `addon/` — HA packaging (below).
@@ -40,7 +40,7 @@ flowchart TB
 | `GET /api/lookup/:barcode` | Open Food Facts proxy with local cache |
 | `GET /i/:qrUid` | QR-label target → redirects into the PWA at that item's quick-update screen |
 | `GET /api/labels?ids=…` | Printable QR label sheet (HTML; print from the browser) |
-| `GET /api/display.png?panel=t547` | Rendered e-ink dashboard at panel resolution |
+| `GET /api/display.png` | Rendered e-ink dashboard PNG (800×480; optional `?panel=` for a second display) |
 | `POST /api/push/subscribe` | Register a Web Push subscription |
 | `GET /api/health` | For HA's watchdog |
 
@@ -69,10 +69,10 @@ sequenceDiagram
 All layout happens server-side so the firmware stays dumb (and never needs reflashing to change the design):
 
 1. A TS function builds an SVG string — "eat me first" top five, a use-it-up recipe, low-stock count, battery %, rendered date.
-2. `sharp` rasterises it to a greyscale PNG at exactly the panel's resolution (960×540 for the T5 4.7″).
-3. The ESP32 wakes on a timer, `GET /api/display.png?panel=t547` over plain LAN HTTP, draws it, reports battery, and deep-sleeps (~6h). Stale-by-hours is fine for a cupboard.
+2. `@resvg/resvg-js` rasterises it to a greyscale PNG at exactly the panel's resolution (800×480 for the reTerminal E1001), using a bundled font so output is identical on the fontless Pi.
+3. The ESP32-S3 wakes on a timer, `GET /api/display.png` over plain LAN HTTP, draws it, reports battery, and deep-sleeps (~6h). Stale-by-hours is fine for a cupboard.
 
-`panel` is a parameter so a different/second display is just another query string.
+A `?panel=` parameter (a P9 extension) lets a second/different display request its own resolution and layout.
 
 ## HA add-on packaging
 
@@ -91,26 +91,33 @@ webui: http://[HOST]:[PORT:8099]
 watchdog: http://[HOST]:[PORT:8099]/api/health
 options:
   auth_token: ""              # optional bearer token
-  anthropic_api_key: ""       # optional, for LLM suggestions (P7)
+  tailscale_authkey: ""       # enables the bundled HTTPS (P4)
+  tailscale_hostname: "whattoeat"
+  anthropic_api_key: ""       # optional, for LLM suggestions (P9)
 schema:
   auth_token: str?
+  tailscale_authkey: password?
+  tailscale_hostname: str?
   anthropic_api_key: str?
 ```
 
 - **Install path**: copy `addon/` to `/addons/whattoeat` on the Pi (via the Samba or SSH add-on) → it appears under *Settings → Add-ons → Local add-ons* and the Supervisor builds it on-device for the Pi's architecture. Later, the repo itself can be added as a custom add-on repository so updates are one click.
 - **Persistence**: the server writes SQLite to `/data`, the Supervisor-managed volume that is included in HA backups automatically.
-- **Base image**: `node:22-alpine`. `sharp` ships prebuilt musl/arm64 binaries; if `better-sqlite3` lacks a prebuild for the Node ABI in use, either pin Node to a version with prebuilds or switch base to `node:22-slim` — decide in P2, not worth agonising over now.
+- **Base image**: `node:24-alpine`. Both `node:sqlite` (built-in) and `@resvg/resvg-js` (prebuilt musl-arm64 binary) work there with **no native compilation** — precisely why they were chosen over better-sqlite3/sharp. The image also bundles the `tailscale`/`tailscaled` binaries (see below).
 
 ## HTTPS and remote access
 
 The one genuinely awkward constraint: **camera access, service workers and Web Push all require a secure context.** `http://homeassistant.local:8099` is not one, so over plain LAN HTTP the PWA can't scan barcodes or install properly.
 
-**Recommended: Tailscale add-on + `tailscale serve`.**
+**Recommended: the add-on bundles its own `tailscaled` and runs `tailscale serve` itself.**
 
-- The community Tailscale add-on joins the Pi to a private tailnet (free tier: 100 devices, 3 users).
-- `tailscale serve` proxies `https://<pi-name>.<tailnet>.ts.net` → `localhost:8099` with a real, automatically-renewed certificate. Nothing is exposed to the public internet.
+> ⚠️ Why not just point the existing HA Tailscale add-on at us? Because it **only serves Home Assistant itself** (ports 443/8443/10000) — verified July 2026. It can't reverse-proxy another add-on or share its cert. So we bundle Tailscale into our own container.
+
+- Our add-on ships the Tailscale binaries and joins the Pi to a private tailnet in userspace mode (auth key pasted into the add-on config; free tier: 100 devices, 3 users).
+- Inside the container, `tailscale serve --bg --https=443 http://127.0.0.1:8099` puts a real, auto-renewed certificate in front of the Node server at `https://<hostname>.<tailnet>.ts.net`. Nothing is exposed to the public internet (Serve, not Funnel).
 - The iPhone runs the Tailscale app, so **the same URL works at home and in the supermarket** — which the "do I already have this?" story needs anyway. One URL, installable PWA, camera and push all happy.
 - The e-ink display keeps using plain LAN HTTP (ESPHome has no secure-context rules), so it needs no Tailscale.
+- Requires MagicDNS + HTTPS certificates enabled on the tailnet. Exact `tailscale serve` flags vary by version — [P4](plan/04-phase-ha-addon.md) confirms them with `tailscale serve --help`.
 
 Alternatives, for the record:
 

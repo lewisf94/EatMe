@@ -41,7 +41,7 @@ Three parts, all optional beyond the first:
 |---|---|
 | **Server** | TypeScript (Node 22 + Fastify + SQLite), packaged as a **Home Assistant add-on** so it runs on the HA Raspberry Pi already in the house. The inventory database lives in `/data`, so it is covered by normal HA backups. |
 | **Phone app** | A **PWA** served by the server and installed to the iPhone Home Screen — no App Store, no Apple Developer account. Camera barcode scanning, offline-tolerant, Web Push notifications (iOS 16.4+). |
-| **Display** | A **LILYGO T5 4.7″ e-paper** board (ESP32) running ~60 lines of **ESPHome YAML**. It wakes a few times a day, fetches a server-rendered image, and goes back to deep sleep. |
+| **Display** | A **Seeed reTerminal E1001** (7.5″ e-paper, ESP32-S3, ~3-month battery) running ~60 lines of **ESPHome YAML**. It wakes a few times a day, fetches a server-rendered image, and goes back to deep sleep. |
 
 ## Repo layout (planned)
 
@@ -64,10 +64,11 @@ whattoeat/
 | [docs/01-product.md](docs/01-product.md) | What it does and why — user stories, features, freshness rules, data model |
 | [docs/02-architecture.md](docs/02-architecture.md) | How it's built — API, HA add-on packaging, the HTTPS problem, display rendering |
 | [docs/03-hardware.md](docs/03-hardware.md) | What to buy — e-ink device comparison and recommendation, ESPHome approach |
-| [docs/04-roadmap.md](docs/04-roadmap.md) | Build order — seven phases, each independently useful |
+| [docs/04-roadmap.md](docs/04-roadmap.md) | Build order — nine phases, each independently useful |
+| **[docs/plan/](docs/plan/README.md)** | **The executable build spec** — one file per phase, code skeletons, verified facts, acceptance checklists (built to be run by a smaller model) |
 
 ## Status
 
-📋 **Planning.** No code yet — next step is [Phase 1](docs/04-roadmap.md#p1--server-core--minimal-web-ui) (server core + minimal web UI).
+📋 **Planning.** No code yet. The full build is spec'd phase-by-phase in [docs/plan/](docs/plan/README.md) — start with [P1](docs/plan/01-phase-server-core.md) (server core + Open Food Facts lookup).
 
 MIT licensed.

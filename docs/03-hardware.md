@@ -8,63 +8,48 @@ Requirements: readable at a glance, lives on a wall or shelf, no cable if possib
 
 | Device | Screen | Price (ish) | Power | Effort | Notes |
 |---|---|---|---|---|---|
-| **LILYGO T5 4.7″ e-paper** ⭐ | 4.7″ · 960×540 · 16-grey | ~£45–55 | 18650 cell or LiPo (holder/connector on board, USB-C charging) | Low | ESP32 + panel + battery management on one board; big community trail of weather/dashboard builds; ESPHome support |
-| Waveshare 7.5″ e-Paper + ESP32 driver board | 7.5″ · 800×480 · B/W | ~£55–65 | Add your own LiPo + charger board | Medium | Biggest screen per pound; two-part kit, DIY battery wiring; rock-solid ESPHome `waveshare_epaper` support |
-| TRMNL | 7.5″ · 800×480 · B/W | ~$139 | Built-in, months per charge | Near zero | Polished product with case; open firmware and a self-hostable "BYOS" server mode our server could implement; least tinkering, most money |
-| M5Paper S3 | 4.7″ · 960×540 · touch | ~£75 | Built-in 1150 mAh | Low–medium | Nice case and touch, but touch is wasted here (display is read-only) and it's dearer |
-| Old Kindle / Android tablet | varies | Free if owned | Mains, realistically | Medium hack | Kindle needs jailbreaking; Android runs Fully Kiosk pointed at a dashboard URL. Great £0 prototype, worse end state |
+| **Seeed reTerminal E1001** ⭐ | 7.5″ · 800×480 · 4-grey | ~$79 | Built-in 2000 mAh, **~3-month** battery | **Very low** | ESP32-S3 in a finished case with buttons; **first-class ESPHome support with documented pins**. Nothing to wire, solder or print. |
+| Seeed XIAO 7.5″ ePaper Panel | 7.5″ · 800×480 · B/W | ~$50 | Built-in 2000 mAh, ~3-month | Low | Cheaper Seeed sibling (XIAO ESP32-C3); panel + battery, ESPHome-ready; less case/fewer buttons than the E1001. |
+| LILYGO T5 4.7″ (S3) | 4.7″ · 960×540 · 16-grey | ~£45–55 | 18650/LiPo on-board, USB-C | Medium | Cheapest DIY board, lovely panel — but the **S3 needs a community ESPHome external component**, not a built-in driver. Plan-B. |
+| Waveshare 7.5″ + ESP32 driver board | 7.5″ · 800×480 · B/W | ~£55–65 | Add your own LiPo + charger board | Medium | Biggest screen per pound; DIY battery wiring; rock-solid `waveshare_epaper` support. |
+| TRMNL | 7.5″ · 800×480 · B/W | ~$139 | Built-in, months per charge | Near zero | Polished, open, self-hostable "BYOS" mode our server could implement; dearest. |
+| Old Kindle / Android tablet | varies | Free if owned | Mains, realistically | Medium hack | £0 prototype (Android + Fully Kiosk on a dashboard URL); mains-tethered end state. |
 
-### Recommendation: LILYGO T5 4.7″
+### Recommendation: Seeed reTerminal E1001
 
-Cheapest all-in-one option, the 960×540 panel comfortably fits five "eat me first" lines plus a recipe suggestion, and — the clincher given Home Assistant is already in the house — it runs **ESPHome**, so the firmware is YAML managed from the existing ESPHome dashboard, not C++ to write and maintain.
+The de-risked pick. It's a **finished device** — 7.5″ 800×480 panel, ESP32-S3, a 2000 mAh battery quoted at **~3 months** on a 6-hour refresh, buttons and a case — for ~$79, and crucially it has **first-class ESPHome support with pins Seeed documents** (verified July 2026). So the firmware in P6 is known-good YAML, not a community-component gamble. No soldering, no battery wiring, no case to print, and it also speaks Home Assistant/TRMNL natively if you ever change your mind.
 
-Buying notes: sold by LILYGO's official AliExpress store (cheapest) or Amazon UK (faster, ~£10 more). Two board generations exist — original ESP32 and newer **ESP32-S3**. The original has the longest ESPHome track record with the `lilygo_t5_47` display component; the S3 revision works too on current ESPHome but check the docs/forums at build time for the right board config. Add an 18650 cell (~£8, from a UK seller with genuine cells) if the board variant takes one, otherwise a 1000–2000 mAh LiPo with a JST-PH plug.
+Why not the LILYGO T5 4.7″ (the original draft pick)? Cheaper (~£50) with a lovely 16-grey panel, but the ESP32-**S3** revision needs a *community* ESPHome external component (`nickolay/esphome-lilygo-t547plus` or `AppForce1/…`) rather than a built-in driver — more moving parts for a first build. It stays a solid **plan-B**, especially if you already own one. Want to spend less? The **Seeed XIAO 7.5″ ePaper Panel** (~$50) is the same idea with fewer frills. Want zero tinkering? **TRMNL** (~$139) is polished and its self-hostable "BYOS" webhook our server could implement instead of `/api/display.png`.
 
-If tinkering appeal fades: buy a TRMNL instead and implement its BYOS webhook in our server — the display side becomes a solved product and `/api/display.png` just changes shape slightly.
+### Firmware (ESPHome)
 
-### Firmware sketch (ESPHome)
-
-Full config lands in `firmware/` during P4; the shape of it:
+The full, verified config is written in [P6](plan/06-phase-eink-display.md) as `firmware/whattoeat-display.yaml`. Its shape for the reTerminal E1001 — pins verified against Seeed's ESPHome cookbook:
 
 ```yaml
-esphome:
-  name: whattoeat-display
-
 esp32:
-  board: esp32-s3-devkitc-1   # set per purchased board variant (S3 vs original)
-  framework:
-    type: esp-idf
-
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-
-http_request:
-
+  board: esp32-s3-devkitc-1     # reTerminal E1001 is ESP32-S3
+spi:
+  clk_pin: GPIO7
+  mosi_pin: GPIO9
 online_image:
   - id: dashboard
-    url: http://homeassistant.local:8099/api/display.png?panel=t547
+    url: "http://homeassistant.local:8099/api/display.png"
     format: PNG
     type: GRAYSCALE
-    update_interval: never          # fetched explicitly after each wake
-
+    buffer_size: 65536
 display:
-  - platform: lilygo_t5_47
-    id: epaper
-    lambda: |-
-      it.image(0, 0, id(dashboard));
-
-sensor:
-  - platform: adc                   # battery voltage → % reported to HA
-    # pin/attenuation per board variant
-
+  - platform: waveshare_epaper
+    model: 7.50inv2             # 7.50inv2alt if complex screens ghost
+    cs_pin: GPIO10
+    dc_pin: GPIO11
+    reset_pin: { number: GPIO12, inverted: false }
+    busy_pin: { number: GPIO13, inverted: true }
 deep_sleep:
-  sleep_duration: 6h                # wake ~4×/day; display persists while asleep
-
-# on boot: connect → download dashboard → refresh display → enter deep sleep
+  run_duration: 45s
+  sleep_duration: 6h            # ~4 wakes/day → months per charge
 ```
 
-The flow is: wake → Wi-Fi → download the server-rendered PNG → draw → report battery → sleep. All layout decisions live server-side, so the screen design can change forever without touching the device. At four wakes a day of ~30 seconds each, a 2500 mAh 18650 realistically gives **several months** between charges; charging is plugging in a USB-C cable where it hangs.
+The flow: wake → Wi-Fi → download the server-rendered PNG → draw → report battery → sleep. All layout lives server-side, so the screen design can change forever without touching the device.
 
 Mounting: a picture frame or 3D-printed stand; magnets on the fridge also work. STL links can go in `firmware/` once the board variant is in hand.
 
@@ -79,19 +64,18 @@ Spice jars refilled from bags have no barcode, so the app generates one per item
 
 ## The server: already owned
 
-No purchase needed — the existing Raspberry Pi running Home Assistant OS hosts the add-on (see [architecture](02-architecture.md#ha-add-on-packaging)). Any Pi 4/5 with a few hundred MB of headroom is ample: the stack is one Node process and a SQLite file; the heaviest thing it ever does is rasterise one 960×540 PNG a few times a day.
+No purchase needed — the existing Raspberry Pi running Home Assistant OS hosts the add-on (see [architecture](02-architecture.md#ha-add-on-packaging)). Any Pi 4/5 with a few hundred MB of headroom is ample: the stack is one Node process and a SQLite file; the heaviest thing it ever does is rasterise one 800×480 PNG a few times a day.
 
 ## Shopping list (the hardware one)
 
 | Item | Cost | Needed for |
 |---|---|---|
-| LILYGO T5 4.7″ e-paper board | ~£50 | P4 (display) |
-| 18650 cell or LiPo (per board variant) | ~£8 | P4 |
-| USB-C cable for flashing/charging | ~£0 (drawer) | P4 |
-| Niimbot D110 + labels *(optional)* | ~£20 | P3 nicety |
-| NTAG213 NFC stickers *(optional)* | ~£5 | P7 |
+| Seeed reTerminal E1001 (or XIAO 7.5″ ~$50) | ~$79 | P6 (display) |
+| USB-C cable for flashing/charging | ~£0 (drawer) | P6 |
+| Niimbot D110 + labels *(optional)* | ~£20 | P5 nicety |
+| NTAG213 NFC stickers *(optional)* | ~£5 | P9 |
 
-Nothing needs ordering before P4 — the display is deliberately the fourth phase, after the app is already useful on its own.
+Nothing needs ordering until P6 — the display comes after the app is already useful on its own. The reTerminal is all-in-one, so it's the only display purchase (no separate battery/case).
 
 ---
 

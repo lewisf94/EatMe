@@ -93,7 +93,7 @@ Default opened-life by category (editable; sensible starting points, not food-sa
 
 ## Data model
 
-SQLite via Drizzle ORM. Sketch (field types abbreviated):
+SQLite via the built-in `node:sqlite` module (no ORM — see [architecture](02-architecture.md) and the [build plan](plan/00-conventions.md)). Sketch (field types abbreviated):
 
 ```ts
 locations:  id, name, sortOrder
