@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { Category, Location } from "@whattoeat/shared";
 import { api } from "../api";
 import { cls } from "../ui";
+import { BarcodeScanner } from "../scanner/BarcodeScanner";
 
 export default function AddItem() {
   const nav = useNavigate();
@@ -16,6 +17,7 @@ export default function AddItem() {
   const [bestBefore, setBestBefore] = useState("");
   const [lookupMsg, setLookupMsg] = useState("");
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     void api.categories().then((c) => {
@@ -28,11 +30,11 @@ export default function AddItem() {
     });
   }, []);
 
-  const doLookup = async () => {
-    if (!barcode) return;
+  const doLookup = async (code = barcode) => {
+    if (!code) return;
     setLookupMsg("Looking up…");
     try {
-      const r = await api.lookup(barcode);
+      const r = await api.lookup(code);
       if (r.found) {
         setName(r.name ?? "");
         setBrand(r.brand ?? "");
@@ -43,6 +45,12 @@ export default function AddItem() {
     } catch (e) {
       setLookupMsg(`Lookup unavailable (${(e as Error).message}) — enter manually.`);
     }
+  };
+
+  const onScan = (value: string) => {
+    setBarcode(value);
+    setScanning(false);
+    void doLookup(value);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -73,23 +81,23 @@ export default function AddItem() {
         <label className={cls.label} htmlFor="barcode">
           Barcode
         </label>
-        <div className="mt-1 flex gap-2">
-          <input
-            id="barcode"
-            className={cls.input}
-            inputMode="numeric"
-            placeholder="e.g. 5000159407236"
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-          />
-          <button type="button" className={cls.btnGhost} onClick={doLookup}>
-            Look up
+        <input
+          id="barcode"
+          className={`${cls.input} mt-1`}
+          inputMode="numeric"
+          placeholder="e.g. 5000159407236"
+          value={barcode}
+          onChange={(e) => setBarcode(e.target.value)}
+        />
+        <div className="mt-2 flex gap-2">
+          <button type="button" className={`flex-1 ${cls.btn}`} onClick={() => setScanning(true)}>
+            📷 Scan
+          </button>
+          <button type="button" className={`flex-1 ${cls.btnGhost}`} onClick={() => doLookup()}>
+            Look up typed
           </button>
         </div>
         {lookupMsg && <p className="mt-1 text-sm text-slate-500">{lookupMsg}</p>}
-        <p className="mt-1 text-xs text-slate-400">
-          Camera scanning arrives in the next phase — for now type the number or fill in below.
-        </p>
       </div>
 
       <div>
@@ -170,6 +178,8 @@ export default function AddItem() {
       <button type="submit" className={`w-full ${cls.btn}`} disabled={saving || !name}>
         {saving ? "Saving…" : "Add to cupboard"}
       </button>
+
+      {scanning && <BarcodeScanner onDetected={onScan} onClose={() => setScanning(false)} />}
     </form>
   );
 }
