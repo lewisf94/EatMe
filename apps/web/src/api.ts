@@ -12,7 +12,17 @@ import type {
   ArchiveReason,
   InventoryRow,
   DateType,
+  ReceiptDraft,
+  ReceiptConfirmInput,
 } from "@eatme/shared";
+
+export type ReceiptSummary = {
+  purchaseId: string;
+  added: number;
+  ignored: number;
+  notTracked: number;
+  newProducts: number;
+};
 
 export type Settings = { household_timezone: string };
 
@@ -94,6 +104,20 @@ export const api = {
     req<{ container: Container; lot: StockLot | null; product: Product | null }>(
       `/qr/${encodeURIComponent(qrUid)}`,
     ),
+
+  // receipts: upload raw image bytes → reviewable draft → confirm → stock lots
+  uploadReceipt: (image: Blob) =>
+    req<ReceiptDraft>("/receipts", {
+      method: "POST",
+      body: image,
+      headers: { "content-type": "application/octet-stream" },
+    }),
+  getReceipt: (id: string) => req<ReceiptDraft>(`/receipts/${id}`),
+  confirmReceipt: (id: string, body: ReceiptConfirmInput) =>
+    req<ReceiptSummary>(`/receipts/${id}/confirm`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   lookup: (barcode: string) => req<OffResult>(`/lookup/${encodeURIComponent(barcode)}`),
   categories: () => req<Category[]>("/categories"),

@@ -1,6 +1,7 @@
 import { NavLink, Routes, Route } from "react-router-dom";
 import Inventory from "./pages/Inventory";
 import AddItem from "./pages/AddItem";
+import ReceiptImport from "./pages/ReceiptImport";
 import ProductDetail from "./pages/ProductDetail";
 import QrRedirect from "./pages/QrRedirect";
 import Settings from "./pages/Settings";
@@ -35,6 +36,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Inventory />} />
           <Route path="/add" element={<AddItem />} />
+          <Route path="/receipt" element={<ReceiptImport />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/i/:qrUid" element={<QrRedirect />} />
           <Route path="/settings" element={<Settings />} />

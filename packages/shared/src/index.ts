@@ -294,3 +294,62 @@ export const IntakeInput = ProductInput.extend({
   openLifeDaysOverride: z.number().int().positive().optional(),
 });
 export type IntakeInput = z.infer<typeof IntakeInput>;
+
+// --- receipts ----------------------------------------------------------
+// What a local OCR engine returns (docTR/PaddleOCR/Tesseract all fit this shape).
+export type OcrLine = { text: string; confidence?: number };
+export type OcrResult = { merchant?: string; purchasedAt?: string; lines: OcrLine[] };
+
+export type ReceiptMatch = {
+  productId: string;
+  name: string;
+  brand: string | null;
+  via: "alias" | "exact" | "fuzzy";
+};
+
+// One reviewable line: the raw text, a best match (if any), and a few suggestions.
+export type ReceiptDraftLine = {
+  id: string;
+  lineNo: number;
+  rawText: string;
+  normalizedText: string;
+  quantity: number;
+  unitPrice: number | null;
+  lineTotal: number | null;
+  confidence: number | null;
+  status: string;
+  match: ReceiptMatch | null;
+  suggestions: Array<{ productId: string; name: string; brand: string | null }>;
+};
+
+export type ReceiptDraft = {
+  purchase: { id: string; merchant: string | null; purchasedAt: string | null; status: string };
+  lines: ReceiptDraftLine[];
+};
+
+// The review screen sends back a decision per line; confirm applies them all in
+// one transaction (create stock lots + learn aliases).
+export const RECEIPT_ACTIONS = ["add", "ignore", "not_tracked"] as const;
+export type ReceiptAction = (typeof RECEIPT_ACTIONS)[number];
+
+export const ReceiptLineDecision = z.object({
+  lineId: z.string(),
+  action: z.enum(RECEIPT_ACTIONS),
+  productId: z.string().optional(), // an existing product to add to
+  newProduct: z
+    .object({
+      name: z.string().min(1),
+      categoryId: z.string().min(1),
+      brand: z.string().optional(),
+    })
+    .optional(), // …or create this product
+  quantity: z.number().int().positive().default(1),
+  locationId: z.string().optional(),
+});
+export type ReceiptLineDecision = z.infer<typeof ReceiptLineDecision>;
+
+export const ReceiptConfirmInput = z.object({
+  defaultLocationId: z.string().optional(),
+  lines: z.array(ReceiptLineDecision),
+});
+export type ReceiptConfirmInput = z.infer<typeof ReceiptConfirmInput>;

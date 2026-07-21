@@ -1,5 +1,12 @@
 # RC · Receipt import — local OCR, no cloud (the core intake)
 
+> ✅ **Built.** Pipeline (upload → parse → match → alias-learn → review → stock
+> lots) is implemented and tested against a stub OCR provider (unit + e2e, green
+> in CI). The one 🖐 piece is the OCR engine itself: the PaddleOCR sidecar in
+> [`addon/ocr/`](../../addon/ocr/README.md) runs on the Pi. EatMe ships with
+> `RECEIPT_PROVIDER=stub` so it runs anywhere; set it to `local` + `OCR_URL` to
+> use the sidecar.
+
 **This is a core phase, not an add-on.** Lewis has said plainly he wouldn't use
 the app if it meant entering items one at a time — and neither would anyone else.
 So the main way stock gets in is: **photograph a receipt → it becomes a reviewable

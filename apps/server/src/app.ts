@@ -5,6 +5,7 @@ import { registerInventory } from "./routes/inventory.js";
 import { registerProducts } from "./routes/products.js";
 import { registerStockLots } from "./routes/stockLots.js";
 import { registerQr } from "./routes/qr.js";
+import { registerReceipts } from "./routes/receipts.js";
 import { registerTaxonomy } from "./routes/taxonomy.js";
 import { registerLookup } from "./routes/lookup.js";
 import { registerSettings } from "./routes/settings.js";
@@ -12,7 +13,18 @@ import { registerSettings } from "./routes/settings.js";
 /** Build the Fastify app. Call migrate()/seedIfEmpty() before this so the
  *  repositories' prepared statements bind against existing tables. */
 export function buildApp(): FastifyInstance {
-  const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" } });
+  // Receipt photos arrive as raw image bytes, so allow a larger body than JSON.
+  const app = Fastify({
+    logger: { level: process.env.LOG_LEVEL ?? "info" },
+    bodyLimit: 12_582_912,
+  });
+
+  // Accept a raw image body for receipt upload (no multipart dependency needed).
+  app.addContentTypeParser(
+    ["application/octet-stream", "image/jpeg", "image/png", "image/webp"],
+    { parseAs: "buffer" },
+    (_req, body, done) => done(null, body),
+  );
 
   // Optional bearer-token gate (belt-and-braces on top of LAN/tailnet-only
   // reachability). Off by default; /api/health stays open for the HA watchdog.
@@ -30,6 +42,7 @@ export function buildApp(): FastifyInstance {
   app.register(registerProducts, { prefix: "/api" });
   app.register(registerStockLots, { prefix: "/api" });
   app.register(registerQr, { prefix: "/api" });
+  app.register(registerReceipts, { prefix: "/api" });
   app.register(registerTaxonomy, { prefix: "/api" });
   app.register(registerLookup, { prefix: "/api" });
   app.register(registerSettings, { prefix: "/api" });

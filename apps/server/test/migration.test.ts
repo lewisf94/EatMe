@@ -117,3 +117,39 @@ describe("003 data-model migration", () => {
     expect(left).toEqual([]);
   });
 });
+
+describe("004 receipts migration", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec("PRAGMA foreign_keys = ON;");
+  for (const f of [
+    "001_init.sql",
+    "002_settings_and_reason.sql",
+    "003_data_model.sql",
+    "004_receipts.sql",
+  ])
+    db.exec(sql(f));
+
+  it("creates the receipt tables", () => {
+    const names = (
+      db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]
+    ).map((r) => r.name);
+    expect(names).toEqual(
+      expect.arrayContaining(["purchases", "purchase_lines", "receipt_aliases"]),
+    );
+  });
+
+  it("enforces the product FK and the unique (retailer, normalized_text) alias key", () => {
+    db.exec("INSERT INTO categories (id,name,warn_days,hard_expiry) VALUES ('c','C',14,0)");
+    db.exec(
+      "INSERT INTO products (id,name,brand,barcode,category_id,default_location_id,package_quantity,package_unit,image_url,created_at,updated_at) VALUES ('p','P',NULL,NULL,'c',NULL,NULL,NULL,NULL,'t','t')",
+    );
+    db.exec(
+      "INSERT INTO receipt_aliases (id,retailer,normalized_text,product_id,confirmed_count,last_seen_at,created_at) VALUES ('a','tesco','chckpeas 400g','p',1,'t','t')",
+    );
+    expect(() =>
+      db.exec(
+        "INSERT INTO receipt_aliases (id,retailer,normalized_text,product_id,confirmed_count,last_seen_at,created_at) VALUES ('a2','tesco','chckpeas 400g','p',1,'t','t')",
+      ),
+    ).toThrow();
+  });
+});

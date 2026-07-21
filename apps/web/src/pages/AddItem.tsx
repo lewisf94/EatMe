@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import type { Category, Location } from "@eatme/shared";
 import { api } from "../api";
 import { cls } from "../ui";
@@ -75,7 +75,18 @@ export default function AddItem() {
 
   return (
     <form className="space-y-4" onSubmit={submit}>
-      <h2 className="text-xl font-bold">Add an item</h2>
+      <Link
+        to="/receipt"
+        className="flex items-center justify-between rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white active:bg-emerald-700"
+      >
+        <span>🧾 Scan a receipt</span>
+        <span aria-hidden>→</span>
+      </Link>
+      <p className="text-center text-xs text-slate-400">
+        The fast way to stock up — no typing each item
+      </p>
+
+      <h2 className="pt-2 text-xl font-bold">Or add one item</h2>
 
       <div>
         <label className={cls.label} htmlFor="barcode">

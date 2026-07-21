@@ -45,6 +45,11 @@ export function getProduct(id: string): Product | undefined {
   return r ? toProduct(r) : undefined;
 }
 
+/** All products, for the receipt matcher to score against (households are small). */
+export function allProducts(): Product[] {
+  return (db.prepare(`SELECT ${COLS} FROM products`).all() as ProductRow[]).map(toProduct);
+}
+
 export function createProduct(input: ProductInput): Product {
   const now = new Date().toISOString();
   const id = newId();

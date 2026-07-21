@@ -8,6 +8,8 @@ OPTIONS=/data/options.json
 opt() { jq -r ".$1 // empty" "$OPTIONS" 2>/dev/null; }
 
 export AUTH_TOKEN="$(opt auth_token)"
+export RECEIPT_PROVIDER="$(opt receipt_provider)"
+export OCR_URL="$(opt ocr_url)"
 TS_AUTHKEY="$(opt tailscale_authkey)"
 TS_HOSTNAME="$(opt tailscale_hostname)"
 [ -z "$TS_HOSTNAME" ] && TS_HOSTNAME="eatme"
