@@ -69,6 +69,8 @@ whattoeat/
 
 ## Status
 
-📋 **Planning.** No code yet. The full build is spec'd phase-by-phase in [docs/plan/](docs/plan/README.md) — start with [P1](docs/plan/01-phase-server-core.md) (server core + Open Food Facts lookup).
+🚧 **In build.** P1–P4 are done and on `main`: the TypeScript server + SQLite, the web app (list / search / add / quick-tap), camera barcode scanning + installable PWA, and the Home Assistant add-on with bundled Tailscale HTTPS. Run it locally with `pnpm install && pnpm dev` (server on `:8099`); install on the Pi via [`addon/DOCS.md`](addon/DOCS.md).
+
+Next up (after a post-P4 review reshaped the order): a correctness/CI hardening pass → a data-model refactor (product / stock-lot / container) → **local, no-cloud receipt import** → real offline. Full sequence and per-phase specs in [docs/plan/](docs/plan/README.md).
 
 MIT licensed.

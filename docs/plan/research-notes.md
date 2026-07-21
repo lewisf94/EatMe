@@ -91,6 +91,22 @@ Chose resvg-js: prebuilt napi binary for `linux-arm64-musl` (the Pi/Alpine targe
 
 `barcode-detector` fetches its zxing `.wasm` from a CDN by default. Under a PWA's CSP and for offline use we must **self-host the wasm** and point the library at it (bundle via Vite `?url` import / `setZXingModuleOverrides`). P3 has the snippet.
 
+## Post-P4 review — accepted corrections & revised order (2026-07-20)
+
+A technical review of P1–P4 was accepted (mostly). Real defects → the [H phase](10-phase-correctness-hardening.md): clearing an optional value silently fails (`JSON.stringify` drops `undefined` → send `null`); `computeStatus` uses UTC (`toISOString`) → ±1 day near BST midnight → add a `Europe/London` civil-date helper; `archiveItem` always logs `binned` → add an archive reason; OFF cache is forever incl. not-found → TTLs; Settings can't rename/edit; no error handling; **the Playwright suites were never committed and there's no CI** (the most important process fix). Architecture → [DM phase](11-phase-data-model.md): split product / stock-lot / container, and move use-by/best-before to the **package** (safety vs quality), not the category.
+
+Pushed back on: **"OFF v2 is deprecated, use v3"** — not convinced; v2's product-read endpoint is what we verified working and v3 has historically been partial. **Verify before switching** (don't rewrite on assertion). Also over-claimed earlier and now corrected: **solar co-charging is not automatically safe** — start USB-C-only, measure, then size solar (P6); the **2×100 kΩ battery divider draws ~20 µA continuously** (~45% of the XIAO's ~44 µA sleep) → switched divider / higher-R+cap / fuel gauge; treat the e-ink 45 s wake as a **timeout**, sleep immediately after refresh; prefer Tailscale's **`TS_SERVE_CONFIG`** JSON over run.sh guessing between `tailscale serve` syntaxes.
+
+## Receipt import: local OCR (verified feasible, 2026-07-20)
+
+Lewis's priority; must be **self-hosted, no cloud** (nothing that can "go down"). Fully local is a well-trodden space:
+- **PaddleOCR** (with `PP-Structure` for layout/tables) — best mainstream local OCR; runs on-CPU on a Pi for on-demand receipts. Default engine on an 8 GB Pi 4/5.
+- **docTR** — outputs structured JSON (blocks/lines/words + boxes), good for reconstructing receipt line structure locally.
+- **Donut / PaddleOCR-VL** — receipt-understanding models that emit line items directly (less hand-parsing) but heavier; upgrade path on a beefier host, sluggish on a Pi.
+- **Tesseract** — lightest, weakest on faded thermal receipts; low-RAM fallback + more parsing work.
+- The real work is **parsing + retailer-specific line detection + alias learning**, not raw OCR; a **review screen** bridges accuracy and stays *bulk* (one glance per shop). Runs with the internet unplugged. Keep a `RECEIPT_PROVIDER` seam (local default, swappable). **Open decision:** Lewis's Pi model + RAM sets the engine (asked). Full spec: [RC phase](12-phase-receipt-import.md).
+- Sources: unstract.com (open OCR tools), superlinked.com (OSS vs Textract/Azure), modal.com (docTR/Donut), edenai.co.
+
 ---
 
 ## Deviations
