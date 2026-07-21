@@ -26,7 +26,7 @@ Why not the LILYGO T5 4.7″ (the original draft pick)? Cheaper (~£50) with a l
 
 ### Firmware (ESPHome)
 
-The full, verified config is written in [P6](plan/06-phase-eink-display.md) as `firmware/whattoeat-display.yaml`. Its shape for the reTerminal E1001 — pins verified against Seeed's ESPHome cookbook:
+The full, verified config is written in [P6](plan/06-phase-eink-display.md) as `firmware/eatme-display.yaml`. Its shape for the reTerminal E1001 — pins verified against Seeed's ESPHome cookbook:
 
 ```yaml
 esp32:

@@ -1,5 +1,5 @@
 import { db } from "../db.js";
-import { newId, type Item, type ItemInput, type ItemPatch } from "@whattoeat/shared";
+import { newId, type Item, type ItemInput, type ItemPatch } from "@eatme/shared";
 
 const COLS =
   "id,name,brand,barcode,category_id,location_id,photo_url,notes,quantity_total,unit,fraction_left,best_before,opened_at,open_life_days,qr_uid,archived_at,created_at,updated_at";

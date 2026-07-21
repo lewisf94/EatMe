@@ -9,7 +9,7 @@ import type {
   EventInput,
   ArchiveReason,
   Status,
-} from "@whattoeat/shared";
+} from "@eatme/shared";
 
 export type Settings = { household_timezone: string };
 
@@ -28,7 +28,7 @@ export type OffResult = {
   imageUrl?: string;
 };
 
-export const TOKEN_KEY = "whattoeat_token";
+export const TOKEN_KEY = "eatme_token";
 const authToken = () => localStorage.getItem(TOKEN_KEY) || "";
 
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {

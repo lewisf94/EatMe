@@ -1,5 +1,5 @@
 import { db } from "./db.js";
-import { newId } from "@whattoeat/shared";
+import { newId } from "@eatme/shared";
 
 const DEFAULT_LOCATIONS = ["Cupboard", "Spice rack", "Fridge", "Freezer", "Baking shelf"];
 

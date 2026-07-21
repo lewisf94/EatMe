@@ -1,4 +1,4 @@
-import { civilToday, type Status } from "@whattoeat/shared";
+import { civilToday, type Status } from "@eatme/shared";
 
 export const STATUS_META: Record<Status, { label: string; cls: string }> = {
   ok: { label: "OK", cls: "bg-slate-100 text-slate-600" },

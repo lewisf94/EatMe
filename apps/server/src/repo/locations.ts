@@ -1,5 +1,5 @@
 import { db } from "../db.js";
-import { newId, type Location, type LocationInput, type LocationPatch } from "@whattoeat/shared";
+import { newId, type Location, type LocationInput, type LocationPatch } from "@eatme/shared";
 
 type LocRow = { id: string; name: string; sort_order: number };
 

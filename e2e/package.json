@@ -1,10 +1,10 @@
 {
-  "name": "@whattoeat/e2e",
+  "name": "@eatme/e2e",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "e2e": "pnpm --filter @whattoeat/web build && playwright test"
+    "e2e": "pnpm --filter @eatme/web build && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",

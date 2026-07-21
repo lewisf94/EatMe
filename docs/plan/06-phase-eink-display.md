@@ -14,7 +14,7 @@
 
 1. `services/display.ts` — builds an SVG dashboard string.
 2. `GET /api/display.png` — renders that SVG → **400×300** grayscale PNG via `@resvg/resvg-js` (size from `DISPLAY_W`/`DISPLAY_H`).
-3. `firmware/whattoeat-display.yaml` — ESPHome config for the **DIY XIAO ESP32-C3 + Waveshare 4.2″** (below; reTerminal E1001 kept as a finished-board alternative). Keep the render size in a single `DISPLAY_W`/`DISPLAY_H` constant so a board/panel swap is a one-line change.
+3. `firmware/eatme-display.yaml` — ESPHome config for the **DIY XIAO ESP32-C3 + Waveshare 4.2″** (below; reTerminal E1001 kept as a finished-board alternative). Keep the render size in a single `DISPLAY_W`/`DISPLAY_H` constant so a board/panel swap is a one-line change.
 4. Optional device auth: `?token=` checked against `DISPLAY_TOKEN` (so the display endpoint stays reachable even when `AUTH_TOKEN` is on).
 
 ## Server: render pipeline (SVG → PNG)
@@ -63,13 +63,13 @@ app.get("/api/display.png", async (req, reply) => {
 - `gatherDashboardData()` reuses the P1 items+status query (urgency sort). On a 400×300 panel show the **top 4** items in large type + a footer (recipe once P7 exists, else low-stock count) — glanceability beats density on a 4.2″. `recipe` stays undefined until P7 wires it.
 - Keep the PNG grayscale-friendly (black text on white, no anti-alias-dependent thin strokes); the panel is 4-level grey.
 
-## Firmware: `firmware/whattoeat-display.yaml`
+## Firmware: `firmware/eatme-display.yaml`
 
 **DIY build: XIAO ESP32-C3 + Waveshare 4.2″ (400×300).** The SPI/CS/DC/BUSY/RESET pins are **your wiring choice** — the values below are a sensible XIAO mapping (hardware SPI is SCK=`GPIO8`/D8, MOSI=`GPIO10`/D10; the rest are any free GPIO). Match them to how you solder the panel. **Flash via the ESPHome dashboard in HA.**
 
 ```yaml
 esphome:
-  name: whattoeat-display
+  name: eatme-display
 esp32:
   board: esp32-c3-devkitm-1       # XIAO ESP32-C3; the ESPHome XIAO-C3 preset also works
   framework:
@@ -166,7 +166,7 @@ Battery life is set by the XIAO's deep sleep (~44–80 µA). On a ~1000–1500 m
 - [ ] With `DISPLAY_TOKEN` set, the endpoint 401s without `?token=` and serves with it.
 - [ ] Output renders with the **bundled font** (delete system fonts assumption: it works in the P4 container where no system fonts exist).
 - [ ] `?battery=42` persists and shows on the next render.
-- [ ] 🖐 Flash `firmware/whattoeat-display.yaml` to the XIAO ESP32-C3 (wired to the Waveshare 4.2″) via the HA ESPHome dashboard; it shows the dashboard, refreshes on its wake cycle, and reports LiPo % into HA.
+- [ ] 🖐 Flash `firmware/eatme-display.yaml` to the XIAO ESP32-C3 (wired to the Waveshare 4.2″) via the HA ESPHome dashboard; it shows the dashboard, refreshes on its wake cycle, and reports LiPo % into HA.
 
 ## Definition of done
 

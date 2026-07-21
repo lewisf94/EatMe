@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeStatus, civilToday, type Category } from "@whattoeat/shared";
+import { computeStatus, civilToday, type Category } from "@eatme/shared";
 
 type CatBits = Pick<Category, "openLifeDays" | "warnDays" | "hardExpiry">;
 const cat = (o: Partial<CatBits> = {}): CatBits => ({

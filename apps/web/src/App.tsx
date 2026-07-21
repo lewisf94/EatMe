@@ -26,7 +26,7 @@ export default function App() {
     <div className="mx-auto flex min-h-screen max-w-xl flex-col bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
         <h1 className="text-lg font-bold">
-          <span aria-hidden>🫙</span> WhatToEat
+          <span aria-hidden>🫙</span> EatMe
         </h1>
       </header>
 

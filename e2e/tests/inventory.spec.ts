@@ -23,7 +23,7 @@ function plusDays(n: number): string {
 
 test("app shell is served by the server (production build)", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("h1")).toContainText("WhatToEat");
+  await expect(page.locator("h1")).toContainText("EatMe");
 });
 
 test("add → detail shows a freshness badge and quick-tap fraction persists", async ({ page }) => {

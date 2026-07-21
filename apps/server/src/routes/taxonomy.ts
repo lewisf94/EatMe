@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { CategoryInput, CategoryPatch, LocationInput, LocationPatch } from "@whattoeat/shared";
+import { CategoryInput, CategoryPatch, LocationInput, LocationPatch } from "@eatme/shared";
 import { listCategories, createCategory, updateCategory } from "../repo/categories.js";
 import { listLocations, createLocation, updateLocation } from "../repo/locations.js";
 

@@ -42,7 +42,7 @@ Add `vite-plugin-pwa` to `vite.config.ts`:
 VitePWA({
   registerType: "autoUpdate",
   manifest: {
-    name: "WhatToEat", short_name: "WhatToEat", display: "standalone",
+    name: "EatMe", short_name: "EatMe", display: "standalone",
     background_color: "#ffffff", theme_color: "#0f172a", start_url: "/",
     icons: [ /* 192 + 512 PNG, plus a 512 maskable */ ],
   },

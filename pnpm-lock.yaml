@@ -20,12 +20,12 @@ importers:
 
   apps/server:
     dependencies:
+      '@eatme/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@fastify/static':
         specifier: ^10.0.0
         version: 10.1.0
-      '@whattoeat/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       fastify:
         specifier: ^5.0.0
         version: 5.10.0
@@ -48,7 +48,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@whattoeat/shared':
+      '@eatme/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       barcode-detector:

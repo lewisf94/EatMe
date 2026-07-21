@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { Category, Location } from "@whattoeat/shared";
+import type { Category, Location } from "@eatme/shared";
 import { api, isAbort, type ItemWithStatus } from "../api";
 import { StatusBadge, FractionBar, cls } from "../ui";
 

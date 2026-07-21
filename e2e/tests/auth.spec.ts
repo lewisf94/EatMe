@@ -11,7 +11,7 @@ test("API rejects requests without the token", async ({ page }) => {
 
 test("client sends the token from localStorage and the authed API works", async ({ context }) => {
   // Simulate the user pasting the token into Settings → Access token.
-  await context.addInitScript(() => localStorage.setItem("whattoeat_token", "e2e-secret"));
+  await context.addInitScript(() => localStorage.setItem("eatme_token", "e2e-secret"));
   const page = await context.newPage();
   await page.goto("/add");
 

@@ -13,7 +13,7 @@ COPY e2e/package.json ./e2e/package.json
 RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN pnpm --filter @whattoeat/web build
+RUN pnpm --filter @eatme/web build
 
 # ---- runtime stage ----
 FROM node:24-alpine

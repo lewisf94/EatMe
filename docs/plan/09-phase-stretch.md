@@ -7,7 +7,7 @@
 ## Ideas, roughly by value
 
 ### P9a · Home Assistant sensors + shopping list → HA todo (needs P4, P7)
-Expose `sensor.whattoeat_expiring_soon` and `sensor.whattoeat_low_stock` so HA can automate (voice announce "three things expire this week", show on a dashboard). Cleanest route: **MQTT discovery** — publish config + state topics; the add-on can reach HA's Mosquitto. Also push the shopping list into an HA **todo** list entity. Re-plan: confirm the current MQTT discovery schema and whether to use the Supervisor token + REST todo API vs MQTT. Verify against live HA docs at build time.
+Expose `sensor.eatme_expiring_soon` and `sensor.eatme_low_stock` so HA can automate (voice announce "three things expire this week", show on a dashboard). Cleanest route: **MQTT discovery** — publish config + state topics; the add-on can reach HA's Mosquitto. Also push the shopping list into an HA **todo** list entity. Re-plan: confirm the current MQTT discovery schema and whether to use the Supervisor token + REST todo API vs MQTT. Verify against live HA docs at build time.
 
 ### P9b · LLM "what can I make?" (needs P1; optional Anthropic key)
 Add `ANTHROPIC_API_KEY` (already in the add-on schema). A `POST /api/suggest` sends the current expiring items to Claude and returns 2–3 recipe ideas. Re-plan: pin the model id and SDK version by consulting the **claude-api skill** (do not hardcode a model from memory); keep it strictly optional (feature-flagged off when no key); cache suggestions to avoid per-open API calls; show a clear "AI-generated" label. Cost is tiny at this volume but make it on-demand, not scheduled.
@@ -22,7 +22,7 @@ NTAG213 stickers storing the same `/i/:qrUid` URL; iPhones read them natively (n
 `GET /api/display.png` already takes params — add `?panel=` presets (resolution + layout) for a different device, and per-panel content (e.g. one shows fridge-only). Re-plan: parameterise layout by panel profile.
 
 ### P9f · Low-power Thread cupboard sensors (uses the existing Thread border router; pairs with P9a)
-Lewis already runs a **Thread border router** on the Pi (an ESP32-C6/H2). Thread is a great fit for tiny, always-on, battery sensors — unlike the display, which stays on WiFi (see P6 for why). Good candidates: a **cupboard temp + humidity** sensor (humidity genuinely affects how fast spices/dry goods degrade — it could nudge the freshness model), a **door-open** sensor, or a **Matter button** to snooze/ack the "use me" nudges from the sofa. Build as an ESP32-C6 running **ESPHome-over-Thread** (2025.6+) or buy an off-the-shelf **Matter-over-Thread** sensor; surface it in WhatToEat via the P9a HA/MQTT bridge. Re-plan: pick the sensor, and decide whether measured humidity should adjust `openLifeDays` for affected categories.
+Lewis already runs a **Thread border router** on the Pi (an ESP32-C6/H2). Thread is a great fit for tiny, always-on, battery sensors — unlike the display, which stays on WiFi (see P6 for why). Good candidates: a **cupboard temp + humidity** sensor (humidity genuinely affects how fast spices/dry goods degrade — it could nudge the freshness model), a **door-open** sensor, or a **Matter button** to snooze/ack the "use me" nudges from the sofa. Build as an ESP32-C6 running **ESPHome-over-Thread** (2025.6+) or buy an off-the-shelf **Matter-over-Thread** sensor; surface it in EatMe via the P9a HA/MQTT bridge. Re-plan: pick the sensor, and decide whether measured humidity should adjust `openLifeDays` for affected categories.
 
 ## Protocol for P9
 

@@ -1,6 +1,6 @@
-# WhatToEat — Home Assistant add-on
+# EatMe — Home Assistant add-on
 
-Runs the WhatToEat server on your Home Assistant Pi. The inventory database lives
+Runs the EatMe server on your Home Assistant Pi. The inventory database lives
 in `/data`, so it's included in Home Assistant backups. Optionally brings up a
 real HTTPS URL (via bundled Tailscale) so you can install the phone app and use
 the camera scanner on iOS.
@@ -13,20 +13,20 @@ context. Two ways:
 **A. Custom add-on repository (recommended, one-click updates)**
 
 1. Home Assistant → **Settings → Add-ons → Add-on store → ⋮ → Repositories**.
-2. Add `https://github.com/lewisf94/WhatToEat`.
+2. Add `https://github.com/lewisf94/EatMe`.
 3. The store needs the add-on manifest at the repo root. Either move `addon/` to
    the repo root, or keep this layout and use route B. *(If you want route A,
-   tell me and I'll add a root-level `whattoeat/` add-on folder + `repository.yaml`.)*
+   tell me and I'll add a root-level `eatme/` add-on folder + `repository.yaml`.)*
 
 **B. Local add-on (works with this repo layout as-is)**
 
 1. Install the **Samba share** or **Advanced SSH & Web Terminal** add-on.
-2. Copy the **entire repo** to `/addons/whattoeat` on the Pi (the Dockerfile needs
+2. Copy the **entire repo** to `/addons/eatme` on the Pi (the Dockerfile needs
    `apps/`, `packages/`, `pnpm-*` etc. — the build context is the repo root).
-   Make sure `config.yaml`, `Dockerfile`, `run.sh` sit at `/addons/whattoeat/`
+   Make sure `config.yaml`, `Dockerfile`, `run.sh` sit at `/addons/eatme/`
    (move the contents of `addon/` up to the folder root, or copy the repo and
    point the add-on at the `addon/` subfolder).
-3. **Settings → Add-ons → Add-on store → ⋮ → Check for updates**. "WhatToEat"
+3. **Settings → Add-ons → Add-on store → ⋮ → Check for updates**. "EatMe"
    appears under **Local add-ons**. Click **Install** (the first build takes a
    few minutes — it installs deps and builds the web app in-container).
 4. **Start**. Open the Web UI (the `8099` port) to confirm it's up on the LAN:
@@ -40,7 +40,7 @@ context. Two ways:
 | Option | What it does |
 |---|---|
 | `tailscale_authkey` | Paste a Tailscale **auth key** to enable the private HTTPS URL. Leave blank for LAN-only. |
-| `tailscale_hostname` | The device name on your tailnet (default `whattoeat`). |
+| `tailscale_hostname` | The device name on your tailnet (default `eatme`). |
 | `auth_token` | Optional. If set, the API requires this token; paste the same value into the app's **Settings → Access token** on each device. Leave blank on a trusted home network. |
 
 ## Enabling HTTPS (for the phone app + camera)
@@ -57,7 +57,7 @@ context. Two ways:
 
 ## Notes & troubleshooting
 
-- **Backups**: the SQLite DB is at `/data/whattoeat.db` and is included in HA
+- **Backups**: the SQLite DB is at `/data/eatme.db` and is included in HA
   backups automatically.
 - **`tailscale serve` failed** in the log: flag names vary by Tailscale version.
   Open a terminal in the add-on container and run `tailscale serve --help`, then

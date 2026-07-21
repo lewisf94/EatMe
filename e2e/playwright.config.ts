@@ -19,7 +19,7 @@ const executablePath = process.env.PW_CHROMIUM_PATH || undefined;
 
 const server = (port: number, dataSub: string, extra: Record<string, string> = {}) => ({
   // Run from the server package so tsx + the default migrations path resolve.
-  command: "pnpm --filter @whattoeat/server exec tsx src/index.ts",
+  command: "pnpm --filter @eatme/server exec tsx src/index.ts",
   cwd: repoRoot,
   port,
   reuseExistingServer: !process.env.CI,

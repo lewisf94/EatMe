@@ -4,7 +4,7 @@
 
 Cupboards accumulate. A jar of tahini gets bought for one recipe and vanishes behind the tins. Spices decanted into matching jars lose their labels and their history — that garam masala might be six months old or six years old. Things get rebought that were already there, and things get binned that could have been eaten.
 
-WhatToEat answers three questions with as little effort as possible:
+EatMe answers three questions with as little effort as possible:
 
 1. **What have I got?** (and where is it, and how much is left)
 2. **What should I use up first?** (and what could I cook with it)

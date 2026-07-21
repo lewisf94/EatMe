@@ -8,7 +8,7 @@
 
 1. pnpm monorepo skeleton (`apps/server`, `packages/shared`, root config).
 2. SQLite schema via a migration runner.
-3. `@whattoeat/shared`: zod schemas, types, `newId()`, `computeStatus()`.
+3. `@eatme/shared`: zod schemas, types, `newId()`, `computeStatus()`.
 4. REST API: items CRUD + search, categories, locations, `/api/lookup/:barcode`, `/api/health`.
 5. Seed of sensible default categories & locations on first boot.
 6. vitest tests for `computeStatus` and the OFF response mapper.
@@ -40,14 +40,14 @@ packages:
 Root `package.json`:
 ```json
 {
-  "name": "whattoeat",
+  "name": "eatme",
   "private": true,
   "engines": { "node": ">=24" },
   "packageManager": "pnpm@10.0.0",
   "scripts": {
     "check": "pnpm -r --if-present run check && prettier --check .",
     "test": "pnpm -r --if-present run test",
-    "dev": "pnpm --filter @whattoeat/server run dev",
+    "dev": "pnpm --filter @eatme/server run dev",
     "format": "prettier --write ."
   },
   "devDependencies": { "prettier": "^3.4.0", "typescript": "^5.9.0" }
@@ -58,7 +58,7 @@ Root `package.json`:
 
 `.gitignore`: `node_modules`, `dist`, `data/`, `*.db*`, `.env`.
 
-## `@whattoeat/shared`
+## `@eatme/shared`
 
 Single entry `src/index.ts`. Everything the server and web both need lives here.
 
@@ -194,7 +194,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { config } from "./config.js";
 
-export const db = new DatabaseSync(join(config.dataDir, "whattoeat.db"));
+export const db = new DatabaseSync(join(config.dataDir, "eatme.db"));
 db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
 
 export function migrate() {
@@ -270,7 +270,7 @@ Run from repo root. All automated unless marked 🖐.
 - [ ] `pnpm install` completes.
 - [ ] `pnpm check` green (types + prettier).
 - [ ] `pnpm test` green (`computeStatus` + `mapOff` cases).
-- [ ] `pnpm dev` boots on `:8099`; a fresh `data/whattoeat.db` appears; second boot does not re-run migrations or re-seed.
+- [ ] `pnpm dev` boots on `:8099`; a fresh `data/eatme.db` appears; second boot does not re-run migrations or re-seed.
 - [ ] `curl localhost:8099/api/health` → `{"data":{"ok":true}}`.
 - [ ] `curl localhost:8099/api/categories` returns the seeded categories.
 - [ ] Create → read → patch → archive an item via curl; `GET /api/items?sort=urgency` orders most-urgent first; an item with a best-before 3 days out reports `status:"use_soon"`.

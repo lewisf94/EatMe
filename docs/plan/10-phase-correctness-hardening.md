@@ -13,7 +13,7 @@ must be green.
 1. **Clearing an optional value is broken.** `update({ bestBefore: value || undefined })`
    → `JSON.stringify` drops `undefined` → the server receives an empty patch and
    never clears the field (same for `notes`, `openedAt`).
-   - `@whattoeat/shared`: make patch fields explicitly nullable — `bestBefore`,
+   - `@eatme/shared`: make patch fields explicitly nullable — `bestBefore`,
      `openedAt`, `notes` become `.nullable()`. The client sends `null` to clear.
    - `repo/items.updateItem`: a key **present with `null`** sets the column NULL;
      a key **absent** is skipped. (Today it coalesces `null` correctly *if* the
@@ -24,7 +24,7 @@ must be green.
    a day near local midnight in BST, and the P8 scheduler would inherit it.
    - Add a `household_timezone` setting (default `Europe/London`), stored in
      `settings`.
-   - `@whattoeat/shared`: `civilToday(tz)` → `YYYY-MM-DD` using
+   - `@eatme/shared`: `civilToday(tz)` → `YYYY-MM-DD` using
      `Intl.DateTimeFormat(en-CA, { timeZone })`. `computeStatus` takes the civil
      date string (not a `Date`). Use it for status, notifications, "opened today",
      and display.

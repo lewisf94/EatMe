@@ -1,8 +1,8 @@
-# WhatToEat 🫙
+# EatMe 🫙
 
 Never lose a jar at the back of the cupboard again.
 
-WhatToEat is a self-hosted food inventory tracker for the stuff that gets forgotten — jars, spices, tins and dried goods. Add items by scanning their barcode with your phone, say how much is left with one tap, and let a battery-powered e-ink display in the kitchen quietly point out what needs eating first.
+EatMe is a self-hosted food inventory tracker for the stuff that gets forgotten — jars, spices, tins and dried goods. Add items by scanning their barcode with your phone, say how much is left with one tap, and let a battery-powered e-ink display in the kitchen quietly point out what needs eating first.
 
 ## What it does
 
@@ -20,10 +20,10 @@ WhatToEat is a self-hosted food inventory tracker for the stuff that gets forgot
 ```mermaid
 flowchart LR
     subgraph phone["iPhone"]
-        pwa["WhatToEat PWA<br/>(installed to Home Screen)"]
+        pwa["EatMe PWA<br/>(installed to Home Screen)"]
     end
     subgraph pi["Raspberry Pi · Home Assistant OS"]
-        addon["WhatToEat add-on<br/>Node + Fastify + SQLite"]
+        addon["EatMe add-on<br/>Node + Fastify + SQLite"]
         ts["Tailscale add-on<br/>HTTPS, at home and out"]
     end
     epaper["E-ink kitchen display<br/>ESP32 · ESPHome"]
@@ -46,7 +46,7 @@ Three parts, all optional beyond the first:
 ## Repo layout (planned)
 
 ```
-whattoeat/
+eatme/
 ├── apps/
 │   ├── server/      # Fastify API, display renderer, scheduled jobs
 │   └── web/         # React PWA (Vite + vite-plugin-pwa)

@@ -31,8 +31,8 @@ apps/server/src/config.ts   # add AUTH_TOKEN; default DATA_DIR "/data" when pres
 ## `config.yaml`
 
 ```yaml
-name: WhatToEat
-slug: whattoeat
+name: EatMe
+slug: eatme
 version: "0.4.0"
 description: Food inventory for jars, spices and the back of the cupboard
 arch: [aarch64, amd64]
@@ -42,7 +42,7 @@ boot: auto
 ports:
   8099/tcp: 8099        # optional LAN access; the e-ink display (P6) uses this
 ports_description:
-  8099/tcp: WhatToEat web/API (LAN + e-ink display)
+  8099/tcp: EatMe web/API (LAN + e-ink display)
 webui: "http://[HOST]:[PORT:8099]"
 watchdog: "http://[HOST]:[PORT:8099]/api/health"
 map:
@@ -51,7 +51,7 @@ map:
 options:
   auth_token: ""
   tailscale_authkey: ""
-  tailscale_hostname: "whattoeat"
+  tailscale_hostname: "eatme"
 schema:
   auth_token: str?
   tailscale_authkey: password?
@@ -80,9 +80,9 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages ./packages
 COPY apps ./apps
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @whattoeat/web build
-RUN pnpm --filter @whattoeat/server build     # tsc → apps/server/dist
-RUN pnpm deploy --filter @whattoeat/server --prod /out   # prod node_modules + dist
+RUN pnpm --filter @eatme/web build
+RUN pnpm --filter @eatme/server build     # tsc → apps/server/dist
+RUN pnpm deploy --filter @eatme/server --prod /out   # prod node_modules + dist
 
 # ---- runtime ----
 FROM node:24-alpine
@@ -109,7 +109,7 @@ CMD ["/run.sh"]
 set -e
 # read HA add-on options (Supervisor writes /data/options.json)
 AUTHKEY=$(jq -r '.tailscale_authkey // ""' /data/options.json 2>/dev/null || echo "")
-HOSTNAME=$(jq -r '.tailscale_hostname // "whattoeat"' /data/options.json 2>/dev/null || echo whattoeat)
+HOSTNAME=$(jq -r '.tailscale_hostname // "eatme"' /data/options.json 2>/dev/null || echo eatme)
 export AUTH_TOKEN=$(jq -r '.auth_token // ""' /data/options.json 2>/dev/null || echo "")
 
 if [ -n "$AUTHKEY" ]; then
@@ -135,16 +135,16 @@ exec node /app/apps/server/dist/index.js
 
 ## `addon/DOCS.md` (write this for Lewis)
 
-Cover, in copy-paste form: install the **SSH & Web Terminal** or **Samba** add-on → drop the `addon/` folder into `/addons/whattoeat` (or add this GitHub repo as a custom add-on repository) → it appears under Settings → Add-ons → Local → Install. Then: create a **Tailscale auth key** (tailnet admin console), enable **MagicDNS + HTTPS certificates**, paste the key + hostname into the add-on config, Start. The app is then at `https://whattoeat.<your-tailnet>.ts.net`. Install the Tailscale app on the iPhone, open that URL, Add to Home Screen. LAN-only fallback: `http://homeassistant.local:8099` (no camera without HTTPS).
+Cover, in copy-paste form: install the **SSH & Web Terminal** or **Samba** add-on → drop the `addon/` folder into `/addons/eatme` (or add this GitHub repo as a custom add-on repository) → it appears under Settings → Add-ons → Local → Install. Then: create a **Tailscale auth key** (tailnet admin console), enable **MagicDNS + HTTPS certificates**, paste the key + hostname into the add-on config, Start. The app is then at `https://eatme.<your-tailnet>.ts.net`. Install the Tailscale app on the iPhone, open that URL, Add to Home Screen. LAN-only fallback: `http://homeassistant.local:8099` (no camera without HTTPS).
 
 ## Acceptance checklist
 
-- [ ] `docker build -f addon/Dockerfile -t whattoeat .` succeeds (build it for amd64 locally at least).
-- [ ] `docker run -p 8099:8099 -v $PWD/data:/data whattoeat` boots; `/api/health` responds; data persists in the mounted volume across `docker run`s.
+- [ ] `docker build -f addon/Dockerfile -t eatme .` succeeds (build it for amd64 locally at least).
+- [ ] `docker run -p 8099:8099 -v $PWD/data:/data eatme` boots; `/api/health` responds; data persists in the mounted volume across `docker run`s.
 - [ ] With `AUTH_TOKEN` set (env), `/api/*` returns 401 without the bearer header and 200 with it; `/api/health` stays open.
 - [ ] The container serves the **built web app** at `/` (no Vite).
 - [ ] 🖐 On the Pi: add-on installs from Local, starts, watchdog healthy, survives a reboot, appears in an HA backup's contents.
-- [ ] 🖐 With a Tailscale auth key set: `https://whattoeat.<tailnet>.ts.net` loads with a valid cert; the iPhone can install the PWA and **the camera scanner now works** (closes the deferred P3 box).
+- [ ] 🖐 With a Tailscale auth key set: `https://eatme.<tailnet>.ts.net` loads with a valid cert; the iPhone can install the PWA and **the camera scanner now works** (closes the deferred P3 box).
 
 ## Definition of done
 

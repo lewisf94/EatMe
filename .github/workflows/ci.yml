@@ -36,10 +36,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Install the browser matching this @playwright/test version (+ system libs).
-      - run: pnpm --filter @whattoeat/e2e exec playwright install --with-deps chromium
+      - run: pnpm --filter @eatme/e2e exec playwright install --with-deps chromium
       # The e2e script builds the web PWA, then Playwright boots the server
       # (with and without the auth token) and drives the real app.
-      - run: pnpm --filter @whattoeat/e2e run e2e
+      - run: pnpm --filter @eatme/e2e run e2e
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -54,4 +54,4 @@ jobs:
       - uses: actions/checkout@v4
       # Build context is the repo root (see addon/Dockerfile); this is a smoke
       # test that the Home Assistant add-on image still assembles.
-      - run: docker build -f addon/Dockerfile -t whattoeat-addon:ci .
+      - run: docker build -f addon/Dockerfile -t eatme-addon:ci .

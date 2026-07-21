@@ -54,7 +54,7 @@ export async function sendTo(sub, payload) {
   ```js
   self.addEventListener("push", (e) => {
     const d = e.data?.json() ?? {};
-    e.waitUntil(self.registration.showNotification(d.title ?? "WhatToEat", { body: d.body, data: { url: d.url } }));
+    e.waitUntil(self.registration.showNotification(d.title ?? "EatMe", { body: d.body, data: { url: d.url } }));
   });
   self.addEventListener("notificationclick", (e) => {
     e.notification.close();

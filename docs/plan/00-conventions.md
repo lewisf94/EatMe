@@ -12,7 +12,7 @@ These decisions are **fixed**. Do not substitute libraries, restructure folders,
 | Package manager | **pnpm 10**, workspaces | Monorepo. |
 | Server framework | **Fastify 5** | — |
 | Database | **`node:sqlite`** (`DatabaseSync`), hand-written SQL, numbered `.sql` migrations | Zero native deps. No ORM — the schema is ~10 tables; an ORM adds more surface than it saves. **Ignore any mention of better-sqlite3 / Drizzle in `docs/0X`.** |
-| Validation | **zod 4** in `@whattoeat/shared` | One schema, server validates + web infers types. |
+| Validation | **zod 4** in `@eatme/shared` | One schema, server validates + web infers types. |
 | SVG→PNG (display) | **`@resvg/resvg-js`** | Clean prebuilt `linux-arm64-musl` binary. **Not `sharp`** (its SVG path had musl-arm64 gaps). |
 | Web build | **Vite (current major) + React 19 + Tailwind v4 (`@tailwindcss/vite`) + `vite-plugin-pwa`** | Install these together at their current `latest` so their peer ranges agree — do **not** pin an older Vite. |
 | Barcode scan | **`barcode-detector`** ponyfill (zxing-wasm) | iOS Safari has no native `BarcodeDetector`. **Self-host the `.wasm`** (see P3). |
@@ -25,7 +25,7 @@ Confirm current versions against [research-notes.md](research-notes.md); if a pi
 ## Repo layout (final target — phases fill it in)
 
 ```
-whattoeat/
+eatme/
 ├── package.json                 # root: scripts + devDeps (prettier, typescript)
 ├── pnpm-workspace.yaml          # packages: [apps/*, packages/*]
 ├── tsconfig.base.json           # shared compiler options
@@ -52,12 +52,12 @@ whattoeat/
 
 ## Naming & data conventions
 
-- **Package names**: `@whattoeat/shared`, `@whattoeat/server`, `@whattoeat/web`.
-- **IDs**: primary keys are text; generate with the `newId()` helper in `@whattoeat/shared` (12-char base58 from `crypto.getRandomValues`). `qrUid` uses the same helper but 8 chars.
+- **Package names**: `@eatme/shared`, `@eatme/server`, `@eatme/web`.
+- **IDs**: primary keys are text; generate with the `newId()` helper in `@eatme/shared` (12-char base58 from `crypto.getRandomValues`). `qrUid` uses the same helper but 8 chars.
 - **Dates**: calendar dates (`bestBefore`, `openedAt`) stored as `YYYY-MM-DD` strings. Timestamps (`createdAt`) stored as ISO-8601 UTC strings. Never store JS `Date` objects or epoch numbers.
 - **Money/quantities**: `fractionLeft` is a real in `[0,1]`. Nothing else is a float.
-- **API shape**: all responses `{ data: … }` or `{ error: { message } }`. All bodies validated with a zod schema from `@whattoeat/shared` before touching the DB.
-- **Server port**: `8099` (override with `PORT`). **Data dir**: `DATA_DIR` env, default `./data` locally, `/data` in the add-on. The SQLite file is `${DATA_DIR}/whattoeat.db`.
+- **API shape**: all responses `{ data: … }` or `{ error: { message } }`. All bodies validated with a zod schema from `@eatme/shared` before touching the DB.
+- **Server port**: `8099` (override with `PORT`). **Data dir**: `DATA_DIR` env, default `./data` locally, `/data` in the add-on. The SQLite file is `${DATA_DIR}/eatme.db`.
 
 ## Config (env vars — the only config surface)
 
@@ -65,7 +65,7 @@ whattoeat/
 |---|---|---|
 | `PORT` | `8099` | P1 |
 | `DATA_DIR` | `./data` | P1 |
-| `OFF_USER_AGENT` | `WhatToEat/0.x (github.com/lewisf94/WhatToEat)` | P1 (Open Food Facts requires a custom UA) |
+| `OFF_USER_AGENT` | `EatMe/0.x (github.com/lewisf94/EatMe)` | P1 (Open Food Facts requires a custom UA) |
 | `AUTH_TOKEN` | *(empty = auth off)* | P4 |
 | `VAPID_PUBLIC` / `VAPID_PRIVATE` | *(generated on first boot, persisted to `DATA_DIR`)* | P8 |
 | `ANTHROPIC_API_KEY` | *(empty = LLM off)* | P9 |

@@ -20,7 +20,7 @@
   ```ts
   server: { proxy: { "/api": "http://localhost:8099" } }
   ```
-- Root `dev` script becomes: run server and web together (add `concurrently` at the root, or document `pnpm --filter @whattoeat/server dev` + `pnpm --filter @whattoeat/web dev` in two terminals). Prefer `concurrently`.
+- Root `dev` script becomes: run server and web together (add `concurrently` at the root, or document `pnpm --filter @eatme/server dev` + `pnpm --filter @eatme/web dev` in two terminals). Prefer `concurrently`.
 
 ## Serving the built app from the server
 
@@ -37,7 +37,7 @@ app.setNotFoundHandler((req, reply) => {
 
 ## API client (`src/api.ts`)
 
-Thin `fetch` wrapper returning `data`, throwing on `error`. Import types from `@whattoeat/shared`. One function per endpoint (`listItems`, `getItem`, `createItem`, `patchItem`, `archiveItem`, `postEvent`, `lookupBarcode`, `getCategories`, `getLocations`). Keep the shared status helper client-side too so badges match the server.
+Thin `fetch` wrapper returning `data`, throwing on `error`. Import types from `@eatme/shared`. One function per endpoint (`listItems`, `getItem`, `createItem`, `patchItem`, `archiveItem`, `postEvent`, `lookupBarcode`, `getCategories`, `getLocations`). Keep the shared status helper client-side too so badges match the server.
 
 ## Screens & components
 
@@ -61,7 +61,7 @@ Keep it simple — React state + a tiny fetch layer. **Do not** add Redux/Zustan
 - [ ] Quick-tap ½ on an item updates its fraction immediately and survives reload; a `usage_log` row was written (check via API or DB).
 - [ ] Search narrows the list; the urgency sort puts a near-expiry item on top; the status badge colour matches `computeStatus`.
 - [ ] Archive removes it from the default list; `?includeArchived=1` still shows it.
-- [ ] After `pnpm --filter @whattoeat/web build`, the **server alone** (no Vite) serves the app at `localhost:8099/` and client-side routes deep-link correctly (reload on `/item/:id` works).
+- [ ] After `pnpm --filter @eatme/web build`, the **server alone** (no Vite) serves the app at `localhost:8099/` and client-side routes deep-link correctly (reload on `/item/:id` works).
 
 ## Definition of done
 

@@ -10,10 +10,10 @@ opt() { jq -r ".$1 // empty" "$OPTIONS" 2>/dev/null; }
 export AUTH_TOKEN="$(opt auth_token)"
 TS_AUTHKEY="$(opt tailscale_authkey)"
 TS_HOSTNAME="$(opt tailscale_hostname)"
-[ -z "$TS_HOSTNAME" ] && TS_HOSTNAME="whattoeat"
+[ -z "$TS_HOSTNAME" ] && TS_HOSTNAME="eatme"
 
 if [ -n "$TS_AUTHKEY" ]; then
-  echo "[whattoeat] starting tailscaled (userspace networking)…"
+  echo "[eatme] starting tailscaled (userspace networking)…"
   mkdir -p /data/tailscale /var/run/tailscale
   tailscaled \
     --tun=userspace-networking \
@@ -29,16 +29,16 @@ if [ -n "$TS_AUTHKEY" ]; then
 
   tailscale up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME"
 
-  echo "[whattoeat] enabling HTTPS via 'tailscale serve'…"
+  echo "[eatme] enabling HTTPS via 'tailscale serve'…"
   # Flag spellings drift between Tailscale versions — try the current form,
   # then older fallbacks. Confirm with 'tailscale serve --help' if all fail.
   tailscale serve --bg --https=443 http://127.0.0.1:8099 \
     || tailscale serve --bg https / http://127.0.0.1:8099 \
     || tailscale serve --bg 8099 \
-    || echo "[whattoeat] 'tailscale serve' failed — see 'tailscale serve --help' and adjust run.sh"
+    || echo "[eatme] 'tailscale serve' failed — see 'tailscale serve --help' and adjust run.sh"
 
-  echo "[whattoeat] app URL (once MagicDNS+HTTPS are on): https://${TS_HOSTNAME}.<your-tailnet>.ts.net"
+  echo "[eatme] app URL (once MagicDNS+HTTPS are on): https://${TS_HOSTNAME}.<your-tailnet>.ts.net"
 fi
 
-echo "[whattoeat] starting server on :8099"
+echo "[eatme] starting server on :8099"
 exec node_modules/.bin/tsx apps/server/src/index.ts

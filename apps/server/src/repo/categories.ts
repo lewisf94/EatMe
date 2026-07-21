@@ -1,5 +1,5 @@
 import { db } from "../db.js";
-import { newId, type Category, type CategoryInput, type CategoryPatch } from "@whattoeat/shared";
+import { newId, type Category, type CategoryInput, type CategoryPatch } from "@eatme/shared";
 
 type CatRow = {
   id: string;

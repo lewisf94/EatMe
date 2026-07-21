@@ -31,7 +31,7 @@ CREATE TABLE shopping_list (
 
 ## Use-it-up ranking
 
-Rank recipes by how many of their ingredients match an **active item that is `use_soon` or `past_best`** (reuse `computeStatus` from `@whattoeat/shared`). Matching = case-insensitive substring of `match_text` in `item.name` (good enough; no ontology). Endpoint:
+Rank recipes by how many of their ingredients match an **active item that is `use_soon` or `past_best`** (reuse `computeStatus` from `@eatme/shared`). Matching = case-insensitive substring of `match_text` in `item.name` (good enough; no ontology). Endpoint:
 
 - `GET /api/recipes/use-it-up` → recipes sorted by `matchedUrgentCount` desc, each with the list of matched items and which ingredients are still missing. Tie-break by total matched ingredients, then name.
 

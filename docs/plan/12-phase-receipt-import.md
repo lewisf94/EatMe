@@ -68,7 +68,7 @@ PWA: capture receipt photo(s)  ──►  server  ──►  OCR service (local 
                                                        create stock_lots + learn aliases
 ```
 
-- **OCR as its own local service/container** (`whattoeat-ocr`, Python) the Node
+- **OCR as its own local service/container** (`eatme-ocr`, Python) the Node
   server calls over `localhost` only. The `RECEIPT_PROVIDER` seam swaps between
   *local* engines (Tesseract ↔ PaddleOCR ↔ Donut) — never a remote endpoint.
   **No outbound network anywhere in the flow** — it works with the internet

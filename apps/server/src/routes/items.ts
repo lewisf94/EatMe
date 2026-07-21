@@ -7,7 +7,7 @@ import {
   computeStatus,
   civilToday,
   type Status,
-} from "@whattoeat/shared";
+} from "@eatme/shared";
 import * as items from "../repo/items.js";
 import { categoriesMap } from "../repo/categories.js";
 import { timezone } from "../repo/settings.js";

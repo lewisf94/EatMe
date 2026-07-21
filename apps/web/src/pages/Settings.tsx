@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Category, Location } from "@whattoeat/shared";
+import type { Category, Location } from "@eatme/shared";
 import { api, TOKEN_KEY } from "../api";
 import { cls } from "../ui";
 

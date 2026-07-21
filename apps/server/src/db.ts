@@ -6,7 +6,7 @@ import { config } from "./config.js";
 
 mkdirSync(config.dataDir, { recursive: true });
 
-export const db = new DatabaseSync(join(config.dataDir, "whattoeat.db"));
+export const db = new DatabaseSync(join(config.dataDir, "eatme.db"));
 db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
 
 const migrationsDir =

@@ -8,7 +8,7 @@ import {
   type Item,
   type Category,
   type Location,
-} from "@whattoeat/shared";
+} from "@eatme/shared";
 import { api } from "../api";
 import { StatusBadge, fractionLabel, daysPhrase, today, cls } from "../ui";
 

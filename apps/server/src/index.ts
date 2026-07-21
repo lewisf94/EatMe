@@ -12,7 +12,7 @@ const app = buildApp();
 
 try {
   const addr = await app.listen({ port: config.port, host: "0.0.0.0" });
-  app.log.info(`WhatToEat server listening on ${addr}`);
+  app.log.info(`EatMe server listening on ${addr}`);
 } catch (err) {
   console.error(err);
   process.exit(1);

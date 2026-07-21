@@ -11,8 +11,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["apple-touch-icon-180x180.png"],
       manifest: {
-        name: "WhatToEat",
-        short_name: "WhatToEat",
+        name: "EatMe",
+        short_name: "EatMe",
         description: "Track the jars and spices at the back of the cupboard.",
         theme_color: "#0f172a",
         background_color: "#ffffff",

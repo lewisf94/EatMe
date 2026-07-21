@@ -7,7 +7,7 @@ TypeScript everywhere, one server, one database file, no cloud dependencies (Ope
 ```mermaid
 flowchart TB
     subgraph pi["Raspberry Pi · Home Assistant OS"]
-        subgraph addon["WhatToEat add-on (Docker, managed by HA Supervisor)"]
+        subgraph addon["EatMe add-on (Docker, managed by HA Supervisor)"]
             ts["Bundled tailscaled<br/>tailscale serve → HTTPS:443"]
             api["Fastify API"]
             static["Static hosting of the built PWA"]
@@ -44,7 +44,7 @@ flowchart TB
 | `POST /api/push/subscribe` | Register a Web Push subscription |
 | `GET /api/health` | For HA's watchdog |
 
-**Open Food Facts**: `GET https://world.openfoodfacts.org/api/v2/product/{barcode}.json` — free, no key, good UK coverage including supermarket own-brands. Responses cached in `lookup_cache` forever (product names don't churn). Per OFF etiquette, send a real `User-Agent` (`WhatToEat/x.y (github.com/lewisf94/WhatToEat)`). Misses fall back to manual entry with the barcode kept, so the next identical jar still matches locally.
+**Open Food Facts**: `GET https://world.openfoodfacts.org/api/v2/product/{barcode}.json` — free, no key, good UK coverage including supermarket own-brands. Responses cached in `lookup_cache` forever (product names don't churn). Per OFF etiquette, send a real `User-Agent` (`EatMe/x.y (github.com/lewisf94/EatMe)`). Misses fall back to manual entry with the barcode kept, so the next identical jar still matches locally.
 
 **Scan-to-add flow**:
 
@@ -79,8 +79,8 @@ A `?panel=` parameter (a P9 extension) lets a second/different display request i
 An HA OS add-on is a Docker image plus a manifest. `addon/config.yaml` sketch:
 
 ```yaml
-name: WhatToEat
-slug: whattoeat
+name: EatMe
+slug: eatme
 version: 0.1.0
 description: Food inventory for jars, spices, and the back of the cupboard
 arch: [aarch64, amd64]        # Pi 4/5 and dev machines
@@ -92,7 +92,7 @@ watchdog: http://[HOST]:[PORT:8099]/api/health
 options:
   auth_token: ""              # optional bearer token
   tailscale_authkey: ""       # enables the bundled HTTPS (P4)
-  tailscale_hostname: "whattoeat"
+  tailscale_hostname: "eatme"
   anthropic_api_key: ""       # optional, for LLM suggestions (P9)
 schema:
   auth_token: str?
@@ -101,7 +101,7 @@ schema:
   anthropic_api_key: str?
 ```
 
-- **Install path**: copy `addon/` to `/addons/whattoeat` on the Pi (via the Samba or SSH add-on) → it appears under *Settings → Add-ons → Local add-ons* and the Supervisor builds it on-device for the Pi's architecture. Later, the repo itself can be added as a custom add-on repository so updates are one click.
+- **Install path**: copy `addon/` to `/addons/eatme` on the Pi (via the Samba or SSH add-on) → it appears under *Settings → Add-ons → Local add-ons* and the Supervisor builds it on-device for the Pi's architecture. Later, the repo itself can be added as a custom add-on repository so updates are one click.
 - **Persistence**: the server writes SQLite to `/data`, the Supervisor-managed volume that is included in HA backups automatically.
 - **Base image**: `node:24-alpine`. Both `node:sqlite` (built-in) and `@resvg/resvg-js` (prebuilt musl-arm64 binary) work there with **no native compilation** — precisely why they were chosen over better-sqlite3/sharp. The image also bundles the `tailscale`/`tailscaled` binaries (see below).
 
