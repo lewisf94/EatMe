@@ -1,20 +1,34 @@
-# RC · Receipt import — local OCR, no cloud (the primary intake)
+# RC · Receipt import — local OCR, no cloud (the core intake)
 
-**Why:** Lewis won't add items one at a time, and doesn't want to depend on a
-cloud service that could go down. So the main way stock gets in is: **photograph a
-receipt → it becomes a reviewable batch → confirm → stock lots created** — all
-running on the Pi, nothing external.
+**This is a core phase, not an add-on.** Lewis has said plainly he wouldn't use
+the app if it meant entering items one at a time — and neither would anyone else.
+So the main way stock gets in is: **photograph a receipt → it becomes a reviewable
+batch → confirm → stock lots created**. If this doesn't work well, the product
+doesn't work. Treat it with the same weight as the inventory core, not as a
+stretch feature.
+
+**Two non-negotiables:**
+
+1. **Fully local, no cloud — ever.** Every step of the flow runs on the Pi with
+   the internet unplugged. There is **no hosted/cloud OCR fallback** and no
+   "optional cloud provider": a service that could go down, cost money, or take
+   the household's shopping data off-device is out of scope by design, not a
+   config toggle. Lewis's words: *"cant rely on service that could go down and
+   want to keep data local and secure."*
+2. **Every import ends at a review screen** — assisted import, never blind
+   auto-creation.
 
 **Prerequisites:** [DM](11-phase-data-model.md) (needs stable product identity +
-aliases). **Non-negotiable:** every import ends at a **review screen** — assisted
-import, never blind auto-creation.
+aliases).
 
 > **Open sizing decision (confirm before building):** which Pi (model + RAM)?
 > 8 GB Pi 4/5 → **PaddleOCR** (`PP-Structure`) comfortably. 2–4 GB → lighter
-> **Tesseract** + more parsing, or offload. A receipt-understanding model
-> (**Donut**/PaddleOCR-VL, structured JSON directly) is an upgrade path for a
-> beefier host. All are self-hosted; pick behind a provider seam so it's swappable
-> but **local by default**.
+> **Tesseract** + more parsing. A receipt-understanding model (**Donut**/
+> PaddleOCR-VL, structured JSON directly) is an upgrade path for a beefier host.
+> **All of these run on the Pi.** The `RECEIPT_PROVIDER` seam exists only to swap
+> between these *local* engines as available RAM allows — it is **not** an
+> escape hatch to a cloud API. If a chosen Pi can't run any of them well, the
+> answer is a beefier local host, never offloading to a service.
 
 ## Architecture (all on the Pi)
 
@@ -38,9 +52,10 @@ PWA: capture receipt photo(s)  ──►  server  ──►  OCR service (local 
 ```
 
 - **OCR as its own local service/container** (`whattoeat-ocr`, Python) the Node
-  server calls over `localhost`. A `RECEIPT_PROVIDER` seam (`local` default)
-  keeps it swappable without touching the app. **No outbound network** — works
-  with the internet unplugged.
+  server calls over `localhost` only. The `RECEIPT_PROVIDER` seam swaps between
+  *local* engines (Tesseract ↔ PaddleOCR ↔ Donut) — never a remote endpoint.
+  **No outbound network anywhere in the flow** — it works with the internet
+  unplugged, and a CI test asserts zero external calls.
 - **Aliases do the heavy lifting.** UK receipts abbreviate (`TESCO CHCKPEAS 400G`).
   After one confirmation → `receipt_aliases` maps it to the product; every future
   Tesco receipt matches instantly. Match order is alias → exact → fuzzy →
@@ -71,8 +86,9 @@ overlap de-dup into one combined review.
 ## Privacy (defaults)
 
 Strip EXIF before upload; don't log raw OCR; **delete the photo after extraction**;
-store only the parsed lines + an `image_hash` (duplicate detection). Disclose if a
-non-local provider is ever selected.
+store only the parsed lines + an `image_hash` (duplicate detection). Because
+everything is on-device there is no third party to disclose — the receipt image
+and its contents never leave the Pi.
 
 ## Benchmark before trusting it
 

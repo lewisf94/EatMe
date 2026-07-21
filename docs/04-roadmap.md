@@ -24,7 +24,7 @@ Ordered so **every phase ends with something genuinely usable** — no long tren
 
 - **P1–P4 (built) are the critical path** to "useful on the phone" — install on the Pi with Tailscale and the scan→add→track loop works on the iPhone.
 - **Harden before more features.** H fixes real bugs and adds CI so "green" is durable; DM corrects the data model while it's cheap (before receipts/recipes build on it).
-- **Receipts (RC) are the priority intake** — Lewis won't add items one at a time — and run **fully local** (no cloud). RC needs DM (stable product identity + aliases).
+- **Receipts (RC) are a core phase, not an add-on** — the primary way stock gets in, because Lewis (and realistically anyone) won't add items one at a time. It runs **fully local, no cloud** — no hosted OCR fallback, ever; the receipt image never leaves the Pi. RC needs DM (stable product identity + aliases).
 - Hardware isn't needed until **P6** — the display stays swappable by design.
 - Each phase lands as its own commits with docs updated to match reality.
 
