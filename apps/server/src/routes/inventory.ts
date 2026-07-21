@@ -5,6 +5,7 @@ import { findOrCreateProduct } from "../repo/products.js";
 import { createLot } from "../repo/stockLots.js";
 import { createContainer } from "../repo/containers.js";
 import { timezone } from "../repo/settings.js";
+import { idempotent } from "../services/idempotency.js";
 
 export async function registerInventory(app: FastifyInstance): Promise<void> {
   // The cupboard: one aggregated row per product.
@@ -41,33 +42,36 @@ export async function registerInventory(app: FastifyInstance): Promise<void> {
         .code(400)
         .send({ error: { message: "invalid intake", issues: parsed.error.issues } });
     const d = parsed.data;
-    const product = findOrCreateProduct({
-      name: d.name,
-      brand: d.brand,
-      barcode: d.barcode,
-      categoryId: d.categoryId,
-      defaultLocationId: d.locationId,
-      packageQuantity: d.packageQuantity,
-      packageUnit: d.packageUnit,
-      imageUrl: d.imageUrl,
+    const result = idempotent(d.opId, () => {
+      const product = findOrCreateProduct({
+        name: d.name,
+        brand: d.brand,
+        barcode: d.barcode,
+        categoryId: d.categoryId,
+        defaultLocationId: d.locationId,
+        packageQuantity: d.packageQuantity,
+        packageUnit: d.packageUnit,
+        imageUrl: d.imageUrl,
+      });
+      const lot = createLot({
+        productId: product.id,
+        locationId: d.locationId,
+        count: d.count,
+        fractionLeft: d.fractionLeft,
+        dateType: d.dateType,
+        dateValue: d.dateValue,
+        openedAt: d.openedAt,
+        openLifeDaysOverride: d.openLifeDaysOverride,
+        source: "manual",
+      });
+      const container = createContainer({
+        name: product.name,
+        productId: product.id,
+        locationId: d.locationId,
+        currentStockLotId: lot.id,
+      });
+      return { product, lot, container };
     });
-    const lot = createLot({
-      productId: product.id,
-      locationId: d.locationId,
-      count: d.count,
-      fractionLeft: d.fractionLeft,
-      dateType: d.dateType,
-      dateValue: d.dateValue,
-      openedAt: d.openedAt,
-      openLifeDaysOverride: d.openLifeDaysOverride,
-      source: "manual",
-    });
-    const container = createContainer({
-      name: product.name,
-      productId: product.id,
-      locationId: d.locationId,
-      currentStockLotId: lot.id,
-    });
-    return { data: { product, lot, container } };
+    return { data: result };
   });
 }

@@ -139,6 +139,7 @@ export const EVENTS = [
 export const EventInput = z.object({
   event: z.enum(EVENTS),
   fractionAfter: z.number().min(0).max(1).optional(),
+  opId: z.string().optional(), // client op-id for idempotent offline replay
 });
 export type EventInput = z.infer<typeof EventInput>;
 
@@ -292,6 +293,7 @@ export const IntakeInput = ProductInput.extend({
   dateValue: DATE.optional(),
   openedAt: DATE.optional(),
   openLifeDaysOverride: z.number().int().positive().optional(),
+  opId: z.string().optional(), // client op-id for idempotent offline replay
 });
 export type IntakeInput = z.infer<typeof IntakeInput>;
 

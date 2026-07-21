@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { StockLotInput, StockLotPatch, EventInput, ArchiveInput } from "@eatme/shared";
 import { createLot, updateLot, archiveLot, addEvent } from "../repo/stockLots.js";
+import { idempotent } from "../services/idempotency.js";
 
 export async function registerStockLots(app: FastifyInstance): Promise<void> {
   app.post("/stock-lots", async (req, reply) => {
@@ -43,7 +44,9 @@ export async function registerStockLots(app: FastifyInstance): Promise<void> {
       return reply
         .code(400)
         .send({ error: { message: "invalid event", issues: parsed.error.issues } });
-    const lot = addEvent(id, parsed.data.event, parsed.data.fractionAfter ?? null);
+    const lot = idempotent(parsed.data.opId, () =>
+      addEvent(id, parsed.data.event, parsed.data.fractionAfter ?? null),
+    );
     if (!lot) return reply.code(404).send({ error: { message: "not found" } });
     return { data: lot };
   });
