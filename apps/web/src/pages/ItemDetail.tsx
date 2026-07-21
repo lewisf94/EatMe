@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   computeStatus,
   FRACTIONS,
+  ARCHIVE_REASONS,
+  type ArchiveReason,
   type Item,
   type Category,
   type Location,
@@ -10,34 +12,65 @@ import {
 import { api } from "../api";
 import { StatusBadge, fractionLabel, daysPhrase, today, cls } from "../ui";
 
+const REASON_LABELS: Record<ArchiveReason, string> = {
+  finished: "Finished it",
+  binned: "Threw it away",
+  duplicate: "Duplicate",
+  mistake: "Added by mistake",
+  other: "Other",
+};
+
 export default function ItemDetail() {
   const { id = "" } = useParams();
   const nav = useNavigate();
   const [item, setItem] = useState<Item | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
   const [locs, setLocs] = useState<Location[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [archiving, setArchiving] = useState(false);
 
   useEffect(() => {
-    void api.getItem(id).then(setItem);
+    api
+      .getItem(id)
+      .then(setItem, (e) => setError(e instanceof Error ? e.message : "Failed to load item"));
     void api.categories().then(setCats);
     void api.locations().then(setLocs);
   }, [id]);
 
+  if (error && !item)
+    return (
+      <div className="py-12 text-center text-slate-600">
+        <p className="mb-1 font-semibold">Couldn’t load this item.</p>
+        <p className="text-sm text-slate-500">{error}</p>
+        <Link to="/" className="mt-4 inline-block text-sm text-emerald-600">
+          ← Back to cupboard
+        </Link>
+      </div>
+    );
   if (!item) return <p className="py-8 text-center text-slate-400">Loading…</p>;
 
   const cat = cats.find((c) => c.id === item.categoryId);
   const st = cat ? computeStatus(item, cat, today()) : null;
 
-  const update = async (patch: Parameters<typeof api.patchItem>[1]) =>
-    setItem(await api.patchItem(item.id, patch));
+  const update = async (patch: Parameters<typeof api.patchItem>[1]) => {
+    try {
+      setItem(await api.patchItem(item.id, patch));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Update failed");
+    }
+  };
 
   const setFraction = async (f: number) =>
     setItem(await api.postEvent(item.id, { event: "fraction_changed", fractionAfter: f }));
 
-  const archive = async () => {
-    if (confirm(`Archive "${item.name}"?`)) {
-      await api.archiveItem(item.id);
+  const archiveWith = async (reason: ArchiveReason) => {
+    try {
+      await api.archiveItem(item.id, reason);
       nav("/");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Archive failed");
+      setArchiving(false);
     }
   };
 
@@ -141,7 +174,9 @@ export default function ItemDetail() {
             type="date"
             className={cls.input}
             value={item.bestBefore ?? ""}
-            onChange={(e) => update({ bestBefore: e.target.value || undefined })}
+            // `null` (not undefined) clears it: JSON.stringify drops undefined,
+            // so clearing the field must send an explicit null to the server.
+            onChange={(e) => update({ bestBefore: e.target.value || null })}
           />
         </div>
 
@@ -154,14 +189,48 @@ export default function ItemDetail() {
             className={cls.input}
             rows={2}
             defaultValue={item.notes ?? ""}
-            onBlur={(e) => update({ notes: e.target.value || undefined })}
+            onBlur={(e) => update({ notes: e.target.value.trim() || null })}
           />
         </div>
       </section>
 
-      <button onClick={archive} className="text-sm font-medium text-red-600">
-        Archive item
-      </button>
+      {error && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      )}
+
+      {archiving ? (
+        <section className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className={cls.label}>Why are you removing “{item.name}”?</p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {ARCHIVE_REASONS.map((r) => (
+              <button
+                key={r}
+                data-testid={`archive-reason-${r}`}
+                onClick={() => archiveWith(r)}
+                className={cls.btnGhost}
+              >
+                {REASON_LABELS[r]}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setArchiving(false)}
+            className="mt-3 text-sm font-medium text-slate-500"
+          >
+            Cancel
+          </button>
+        </section>
+      ) : (
+        <button
+          onClick={() => setArchiving(true)}
+          data-testid="archive-item"
+          className="text-sm font-medium text-red-600"
+        >
+          Archive item
+        </button>
+      )}
     </div>
   );
 }

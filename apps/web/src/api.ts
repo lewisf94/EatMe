@@ -3,10 +3,15 @@ import type {
   ItemInput,
   ItemPatch,
   Category,
+  CategoryPatch,
   Location,
+  LocationPatch,
   EventInput,
+  ArchiveReason,
   Status,
 } from "@whattoeat/shared";
+
+export type Settings = { household_timezone: string };
 
 export type ItemWithStatus = Item & {
   status: Status;
@@ -47,13 +52,18 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  listItems: (query = "") => req<ItemWithStatus[]>(`/items${query}`),
+  listItems: (query = "", signal?: AbortSignal) =>
+    req<ItemWithStatus[]>(`/items${query}`, { signal }),
   getItem: (id: string) => req<Item>(`/items/${id}`),
   createItem: (input: ItemInput) =>
     req<Item>("/items", { method: "POST", body: JSON.stringify(input) }),
   patchItem: (id: string, patch: ItemPatch) =>
     req<Item>(`/items/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
-  archiveItem: (id: string) => req<Item>(`/items/${id}/archive`, { method: "POST" }),
+  archiveItem: (id: string, reason?: ArchiveReason) =>
+    req<Item>(`/items/${id}/archive`, {
+      method: "POST",
+      ...(reason ? { body: JSON.stringify({ reason }) } : {}),
+    }),
   postEvent: (id: string, event: EventInput) =>
     req<Item>(`/items/${id}/events`, { method: "POST", body: JSON.stringify(event) }),
   lookup: (barcode: string) => req<OffResult>(`/lookup/${encodeURIComponent(barcode)}`),
@@ -65,6 +75,19 @@ export const api = {
     warnDays?: number;
     hardExpiry?: boolean;
   }) => req<Category>("/categories", { method: "POST", body: JSON.stringify(input) }),
+  patchCategory: (id: string, patch: CategoryPatch) =>
+    req<Category>(`/categories/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   createLocation: (input: { name: string; sortOrder?: number }) =>
     req<Location>("/locations", { method: "POST", body: JSON.stringify(input) }),
+  patchLocation: (id: string, patch: LocationPatch) =>
+    req<Location>(`/locations/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  getSettings: () => req<Settings>("/settings"),
+  putSettings: (patch: Partial<Settings>) =>
+    req<Settings>("/settings", { method: "PUT", body: JSON.stringify(patch) }),
 };
+
+/** True for a fetch aborted by an AbortController (a superseded request) — the
+ *  caller should swallow it silently rather than surfacing it as an error. */
+export function isAbort(err: unknown): boolean {
+  return err instanceof DOMException && err.name === "AbortError";
+}

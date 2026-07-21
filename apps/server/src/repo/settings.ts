@@ -2,7 +2,7 @@ import { db } from "../db.js";
 
 const getStmt = db.prepare("SELECT value FROM settings WHERE key = ?");
 const setStmt = db.prepare(
-  "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+  "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
 );
 
 export function getSetting(key: string, fallback = ""): string {

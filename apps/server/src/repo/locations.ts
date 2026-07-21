@@ -27,8 +27,7 @@ export function createLocation(input: LocationInput): Location {
 
 export function getLocation(id: string): Location | undefined {
   const r = db.prepare("SELECT id, name, sort_order FROM locations WHERE id = ?").get(id) as
-    | LocRow
-    | undefined;
+    LocRow | undefined;
   return r ? toLoc(r) : undefined;
 }
 

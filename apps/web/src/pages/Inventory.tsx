@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Category, Location } from "@whattoeat/shared";
-import { api, type ItemWithStatus } from "../api";
+import { api, isAbort, type ItemWithStatus } from "../api";
 import { StatusBadge, FractionBar, cls } from "../ui";
 
 export default function Inventory() {
@@ -13,28 +13,46 @@ export default function Inventory() {
   const [status, setStatus] = useState("");
   const [sort, setSort] = useState("urgency");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void api.locations().then(setLocs);
     void api.categories().then(setCats);
   }, []);
 
-  const load = useCallback(() => {
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    if (location) params.set("location", location);
-    if (status) params.set("status", status);
-    params.set("sort", sort);
-    setLoading(true);
-    void api.listItems("?" + params.toString()).then((d) => {
-      setItems(d);
-      setLoading(false);
-    });
-  }, [q, location, status, sort]);
+  const load = useCallback(
+    (signal: AbortSignal) => {
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      if (location) params.set("location", location);
+      if (status) params.set("status", status);
+      params.set("sort", sort);
+      setLoading(true);
+      api.listItems("?" + params.toString(), signal).then(
+        (d) => {
+          setItems(d);
+          setError(null);
+          setLoading(false);
+        },
+        (err) => {
+          if (isAbort(err)) return; // superseded by a newer query; ignore
+          setError(err instanceof Error ? err.message : "Failed to load");
+          setLoading(false);
+        },
+      );
+    },
+    [q, location, status, sort],
+  );
 
   useEffect(() => {
-    const t = setTimeout(load, 200);
-    return () => clearTimeout(t);
+    // Debounce, and abort the in-flight request when inputs change so a slow
+    // early response can't overwrite a newer one (out-of-order results bug).
+    const ctrl = new AbortController();
+    const t = setTimeout(() => load(ctrl.signal), 200);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
   }, [load]);
 
   const locName = (id: string) => locs.find((l) => l.id === id)?.name ?? "";
@@ -90,6 +108,12 @@ export default function Inventory() {
           </button>
         ))}
       </div>
+
+      {error && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      )}
 
       {loading && items.length === 0 ? (
         <p className="py-8 text-center text-slate-400">Loading…</p>

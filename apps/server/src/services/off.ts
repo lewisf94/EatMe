@@ -60,7 +60,7 @@ export async function lookup(barcode: string): Promise<OffResult> {
   }
 
   db.prepare(
-    "INSERT OR REPLACE INTO lookup_cache (barcode, off_json, fetched_at) VALUES (?, ?, ?)"
+    "INSERT OR REPLACE INTO lookup_cache (barcode, off_json, fetched_at) VALUES (?, ?, ?)",
   ).run(barcode, JSON.stringify(json), new Date().toISOString());
   return mapOff(barcode, json);
 }
