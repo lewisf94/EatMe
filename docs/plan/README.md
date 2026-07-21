@@ -23,9 +23,9 @@ offline — *before* the remaining features. Execute top-to-bottom.
 | 2 | P2 | [02-phase-web-app.md](02-phase-web-app.md) | Web UI: list, search, add/edit, quick-tap | ✅ done |
 | 3 | P3 | [03-phase-camera-pwa.md](03-phase-camera-pwa.md) | Camera scanning, installable PWA | ✅ done |
 | 4 | P4 | [04-phase-ha-addon.md](04-phase-ha-addon.md) | HA add-on + bundled Tailscale HTTPS | ✅ done (🖐 Pi install) |
-| 5 | **H** | [10-phase-correctness-hardening.md](10-phase-correctness-hardening.md) | Fix review bugs, commit e2e tests, add CI | **next** |
-| 6 | **DM** | [11-phase-data-model.md](11-phase-data-model.md) | products / stock-lots / containers + date semantics | after H |
-| 7 | **RC** | [12-phase-receipt-import.md](12-phase-receipt-import.md) | **Local** receipt OCR → review → stock (no cloud) | after DM ⭐ priority |
+| 5 | **H** | [10-phase-correctness-hardening.md](10-phase-correctness-hardening.md) | Fix review bugs, commit e2e tests, add CI | ✅ done (CI green) |
+| 6 | **DM** | [11-phase-data-model.md](11-phase-data-model.md) | products / stock-lots / containers + date semantics | ✅ done |
+| 7 | **RC** | [12-phase-receipt-import.md](12-phase-receipt-import.md) | **Local** receipt OCR → review → stock (no cloud) | **next** ⭐ (Pi 5 8GB → Route A) |
 | 8 | **OFF** | [13-phase-offline.md](13-phase-offline.md) | Offline inventory snapshot + queued writes | after DM |
 | 9 | P5 | [05-phase-qr-labels.md](05-phase-qr-labels.md) | QR labels — now tied to **containers** (DM) | printer helps |
 | 10 | P7 | [07-phase-recipes-shopping.md](07-phase-recipes-shopping.md) | Recipes, use-it-up, shopping list | on DM |

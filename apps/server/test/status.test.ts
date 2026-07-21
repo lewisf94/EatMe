@@ -1,12 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { computeStatus, civilToday, type Category } from "@eatme/shared";
+import { computeStatus, civilToday, type DateType } from "@eatme/shared";
 
-type CatBits = Pick<Category, "openLifeDays" | "warnDays" | "hardExpiry">;
-const cat = (o: Partial<CatBits> = {}): CatBits => ({
-  openLifeDays: o.openLifeDays ?? null,
-  warnDays: o.warnDays ?? 14,
-  hardExpiry: o.hardExpiry ?? false,
-});
+const cat = (openLifeDays: number | null = null, warnDays = 14) => ({ openLifeDays, warnDays });
 
 // `computeStatus` takes a civil YYYY-MM-DD string (not a Date) so the day maths
 // is timezone-stable. plusDays does its offset in UTC then formats back to civil.
@@ -17,61 +12,97 @@ function plusDays(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+const lot = (o: {
+  dateType?: DateType;
+  dateValue?: string;
+  openedAt?: string;
+  openLifeDaysOverride?: number;
+}) => ({
+  dateType: o.dateType ?? null,
+  dateValue: o.dateValue ?? null,
+  openedAt: o.openedAt ?? null,
+  openLifeDaysOverride: o.openLifeDaysOverride ?? null,
+});
+
 describe("computeStatus", () => {
-  it("no dates → ok", () => {
-    const r = computeStatus(
-      { bestBefore: undefined, openedAt: undefined, openLifeDays: undefined },
-      cat(),
-      today,
-    );
+  it("no dates → ok, no judgement", () => {
+    const r = computeStatus(lot({}), cat(), today);
     expect(r.status).toBe("ok");
     expect(r.pressureDate).toBeNull();
   });
 
   it("best-before in 3 days → use_soon", () => {
-    const r = computeStatus(
-      { bestBefore: plusDays(3), openedAt: undefined, openLifeDays: undefined },
-      cat(),
-      today,
-    );
+    const r = computeStatus(lot({ dateType: "best_before", dateValue: plusDays(3) }), cat(), today);
     expect(r.status).toBe("use_soon");
     expect(r.daysLeft).toBe(3);
   });
 
-  it("opened ground spice past its open-life → past_best (quality, not hard expiry)", () => {
+  it("passed best-before → past_best (quality, not 'expired')", () => {
     const r = computeStatus(
-      { bestBefore: undefined, openedAt: plusDays(-400), openLifeDays: undefined },
-      cat({ openLifeDays: 270 }),
+      lot({ dateType: "best_before", dateValue: plusDays(-2) }),
+      cat(),
       today,
     );
     expect(r.status).toBe("past_best");
   });
 
-  it("hard-expiry fridge jar past date → expired", () => {
-    const r = computeStatus(
-      { bestBefore: plusDays(-2), openedAt: undefined, openLifeDays: undefined },
-      cat({ hardExpiry: true }),
-      today,
-    );
-    expect(r.status).toBe("expired");
+  it("passed use-by → past_use_by (safety)", () => {
+    const r = computeStatus(lot({ dateType: "use_by", dateValue: plusDays(-2) }), cat(), today);
+    expect(r.status).toBe("past_use_by");
   });
 
-  it("far future → ok, and the sooner of two clocks wins", () => {
+  it("opened spice past its open-life (no printed date) → quality_declining", () => {
+    const r = computeStatus(lot({ openedAt: plusDays(-400) }), cat(270), today);
+    expect(r.status).toBe("quality_declining");
+  });
+
+  it("the lot's open-life override beats the category fallback", () => {
+    // opened 10d ago + 20d override = 10 days left → use_soon (category says 270)
     const r = computeStatus(
-      { bestBefore: plusDays(90), openedAt: plusDays(-10), openLifeDays: 20 },
-      cat({ openLifeDays: 270, warnDays: 14 }),
+      lot({ openedAt: plusDays(-10), openLifeDaysOverride: 20 }),
+      cat(270, 14),
       today,
     );
-    // opened 10d ago + 20d open-life = 10 days left → use_soon beats the 90-day best-before
     expect(r.status).toBe("use_soon");
     expect(r.daysLeft).toBe(10);
+  });
+
+  it("nearest upcoming clock wins (sooner of two)", () => {
+    const r = computeStatus(
+      lot({
+        dateType: "best_before",
+        dateValue: plusDays(90),
+        openedAt: plusDays(-10),
+        openLifeDaysOverride: 20,
+      }),
+      cat(270, 14),
+      today,
+    );
+    expect(r.status).toBe("use_soon");
+    expect(r.daysLeft).toBe(10);
+  });
+
+  it("safety wins when both a use-by and the open-life have passed", () => {
+    // use-by passed 2d ago, open-life passed further back → past_use_by, and the
+    // governing date is the use-by (not the more-negative open-life clock).
+    const r = computeStatus(
+      lot({
+        dateType: "use_by",
+        dateValue: plusDays(-2),
+        openedAt: plusDays(-30),
+        openLifeDaysOverride: 20,
+      }),
+      cat(null, 14),
+      today,
+    );
+    expect(r.status).toBe("past_use_by");
+    expect(r.pressureDate).toBe(plusDays(-2));
   });
 });
 
 describe("civilToday", () => {
   it("returns the *local* civil date across UTC midnight (BST off-by-one guard)", () => {
     // 23:30 UTC on 20 Jul is already 00:30 on 21 Jul in British Summer Time.
-    // A naive toISOString().slice(0,10) would report 2026-07-20; we want 21.
     const nearMidnight = new Date("2026-07-20T23:30:00Z");
     expect(civilToday("Europe/London", nearMidnight)).toBe("2026-07-21");
     expect(civilToday("UTC", nearMidnight)).toBe("2026-07-20");

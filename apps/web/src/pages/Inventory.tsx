@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { Category, Location } from "@eatme/shared";
-import { api, isAbort, type ItemWithStatus } from "../api";
-import { StatusBadge, FractionBar, cls } from "../ui";
+import type { Category, Location, InventoryRow } from "@eatme/shared";
+import { api, isAbort } from "../api";
+import { StatusBadge, FractionBar, daysPhrase, cls } from "../ui";
 
 export default function Inventory() {
-  const [items, setItems] = useState<ItemWithStatus[]>([]);
+  const [rows, setRows] = useState<InventoryRow[]>([]);
   const [locs, setLocs] = useState<Location[]>([]);
   const [, setCats] = useState<Category[]>([]);
   const [q, setQ] = useState("");
@@ -28,9 +28,9 @@ export default function Inventory() {
       if (status) params.set("status", status);
       params.set("sort", sort);
       setLoading(true);
-      api.listItems("?" + params.toString(), signal).then(
+      api.inventory("?" + params.toString(), signal).then(
         (d) => {
-          setItems(d);
+          setRows(d);
           setError(null);
           setLoading(false);
         },
@@ -55,7 +55,7 @@ export default function Inventory() {
     };
   }, [load]);
 
-  const locName = (id: string) => locs.find((l) => l.id === id)?.name ?? "";
+  const locName = (id: string | null) => locs.find((l) => l.id === id)?.name ?? "";
 
   return (
     <div className="space-y-3">
@@ -89,8 +89,9 @@ export default function Inventory() {
         >
           <option value="">Any status</option>
           <option value="use_soon">Use soon</option>
-          <option value="past_best">Past its best</option>
-          <option value="expired">Expired</option>
+          <option value="quality_declining">Quality declining</option>
+          <option value="past_best">Past best-before</option>
+          <option value="past_use_by">Past use-by</option>
           <option value="ok">OK</option>
         </select>
       </div>
@@ -115,9 +116,9 @@ export default function Inventory() {
         </p>
       )}
 
-      {loading && items.length === 0 ? (
+      {loading && rows.length === 0 ? (
         <p className="py-8 text-center text-slate-400">Loading…</p>
-      ) : items.length === 0 ? (
+      ) : rows.length === 0 ? (
         <div className="py-12 text-center text-slate-500">
           <p className="mb-2 text-4xl">🫙</p>
           <p>Nothing here yet.</p>
@@ -127,10 +128,10 @@ export default function Inventory() {
         </div>
       ) : (
         <ul className="space-y-2" data-testid="inventory-list">
-          {items.map((it) => (
-            <li key={it.id}>
+          {rows.map((it) => (
+            <li key={it.productId}>
               <Link
-                to={`/item/${it.id}`}
+                to={`/product/${it.productId}`}
                 className={`flex items-center gap-3 ${cls.card} active:bg-slate-50`}
               >
                 <div className="min-w-0 flex-1">
@@ -139,10 +140,22 @@ export default function Inventory() {
                     <StatusBadge status={it.status} />
                   </div>
                   <div className="mt-0.5 truncate text-sm text-slate-500">
-                    {[it.brand, locName(it.locationId)].filter(Boolean).join(" · ")}
+                    {[
+                      it.brand,
+                      locName(it.locationId),
+                      it.pressureDate ? daysPhrase(it.daysLeft) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </div>
                 </div>
-                <FractionBar value={it.fractionLeft} />
+                {it.lotCount > 1 ? (
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                    {it.totalCount} packs
+                  </span>
+                ) : (
+                  it.fractionLeft != null && <FractionBar value={it.fractionLeft} />
+                )}
               </Link>
             </li>
           ))}

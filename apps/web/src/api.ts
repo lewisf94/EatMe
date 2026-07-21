@@ -1,23 +1,20 @@
 import type {
-  Item,
-  ItemInput,
-  ItemPatch,
+  Product,
+  ProductPatch,
+  StockLot,
+  StockLotPatch,
+  Container,
   Category,
   CategoryPatch,
   Location,
   LocationPatch,
   EventInput,
   ArchiveReason,
-  Status,
+  InventoryRow,
+  DateType,
 } from "@eatme/shared";
 
 export type Settings = { household_timezone: string };
-
-export type ItemWithStatus = Item & {
-  status: Status;
-  pressureDate: string | null;
-  daysLeft: number | null;
-};
 
 export type OffResult = {
   found: boolean;
@@ -26,6 +23,21 @@ export type OffResult = {
   brand?: string;
   size?: string;
   imageUrl?: string;
+};
+
+/** What the Add screen sends; the server fills defaults + find-or-creates the product. */
+export type IntakeBody = {
+  name: string;
+  brand?: string;
+  barcode?: string;
+  categoryId: string;
+  locationId: string;
+  count?: number;
+  fractionLeft?: number;
+  dateType?: DateType;
+  dateValue?: string;
+  openedAt?: string;
+  openLifeDaysOverride?: number;
 };
 
 export const TOKEN_KEY = "eatme_token";
@@ -52,20 +64,37 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  listItems: (query = "", signal?: AbortSignal) =>
-    req<ItemWithStatus[]>(`/items${query}`, { signal }),
-  getItem: (id: string) => req<Item>(`/items/${id}`),
-  createItem: (input: ItemInput) =>
-    req<Item>("/items", { method: "POST", body: JSON.stringify(input) }),
-  patchItem: (id: string, patch: ItemPatch) =>
-    req<Item>(`/items/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
-  archiveItem: (id: string, reason?: ArchiveReason) =>
-    req<Item>(`/items/${id}/archive`, {
+  // cupboard: aggregated product rows
+  inventory: (query = "", signal?: AbortSignal) =>
+    req<InventoryRow[]>(`/inventory${query}`, { signal }),
+  // add stock: find-or-create product → lot → container, in one call
+  intake: (input: IntakeBody) =>
+    req<{ product: Product; lot: StockLot; container: Container }>("/intake", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  getProduct: (id: string) => req<{ product: Product; lots: StockLot[] }>(`/products/${id}`),
+  patchProduct: (id: string, patch: ProductPatch) =>
+    req<Product>(`/products/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+
+  createLot: (input: { productId: string; locationId: string } & Partial<StockLot>) =>
+    req<StockLot>("/stock-lots", { method: "POST", body: JSON.stringify(input) }),
+  patchLot: (id: string, patch: StockLotPatch) =>
+    req<StockLot>(`/stock-lots/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  archiveLot: (id: string, reason?: ArchiveReason) =>
+    req<StockLot>(`/stock-lots/${id}/archive`, {
       method: "POST",
       ...(reason ? { body: JSON.stringify({ reason }) } : {}),
     }),
-  postEvent: (id: string, event: EventInput) =>
-    req<Item>(`/items/${id}/events`, { method: "POST", body: JSON.stringify(event) }),
+  postLotEvent: (id: string, event: EventInput) =>
+    req<StockLot>(`/stock-lots/${id}/events`, { method: "POST", body: JSON.stringify(event) }),
+
+  getQr: (qrUid: string) =>
+    req<{ container: Container; lot: StockLot | null; product: Product | null }>(
+      `/qr/${encodeURIComponent(qrUid)}`,
+    ),
+
   lookup: (barcode: string) => req<OffResult>(`/lookup/${encodeURIComponent(barcode)}`),
   categories: () => req<Category[]>("/categories"),
   locations: () => req<Location[]>("/locations"),

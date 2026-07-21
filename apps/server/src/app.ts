@@ -1,7 +1,10 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { config } from "./config.js";
 import { registerHealth } from "./routes/health.js";
-import { registerItems } from "./routes/items.js";
+import { registerInventory } from "./routes/inventory.js";
+import { registerProducts } from "./routes/products.js";
+import { registerStockLots } from "./routes/stockLots.js";
+import { registerQr } from "./routes/qr.js";
 import { registerTaxonomy } from "./routes/taxonomy.js";
 import { registerLookup } from "./routes/lookup.js";
 import { registerSettings } from "./routes/settings.js";
@@ -23,7 +26,10 @@ export function buildApp(): FastifyInstance {
   }
 
   app.register(registerHealth, { prefix: "/api" });
-  app.register(registerItems, { prefix: "/api" });
+  app.register(registerInventory, { prefix: "/api" });
+  app.register(registerProducts, { prefix: "/api" });
+  app.register(registerStockLots, { prefix: "/api" });
+  app.register(registerQr, { prefix: "/api" });
   app.register(registerTaxonomy, { prefix: "/api" });
   app.register(registerLookup, { prefix: "/api" });
   app.register(registerSettings, { prefix: "/api" });

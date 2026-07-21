@@ -1,6 +1,6 @@
 # 04 · Roadmap
 
-Ordered so **every phase ends with something genuinely usable** — no long trench before the first jar gets tracked. **P1–P4 are built.** A post-P4 review then reshaped the order: harden and fix the data model first, then the priority feature (local receipt import) and real offline, then the rest.
+Ordered so **every phase ends with something genuinely usable** — no long trench before the first jar gets tracked. **P1–P4, H and DM are built** (all green in CI). A post-P4 review reshaped the order: harden and fix the data model first, then the priority feature (local receipt import) and real offline, then the rest.
 
 > This is the human-readable overview. The **authoritative, executable breakdown** — with code skeletons, verified facts, and per-phase acceptance checklists — lives in [`docs/plan/`](plan/README.md). When the two disagree, `docs/plan/` wins. Build **one phase per session**, in order.
 
@@ -10,9 +10,9 @@ Ordered so **every phase ends with something genuinely usable** — no long tren
 | **P2** | [web app](plan/02-phase-web-app.md) | Inventory list/search, item detail, quick-tap, add/edit, settings | ✅ done |
 | **P3** | [camera PWA](plan/03-phase-camera-pwa.md) | Camera barcode scanning, installable PWA | ✅ done |
 | **P4** | [HA add-on](plan/04-phase-ha-addon.md) | Home Assistant add-on + **bundled Tailscale HTTPS** | ✅ done (🖐 Pi install) |
-| **H** | [correctness & CI](plan/10-phase-correctness-hardening.md) | Fix the review's bugs, commit the e2e tests, add CI | **next** |
-| **DM** | [data model](plan/11-phase-data-model.md) | products / stock-lots / **containers**, use-by vs best-before, timezone | after H |
-| **RC** ⭐ | [receipt import](plan/12-phase-receipt-import.md) | **Local** receipt OCR → review → stock lots (no cloud) — the primary intake | after DM |
+| **H** | [correctness & CI](plan/10-phase-correctness-hardening.md) | Fix the review's bugs, commit the e2e tests, add CI | ✅ done |
+| **DM** | [data model](plan/11-phase-data-model.md) | products / stock-lots / **containers**, use-by vs best-before, timezone | ✅ done |
+| **RC** ⭐ | [receipt import](plan/12-phase-receipt-import.md) | **Local** receipt OCR → review → stock lots (no cloud) — the primary intake | **next** (Pi 5 8GB → Route A) |
 | **OFF** | [offline](plan/13-phase-offline.md) | Offline inventory snapshot + queued edits ("do I have this?" in the shop) | after DM |
 | **P5** | [QR labels](plan/05-phase-qr-labels.md) | QR labels — now tied to reusable **containers** | after DM |
 | **P7** | [recipes & shopping](plan/07-phase-recipes-shopping.md) | Recipes, use-it-up ranking, shopping list | after DM |

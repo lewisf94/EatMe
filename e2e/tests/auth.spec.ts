@@ -5,7 +5,7 @@ import { test, expect } from "@playwright/test";
 
 test("API rejects requests without the token", async ({ page }) => {
   await page.goto("/");
-  const status = await page.evaluate(() => fetch("/api/items").then((r) => r.status));
+  const status = await page.evaluate(() => fetch("/api/inventory").then((r) => r.status));
   expect(status).toBe(401);
 });
 

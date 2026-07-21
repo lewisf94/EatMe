@@ -14,7 +14,8 @@ export default function AddItem() {
   const [brand, setBrand] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [locationId, setLocationId] = useState("");
-  const [bestBefore, setBestBefore] = useState("");
+  const [dateValue, setDateValue] = useState("");
+  const [dateType, setDateType] = useState<"best_before" | "use_by">("best_before");
   const [lookupMsg, setLookupMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -57,16 +58,15 @@ export default function AddItem() {
     e.preventDefault();
     setSaving(true);
     try {
-      const item = await api.createItem({
+      const { product } = await api.intake({
         name,
         brand: brand || undefined,
         barcode: barcode || undefined,
         categoryId,
         locationId,
-        fractionLeft: 1,
-        bestBefore: bestBefore || undefined,
+        ...(dateValue ? { dateType, dateValue } : {}),
       });
-      nav(`/item/${item.id}`);
+      nav(`/product/${product.id}`);
     } catch (err) {
       setLookupMsg(`Could not save: ${(err as Error).message}`);
       setSaving(false);
@@ -162,17 +162,33 @@ export default function AddItem() {
         </div>
       </div>
 
-      <div>
-        <label className={cls.label} htmlFor="bb">
-          Best before (optional)
-        </label>
-        <input
-          id="bb"
-          type="date"
-          className={cls.input}
-          value={bestBefore}
-          onChange={(e) => setBestBefore(e.target.value)}
-        />
+      <div className="flex gap-2">
+        <div className="w-36">
+          <label className={cls.label} htmlFor="dt">
+            Date type
+          </label>
+          <select
+            id="dt"
+            className={cls.input}
+            value={dateType}
+            onChange={(e) => setDateType(e.target.value as "best_before" | "use_by")}
+          >
+            <option value="best_before">Best before</option>
+            <option value="use_by">Use by</option>
+          </select>
+        </div>
+        <div className="flex-1">
+          <label className={cls.label} htmlFor="bb">
+            Date (optional)
+          </label>
+          <input
+            id="bb"
+            type="date"
+            className={cls.input}
+            value={dateValue}
+            onChange={(e) => setDateValue(e.target.value)}
+          />
+        </div>
       </div>
 
       <button type="submit" className={`w-full ${cls.btn}`} disabled={saving || !name}>

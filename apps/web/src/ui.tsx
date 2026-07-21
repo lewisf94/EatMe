@@ -3,8 +3,9 @@ import { civilToday, type Status } from "@eatme/shared";
 export const STATUS_META: Record<Status, { label: string; cls: string }> = {
   ok: { label: "OK", cls: "bg-slate-100 text-slate-600" },
   use_soon: { label: "Use soon", cls: "bg-amber-100 text-amber-800" },
-  past_best: { label: "Past its best", cls: "bg-orange-100 text-orange-800" },
-  expired: { label: "Expired", cls: "bg-red-100 text-red-800" },
+  quality_declining: { label: "Quality declining", cls: "bg-yellow-100 text-yellow-800" },
+  past_best: { label: "Past best-before", cls: "bg-orange-100 text-orange-800" },
+  past_use_by: { label: "Past use-by", cls: "bg-red-100 text-red-800" },
 };
 
 export function StatusBadge({ status }: { status: Status }) {

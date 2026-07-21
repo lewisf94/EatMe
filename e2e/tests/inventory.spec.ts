@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
-/** Add an item through the real form and land on its detail page. */
-async function addItem(page: Page, name: string, bestBefore?: string): Promise<string> {
+/** Add a product through the real form and land on its product page. */
+async function addItem(page: Page, name: string, dateValue?: string): Promise<string> {
   await page.goto("/add");
   // The category <select> only has a value once GET /api/categories resolves.
   await page.waitForFunction(() => {
@@ -9,11 +9,13 @@ async function addItem(page: Page, name: string, bestBefore?: string): Promise<s
     return !!(s && s.value);
   });
   await page.locator("#name").fill(name);
-  if (bestBefore) await page.locator("#bb").fill(bestBefore);
+  if (dateValue) await page.locator("#bb").fill(dateValue);
   await page.getByRole("button", { name: "Add to cupboard" }).click();
-  await page.waitForURL("**/item/**");
+  await page.waitForURL("**/product/**");
   return page.url();
 }
+
+const productId = (url: string) => url.split("/product/")[1];
 
 function plusDays(n: number): string {
   const d = new Date();
@@ -26,22 +28,20 @@ test("app shell is served by the server (production build)", async ({ page }) =>
   await expect(page.locator("h1")).toContainText("EatMe");
 });
 
-test("add → detail shows a freshness badge and quick-tap fraction persists", async ({ page }) => {
-  const url = await addItem(page, "Playwright Paprika", plusDays(3));
+test("add → product page shows a freshness badge and quick-tap fraction persists", async ({
+  page,
+}) => {
+  await addItem(page, "Playwright Paprika", plusDays(3));
   await expect(page.locator("h2")).toContainText("Playwright Paprika");
   await expect(page.getByText("Use soon")).toBeVisible();
 
   await page.getByTestId("fraction-0.5").click();
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(250);
   await page.reload();
-  await expect(page.locator('p:has-text("How much is left")')).toContainText("½");
-
-  // SPA deep-link: a hard reload on /item/:id must resolve (server serves index.html).
-  await page.goto(url);
-  await expect(page.locator("h2")).toContainText("Playwright Paprika");
+  await expect(page.getByTestId("lot-card")).toContainText("½");
 });
 
-test("inventory search narrows the list", async ({ page }) => {
+test("cupboard lists the product and search narrows it", async ({ page }) => {
   await addItem(page, "Searchable Saffron");
   await page.goto("/");
   await expect(page.getByText("Searchable Saffron")).toBeVisible();
@@ -52,41 +52,67 @@ test("inventory search narrows the list", async ({ page }) => {
   await expect(page.getByText("Searchable Saffron")).toHaveCount(0);
 });
 
-test("clearing best-before sends null and the server unsets it", async ({ page }) => {
+test("clearing the lot date sends null and the server unsets it", async ({ page }) => {
   const url = await addItem(page, "Clearable Chutney", "2026-09-01");
-  await expect(page.locator("#bb")).toHaveValue("2026-09-01");
+  const dateInput = page.locator('[data-testid="lot-card"] input[type="date"]');
+  await expect(dateInput).toHaveValue("2026-09-01");
 
-  await page.locator("#bb").fill("");
-  await page.waitForTimeout(300); // PATCH round-trip
-  await page.reload();
-  await expect(page.locator("#bb")).toHaveValue("");
+  await dateInput.fill("");
+  await page.waitForTimeout(300); // PATCH round-trip + reload
+  await expect(dateInput).toHaveValue("");
 
-  const id = url.split("/item/")[1];
-  const nulled = await page.evaluate(
-    (i) =>
-      fetch(`/api/items/${i}`)
+  const cleared = await page.evaluate(
+    (id) =>
+      fetch(`/api/products/${id}`)
         .then((r) => r.json())
-        .then((j) => j.data.bestBefore == null),
-    id,
+        .then((j) => j.data.lots[0].dateValue == null && j.data.lots[0].dateType == null),
+    productId(url),
   );
-  expect(nulled).toBe(true);
+  expect(cleared).toBe(true);
 });
 
-test("archive uses the reason picker and hides the item (still retrievable)", async ({ page }) => {
-  await addItem(page, "Archivable Anchovies");
+test("removing the only pack empties the product (and drops it from the cupboard)", async ({
+  page,
+}) => {
+  const url = await addItem(page, "Archivable Anchovies");
 
-  await page.getByTestId("archive-item").click();
+  await page.getByTestId("archive-lot").click();
   await expect(page.getByTestId("archive-reason-finished")).toBeVisible();
   await page.getByTestId("archive-reason-finished").click();
-  await page.waitForURL("**/");
 
+  await expect(page.getByTestId("lot-card")).toHaveCount(0);
+  await expect(page.getByText("No stock left")).toBeVisible();
+
+  // gone from the aggregated cupboard (no active lots) but the archived lot remains
+  await page.goto("/");
   await expect(page.getByText("Archivable Anchovies")).toHaveCount(0);
-  const stillThere = await page.evaluate(() =>
-    fetch("/api/items?includeArchived=1")
-      .then((r) => r.json())
-      .then((j) => j.data.some((i: { name: string }) => i.name === "Archivable Anchovies")),
+  const stillThere = await page.evaluate(
+    (id) =>
+      fetch(`/api/products/${id}?includeArchived=1`)
+        .then((r) => r.json())
+        .then((j) => j.data.lots.some((l: { archivedAt: string | null }) => l.archivedAt != null)),
+    productId(url),
   );
   expect(stillThere).toBe(true);
+});
+
+test("two packs of one product aggregate into a single cupboard row", async ({ page }) => {
+  const url = await addItem(page, "Doubled Dates");
+  await page.getByTestId("add-lot").click();
+  await expect(page.getByTestId("lot-card")).toHaveCount(2);
+
+  await page.goto("/");
+  await expect(page.getByText("Doubled Dates")).toHaveCount(1);
+  await expect(page.getByText("2 packs")).toBeVisible();
+  // sanity: server agrees it's one product with two active lots
+  const lots = await page.evaluate(
+    (id) =>
+      fetch(`/api/products/${id}`)
+        .then((r) => r.json())
+        .then((j) => j.data.lots.length),
+    productId(url),
+  );
+  expect(lots).toBe(2);
 });
 
 test("no console or page errors during a normal session", async ({ page }) => {
