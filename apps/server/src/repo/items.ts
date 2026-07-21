@@ -54,11 +54,16 @@ const insertStmt = db.prepare(
 const byIdStmt = db.prepare(`SELECT ${COLS} FROM items WHERE id = ?`);
 const byQrStmt = db.prepare(`SELECT ${COLS} FROM items WHERE qr_uid = ?`);
 const logStmt = db.prepare(
-  "INSERT INTO usage_log (id, item_id, event, fraction_after, at) VALUES (?, ?, ?, ?, ?)",
+  "INSERT INTO usage_log (id, item_id, event, fraction_after, reason, at) VALUES (?, ?, ?, ?, ?, ?)",
 );
 
-export function logEvent(itemId: string, event: string, fractionAfter: number | null = null): void {
-  logStmt.run(newId(), itemId, event, fractionAfter, new Date().toISOString());
+export function logEvent(
+  itemId: string,
+  event: string,
+  fractionAfter: number | null = null,
+  reason: string | null = null,
+): void {
+  logStmt.run(newId(), itemId, event, fractionAfter, reason, new Date().toISOString());
 }
 
 export function getItem(id: string): Item | undefined {
@@ -131,13 +136,13 @@ export function updateItem(id: string, patch: ItemPatch): Item | undefined {
   return info.changes ? getItem(id) : undefined;
 }
 
-export function archiveItem(id: string): Item | undefined {
+export function archiveItem(id: string, reason: string): Item | undefined {
   const now = new Date().toISOString();
   const info = db
     .prepare("UPDATE items SET archived_at = ?, updated_at = ? WHERE id = ?")
     .run(now, now, id);
   if (!info.changes) return undefined;
-  logEvent(id, "binned", null);
+  logEvent(id, "archived", null, reason);
   return getItem(id);
 }
 

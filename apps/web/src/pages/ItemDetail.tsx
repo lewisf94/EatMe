@@ -26,7 +26,7 @@ export default function ItemDetail() {
   if (!item) return <p className="py-8 text-center text-slate-400">Loading…</p>;
 
   const cat = cats.find((c) => c.id === item.categoryId);
-  const st = cat ? computeStatus(item, cat, new Date()) : null;
+  const st = cat ? computeStatus(item, cat, today()) : null;
 
   const update = async (patch: Parameters<typeof api.patchItem>[1]) =>
     setItem(await api.patchItem(item.id, patch));

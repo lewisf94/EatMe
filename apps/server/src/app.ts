@@ -4,6 +4,7 @@ import { registerHealth } from "./routes/health.js";
 import { registerItems } from "./routes/items.js";
 import { registerTaxonomy } from "./routes/taxonomy.js";
 import { registerLookup } from "./routes/lookup.js";
+import { registerSettings } from "./routes/settings.js";
 
 /** Build the Fastify app. Call migrate()/seedIfEmpty() before this so the
  *  repositories' prepared statements bind against existing tables. */
@@ -25,6 +26,7 @@ export function buildApp(): FastifyInstance {
   app.register(registerItems, { prefix: "/api" });
   app.register(registerTaxonomy, { prefix: "/api" });
   app.register(registerLookup, { prefix: "/api" });
+  app.register(registerSettings, { prefix: "/api" });
 
   const webDist = process.env.WEB_DIST;
   if (webDist) {

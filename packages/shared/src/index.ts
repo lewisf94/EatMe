@@ -34,8 +34,24 @@ export const ItemInput = z.object({
 });
 export type ItemInput = z.infer<typeof ItemInput>;
 
-export const ItemPatch = ItemInput.partial();
+// Patch allows `null` on optional fields so the client can *clear* them
+// (JSON.stringify drops `undefined`, so a cleared value must be sent as null).
+export const ItemPatch = ItemInput.partial().extend({
+  brand: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  photoUrl: z.string().nullable().optional(),
+  unit: z.string().nullable().optional(),
+  quantityTotal: z.number().positive().nullable().optional(),
+  bestBefore: DATE.nullable().optional(),
+  openedAt: DATE.nullable().optional(),
+  openLifeDays: z.number().int().positive().nullable().optional(),
+});
 export type ItemPatch = z.infer<typeof ItemPatch>;
+
+export const ARCHIVE_REASONS = ["finished", "binned", "duplicate", "mistake", "other"] as const;
+export type ArchiveReason = (typeof ARCHIVE_REASONS)[number];
+export const ArchiveInput = z.object({ reason: z.enum(ARCHIVE_REASONS).default("other") });
+export type ArchiveInput = z.infer<typeof ArchiveInput>;
 
 export const Item = ItemInput.extend({
   id: z.string(),
@@ -64,6 +80,9 @@ export const CategoryInput = z.object({
 });
 export type CategoryInput = z.infer<typeof CategoryInput>;
 
+export const CategoryPatch = CategoryInput.partial();
+export type CategoryPatch = z.infer<typeof CategoryPatch>;
+
 export const Location = z.object({
   id: z.string(),
   name: z.string(),
@@ -76,6 +95,9 @@ export const LocationInput = z.object({
   sortOrder: z.number().int().default(0),
 });
 export type LocationInput = z.infer<typeof LocationInput>;
+
+export const LocationPatch = LocationInput.partial();
+export type LocationPatch = z.infer<typeof LocationPatch>;
 
 // --- usage events ------------------------------------------------------
 export const EVENTS = [
@@ -96,15 +118,26 @@ export type EventInput = z.infer<typeof EventInput>;
 // --- freshness ---------------------------------------------------------
 export type Status = "ok" | "use_soon" | "past_best" | "expired";
 
+/** Today's civil date (YYYY-MM-DD) in an IANA timezone — avoids the UTC
+ *  off-by-one near local midnight (e.g. BST). `now` is injectable for tests. */
+export function civilToday(timeZone = "Europe/London", now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
 /**
  * Two clocks — printed best-before and opened-life — the sooner wins.
  * `hardExpiry` categories become "expired" past the date; everything else is
- * "past_best" (a quality, not safety, signal).
+ * "past_best" (a quality, not safety, signal). `today` is a civil YYYY-MM-DD.
  */
 export function computeStatus(
   item: Pick<Item, "bestBefore" | "openedAt" | "openLifeDays">,
   category: Pick<Category, "openLifeDays" | "warnDays" | "hardExpiry">,
-  today: Date = new Date(),
+  today: string = civilToday(),
 ): { status: Status; pressureDate: string | null; daysLeft: number | null } {
   const dates: string[] = [];
   if (item.bestBefore) dates.push(item.bestBefore);
@@ -121,9 +154,8 @@ export function computeStatus(
   dates.sort();
   const pressureDate = dates[0];
   const msPerDay = 86_400_000;
-  const todayStr = today.toISOString().slice(0, 10);
   const daysLeft = Math.round(
-    (Date.parse(pressureDate + "T00:00:00Z") - Date.parse(todayStr + "T00:00:00Z")) / msPerDay,
+    (Date.parse(pressureDate + "T00:00:00Z") - Date.parse(today + "T00:00:00Z")) / msPerDay,
   );
 
   let status: Status;

@@ -1,4 +1,4 @@
-import type { Status } from "@whattoeat/shared";
+import { civilToday, type Status } from "@whattoeat/shared";
 
 export const STATUS_META: Record<Status, { label: string; cls: string }> = {
   ok: { label: "OK", cls: "bg-slate-100 text-slate-600" },
@@ -34,8 +34,10 @@ export function fractionLabel(f: number): string {
   return "Empty";
 }
 
+/** Today's civil date in the *device's* timezone (avoids the UTC off-by-one
+ *  that new Date().toISOString() causes near local midnight). */
 export function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return civilToday(Intl.DateTimeFormat().resolvedOptions().timeZone);
 }
 
 /** A friendly "use in N days" / "N days ago" from computeStatus daysLeft. */

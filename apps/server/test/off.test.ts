@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mapOff } from "../src/services/off";
+import { mapOff, cacheIsFresh } from "../src/services/off";
 
 describe("mapOff", () => {
   it("maps a found product", () => {
@@ -31,5 +31,21 @@ describe("mapOff", () => {
 
   it("missing product → not found", () => {
     expect(mapOff("123", {})).toEqual({ found: false, barcode: "123" });
+  });
+});
+
+describe("cacheIsFresh", () => {
+  const now = Date.parse("2026-07-20T12:00:00Z");
+  const daysAgo = (n: number) => new Date(now - n * 86_400_000).toISOString();
+
+  it("keeps a hit for ~30 days", () => {
+    expect(cacheIsFresh(true, daysAgo(10), now)).toBe(true);
+    expect(cacheIsFresh(true, daysAgo(29), now)).toBe(true);
+    expect(cacheIsFresh(true, daysAgo(31), now)).toBe(false);
+  });
+
+  it("expires a miss after ~3 days (so newly-added products get picked up)", () => {
+    expect(cacheIsFresh(false, daysAgo(2), now)).toBe(true);
+    expect(cacheIsFresh(false, daysAgo(4), now)).toBe(false);
   });
 });
