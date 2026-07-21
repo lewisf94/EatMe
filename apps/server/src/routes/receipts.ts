@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { createHash } from "node:crypto";
 import { ReceiptConfirmInput, type ReceiptDraft, type ReceiptDraftLine } from "@eatme/shared";
-import { db } from "../db.js";
+import { idempotent } from "../services/idempotency.js";
 import { ocrProvider } from "../services/receipt/ocr.js";
 import { parseReceipt } from "../services/receipt/parse.js";
 import { makeContext, matchLine, type MatchContext } from "../services/receipt/match.js";
@@ -98,8 +98,9 @@ export async function registerReceipts(app: FastifyInstance): Promise<void> {
     return { data: draftFor(purchase) };
   });
 
-  // Apply the reviewed decisions in one transaction: create stock lots for the
-  // "add" lines and learn an alias for each, so the next receipt auto-matches.
+  // Apply the reviewed decisions. Idempotent + atomic: guarded on the purchase
+  // still being pending, deduped by line, and wrapped in one transaction — so a
+  // retry, refresh, or double-tap can't add everything twice.
   app.post("/receipts/:id/confirm", async (req, reply) => {
     const { id } = req.params as { id: string };
     const purchase = receipts.getPurchase(id);
@@ -113,63 +114,70 @@ export async function registerReceipts(app: FastifyInstance): Promise<void> {
 
     const retailer = retailerOf(purchase);
     const fallbackLocation = parsed.data.defaultLocationId ?? listLocations()[0]?.id;
-    const byLineId = new Map(receipts.linesFor(id).map((l) => [l.id, l]));
-    const summary = { added: 0, ignored: 0, notTracked: 0, newProducts: 0 };
 
-    db.exec("BEGIN");
     try {
-      for (const d of parsed.data.lines) {
-        const line = byLineId.get(d.lineId);
-        if (!line) continue;
+      const result = idempotent(parsed.data.opId, () => {
+        // Re-read inside the transaction: already-confirmed → no-op.
+        const fresh = receipts.getPurchase(id)!;
+        const summary = { added: 0, ignored: 0, notTracked: 0, newProducts: 0, alreadyConfirmed: false }; // prettier-ignore
+        if (fresh.status !== "pending")
+          return { purchaseId: id, ...summary, alreadyConfirmed: true };
 
-        if (d.action === "ignore") {
-          receipts.setLineOutcome(line.id, "ignored", null, null);
-          summary.ignored++;
-          continue;
-        }
-        if (d.action === "not_tracked") {
-          receipts.setLineOutcome(line.id, "not_tracked", null, null);
-          summary.notTracked++;
-          continue;
-        }
+        const byLineId = new Map(receipts.linesFor(id).map((l) => [l.id, l]));
+        const done = new Set<string>();
+        for (const d of parsed.data.lines) {
+          if (done.has(d.lineId)) continue; // a line can only be decided once
+          const line = byLineId.get(d.lineId);
+          if (!line) continue;
+          done.add(d.lineId);
 
-        // action === "add": resolve to a product (existing or newly created)
-        let productId = d.productId ?? null;
-        if (!productId && d.newProduct) {
-          const p = createProduct({
-            name: d.newProduct.name,
-            brand: d.newProduct.brand,
-            categoryId: d.newProduct.categoryId,
+          if (d.action === "ignore") {
+            receipts.setLineOutcome(line.id, "ignored", null, null);
+            summary.ignored++;
+            continue;
+          }
+          if (d.action === "not_tracked") {
+            receipts.setLineOutcome(line.id, "not_tracked", null, null);
+            summary.notTracked++;
+            continue;
+          }
+
+          // action === "add": resolve to a product (existing or newly created)
+          let productId = d.productId ?? null;
+          if (!productId && d.newProduct) {
+            productId = createProduct({
+              name: d.newProduct.name,
+              brand: d.newProduct.brand,
+              categoryId: d.newProduct.categoryId,
+            }).id;
+            summary.newProducts++;
+          }
+          if (!productId || !getProduct(productId))
+            throw new Error(`line ${line.line_no}: no product to add to`);
+
+          const locationId = d.locationId ?? fallbackLocation;
+          if (!locationId) throw new Error("no location available for the stock lot");
+
+          createLot({
+            productId,
+            locationId,
+            count: d.quantity,
+            fractionLeft: 1,
+            purchasedAt: fresh.purchased_at ?? undefined, // keep the purchase date on the lot
+            source: "receipt",
           });
-          productId = p.id;
-          summary.newProducts++;
+          receipts.learnAlias(retailer, line.normalized_text, productId);
+          receipts.setLineOutcome(line.id, "added", productId, locationId);
+          summary.added++;
         }
-        if (!productId || !getProduct(productId))
-          throw new Error(`line ${line.line_no}: no product to add to`);
-
-        const locationId = d.locationId ?? fallbackLocation;
-        if (!locationId) throw new Error("no location available for the stock lot");
-
-        createLot({
-          productId,
-          locationId,
-          count: d.quantity,
-          fractionLeft: 1,
-          source: "receipt",
-        });
-        receipts.learnAlias(retailer, line.normalized_text, productId);
-        receipts.setLineOutcome(line.id, "added", productId, locationId);
-        summary.added++;
-      }
-      receipts.setPurchaseStatus(id, "confirmed");
-      db.exec("COMMIT");
+        receipts.setPurchaseStatus(id, "confirmed");
+        return { purchaseId: id, ...summary };
+      });
+      return { data: result };
     } catch (err) {
-      db.exec("ROLLBACK");
       return reply
         .code(400)
         .send({ error: { message: err instanceof Error ? err.message : "confirmation failed" } });
     }
-
-    return { data: { purchaseId: id, ...summary } };
   });
 }

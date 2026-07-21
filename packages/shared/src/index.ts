@@ -353,5 +353,6 @@ export type ReceiptLineDecision = z.infer<typeof ReceiptLineDecision>;
 export const ReceiptConfirmInput = z.object({
   defaultLocationId: z.string().optional(),
   lines: z.array(ReceiptLineDecision),
+  opId: z.string().optional(), // idempotency key so a retried confirm applies once
 });
 export type ReceiptConfirmInput = z.infer<typeof ReceiptConfirmInput>;
