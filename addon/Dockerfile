@@ -9,6 +9,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/shared/package.json ./packages/shared/package.json
 COPY apps/web/package.json ./apps/web/package.json
 COPY apps/server/package.json ./apps/server/package.json
+COPY e2e/package.json ./e2e/package.json
 RUN pnpm install --frozen-lockfile
 
 COPY . .

@@ -21,14 +21,31 @@ stretch feature.
 **Prerequisites:** [DM](11-phase-data-model.md) (needs stable product identity +
 aliases).
 
-> **Open sizing decision (confirm before building):** which Pi (model + RAM)?
-> 8 GB Pi 4/5 → **PaddleOCR** (`PP-Structure`) comfortably. 2–4 GB → lighter
-> **Tesseract** + more parsing. A receipt-understanding model (**Donut**/
-> PaddleOCR-VL, structured JSON directly) is an upgrade path for a beefier host.
-> **All of these run on the Pi.** The `RECEIPT_PROVIDER` seam exists only to swap
-> between these *local* engines as available RAM allows — it is **not** an
-> escape hatch to a cloud API. If a chosen Pi can't run any of them well, the
-> answer is a beefier local host, never offloading to a service.
+> **Hardware is settled: Raspberry Pi 5, 8 GB.** That comfortably runs the
+> **Route A** engine below, so this is no longer an open decision — build Route A.
+
+### Route A (default) vs Route B — which OCR approach
+
+Both run **locally on the Pi**; the difference is how much of the "photo →
+line items" work the model does vs. our own code.
+
+- **Route A — OCR + our own parsing (chosen).** A small **PaddleOCR**
+  (`PP-Structure` does layout/table detection, not just raw text) or **docTR**
+  (emits structured JSON: lines, words, boxes) sidecar extracts text + positions;
+  a parsing layer groups it into item lines and the **alias table** learns each
+  shop. Confirm `TESCO CHCKPEAS 400G → Tesco Chickpeas 400g` once and every
+  future Tesco receipt matches instantly. Modest compute — a **few seconds per
+  receipt on-demand** on a Pi 5 8 GB. The per-retailer heuristics + aliases are
+  the effort, and they pay down every week. This is the default.
+- **Route B — a receipt-understanding model.** **Donut** / **PaddleOCR-VL** read
+  the image and emit line items directly, skipping most hand-written parsing.
+  Nicer in principle, but the models are bigger and **CPU-bound and sluggish on a
+  Pi** (tens of seconds). Keep as an **upgrade path** only if the server later
+  moves to a mini-PC; not what we build now.
+
+The `RECEIPT_PROVIDER` seam swaps between these *local* engines (start with Route
+A; Route B is a drop-in later) — it is **not** an escape hatch to a cloud API.
+The engine runs as its **own container** on the Pi, isolated from Home Assistant.
 
 ## Architecture (all on the Pi)
 
@@ -82,6 +99,16 @@ New**) · quantity · location. The user can fix the match, add an unmatched pro
 fast, and leave dates blank (entered later per lot). Confirm → creates the lots
 and saves any new aliases. Support **long receipts** as sequential photos with
 overlap de-dup into one combined review.
+
+## Honest limits (set expectations)
+
+- It's **photo → quick review → confirm**, not "photo → done blindly". The review
+  screen (tick/untick lines, fix a match, ignore the carrier bag) is what makes it
+  reliable — and it's still **bulk**: one glance for a whole shop, the opposite of
+  per-item. It gets **faster every week** as aliases learn your regular shops.
+- Accuracy depends on the snap. **Faded thermal receipts are the enemy**; a decent
+  photo + alias learning improves it a lot. This is why we benchmark on real
+  receipts (below) rather than trusting OCR character-accuracy numbers.
 
 ## Privacy (defaults)
 
