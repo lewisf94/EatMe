@@ -107,6 +107,10 @@ const PATCH_COLS: Record<string, string> = {
 };
 
 export function updateLot(id: string, patch: StockLotPatch): StockLot | undefined {
+  // Detect a first-open so we can record an "opened" event alongside the change.
+  const opening = patch.openedAt != null;
+  const wasOpen = opening ? getLot(id)?.openedAt : null;
+
   const sets: string[] = [];
   const vals: Array<string | number | null> = [];
   const p = patch as Record<string, unknown>;
@@ -124,7 +128,10 @@ export function updateLot(id: string, patch: StockLotPatch): StockLot | undefine
   sets.push("updated_at = ?");
   vals.push(new Date().toISOString(), id);
   const info = db.prepare(`UPDATE stock_lots SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
-  return info.changes ? getLot(id) : undefined;
+  if (!info.changes) return undefined;
+  // First time this lot is marked opened → log it so history/stats are complete.
+  if (opening && !wasOpen) logEvent(id, "opened");
+  return getLot(id);
 }
 
 export function archiveLot(id: string, reason: string): StockLot | undefined {
