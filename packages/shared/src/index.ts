@@ -284,7 +284,13 @@ export type InventoryRow = {
   fractionLeft: number | null; // the sole lot's fraction when there is exactly one
   status: Status;
   pressureDate: string | null;
+  pressureKind: DateType | "open_life" | null; // which clock governs (for the timeline)
   daysLeft: number | null;
+  // The governing clock's start, for a truthful freshness timeline: the opened
+  // date for an open-life clock, else when the pack was bought/added. startKind
+  // says which, so the UI can label it honestly ("Opened" vs "Bought" vs "Added").
+  startDate: string | null;
+  startKind: "opened" | "purchased" | "added" | null;
   createdAt: string; // newest lot, for the "recent" sort
 };
 

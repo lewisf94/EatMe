@@ -12,6 +12,7 @@ type Row = {
   date_value: string | null;
   opened_at: string | null;
   open_life_days_override: number | null;
+  purchased_at: string | null;
   name: string;
   brand: string | null;
   category_id: string;
@@ -46,7 +47,8 @@ export function listInventory(
   const rows = db
     .prepare(
       `SELECT l.id AS lot_id, l.product_id, l.location_id, l.count, l.fraction_left,
-              l.date_type, l.date_value, l.opened_at, l.open_life_days_override, l.created_at,
+              l.date_type, l.date_value, l.opened_at, l.open_life_days_override,
+              l.purchased_at, l.created_at,
               p.name, p.brand, p.category_id
        FROM stock_lots l JOIN products p ON p.id = l.product_id
        ${where.length ? "WHERE " + where.join(" AND ") : ""}`,
@@ -87,7 +89,10 @@ export function listInventory(
           fractionLeft: null,
           status: "ok",
           pressureDate: null,
+          pressureKind: null,
           daysLeft: null,
+          startDate: null,
+          startKind: null,
           createdAt: r.created_at,
         },
         govSeverity: -1,
@@ -109,8 +114,22 @@ export function listInventory(
       a.govDaysLeft = s.daysLeft;
       a.row.status = s.status;
       a.row.pressureDate = s.pressureDate;
+      a.row.pressureKind = s.pressureKind;
       a.row.daysLeft = s.daysLeft;
       a.row.locationId = r.location_id;
+      // Start the timeline at the governing clock's origin: an open-life clock
+      // begins when opened; a printed date's track begins when bought (or, as a
+      // labelled fallback, when the pack was added to EatMe).
+      if (s.pressureKind === "open_life" && r.opened_at) {
+        a.row.startDate = r.opened_at;
+        a.row.startKind = "opened";
+      } else if (r.purchased_at) {
+        a.row.startDate = r.purchased_at;
+        a.row.startKind = "purchased";
+      } else {
+        a.row.startDate = r.created_at.slice(0, 10);
+        a.row.startKind = "added";
+      }
     }
   }
 
