@@ -69,8 +69,17 @@ eatme/
 
 ## Status
 
-🚧 **In build.** P1–P4 are done and on `main`: the TypeScript server + SQLite, the web app (list / search / add / quick-tap), camera barcode scanning + installable PWA, and the Home Assistant add-on with bundled Tailscale HTTPS. Run it locally with `pnpm install && pnpm dev` (server on `:8099`); install on the Pi via [`addon/DOCS.md`](addon/DOCS.md).
+🚧 **In active build.** On `main` today:
 
-Next up (after a post-P4 review reshaped the order): a correctness/CI hardening pass → a data-model refactor (product / stock-lot / container) → **local, no-cloud receipt import** → real offline. Full sequence and per-phase specs in [docs/plan/](docs/plan/README.md).
+- **Server** — TypeScript (Node 22 + Fastify + built-in SQLite) with numbered migrations run at boot.
+- **Phone app** — installable PWA: cupboard list / search / one-tap fractions / add item / per-jar editing / settings, plus camera barcode scanning.
+- **Home Assistant add-on** — packaged with bundled Tailscale so the iPhone reaches it over HTTPS, at home and away.
+- **Data model** — products (identity) · stock lots (the physical packs you own) · QR containers · usage history. Freshness is tracked per-pack: a printed **use-by** (safety) is kept distinct from **best-before** and from an **opened → best-used-by** window (quality), so nothing is called "expired" without a real use-by.
+- **Local receipt import** — photograph a receipt; it is read **entirely on your own hardware** (a local OCR engine — no cloud, ever), parsed, matched against what you already own (learning aliases as you confirm), and shown for review before anything is added.
+- **Reliability pass** — every mutation is atomic and idempotent, so a flaky connection or a double-tap can't double-add or corrupt stock.
+
+Run it locally with `pnpm install && pnpm dev`, then open `http://localhost:5173` (the API runs on `:8099`); install on the Pi via [`addon/DOCS.md`](addon/DOCS.md). Receipt OCR uses a built-in stub by default, so the whole flow works on a laptop with no Pi and no cloud.
+
+**Next:** true offline (read a cached cupboard and queue changes with no signal, replayed on reconnect) → the e-ink kitchen display → use-it-up recipes & shopping list → Web Push reminders. Full sequence and per-phase specs in [docs/plan/](docs/plan/README.md).
 
 MIT licensed.
