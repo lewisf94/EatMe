@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import type { Status, DateType } from "@eatme/shared";
+import { computeStatus, type Status, type DateType, type StockLot } from "@eatme/shared";
 import { IconLock, IconLeaf, IconDrop, IconClock } from "./icons";
 
 type Kind = DateType | "open_life" | null;
@@ -97,6 +97,44 @@ export function freshOf(x: FreshInput, today: string): Fresh {
       x.startKind && x.startDate ? `${startWord[x.startKind]} ${fmtDay(x.startDate)}` : "",
     targetLabel: x.pressureDate ? fmtTarget(x.pressureDate, today) : "",
   };
+}
+
+/** Derive freshness inputs for a single stock lot (mirrors the server's rollup:
+ *  an open-life clock starts when opened, else the track starts at purchase/add). */
+export function lotFreshInput(
+  lot: StockLot,
+  category: { openLifeDays: number | null; warnDays: number },
+  today: string,
+): FreshInput {
+  const s = computeStatus(lot, category, today);
+  let startDate: string | null;
+  let startKind: FreshInput["startKind"];
+  if (s.pressureKind === "open_life" && lot.openedAt) {
+    startDate = lot.openedAt;
+    startKind = "opened";
+  } else if (lot.purchasedAt) {
+    startDate = lot.purchasedAt;
+    startKind = "purchased";
+  } else {
+    startDate = lot.createdAt.slice(0, 10);
+    startKind = "added";
+  }
+  return {
+    status: s.status,
+    pressureKind: s.pressureKind,
+    pressureDate: s.pressureDate,
+    daysLeft: s.daysLeft,
+    startDate,
+    startKind,
+  };
+}
+
+/** Uppercase label for the governing clock, for the product verdict header. */
+export function clockLabel(kind: Kind): string {
+  if (kind === "use_by") return "Use by";
+  if (kind === "open_life") return "Best used by";
+  if (kind === "best_before") return "Best before";
+  return "No date";
 }
 
 /** The icon that matches the governing clock (a third, non-colour cue). */

@@ -601,6 +601,61 @@
   color: var(--color-ink-2);
 }
 
+/* product detail */
+.stock-line {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--color-ink-2);
+}
+.lotcard {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1.5px solid var(--color-line);
+}
+.lotcard:first-of-type {
+  margin-top: 6px;
+  padding-top: 0;
+  border-top: 0;
+}
+.pick {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+.pick button {
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1.5px solid var(--color-line-2);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 12px;
+}
+.pick button.on {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border-color: var(--color-ink);
+}
+.remove {
+  padding: 10px 0 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--color-crit);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+}
+.reasons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-butter-deep);
   outline-offset: 2px;

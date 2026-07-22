@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
-  computeStatus,
   FRACTIONS,
   ARCHIVE_REASONS,
   type ArchiveReason,
   type Product,
   type StockLot,
+  type StockLotPatch,
   type Category,
   type Location,
 } from "@eatme/shared";
 import { api } from "../api";
-import { StatusBadge, fractionLabel, daysPhrase, pressureLabel, today, cls } from "../ui";
+import { today, fractionLabel } from "../ui";
+import { FreshnessTimeline, freshOf, lotFreshInput, clockLabel, ClockIcon } from "../ui/freshness";
+import { IconBack, IconLock } from "../ui/icons";
 
 const REASON_LABELS: Record<ArchiveReason, string> = {
   finished: "Finished it",
@@ -21,13 +23,30 @@ const REASON_LABELS: Record<ArchiveReason, string> = {
   other: "Other",
 };
 
+function bigPhrase(daysLeft: number | null): string {
+  if (daysLeft == null) return "Not set";
+  if (daysLeft === 0) return "Today";
+  if (daysLeft === 1) return "Tomorrow";
+  if (daysLeft === -1) return "Yesterday";
+  const n = Math.abs(daysLeft);
+  const unit =
+    n < 60
+      ? `${n} days`
+      : n < 730
+        ? `${Math.round(n / 30)} months`
+        : `${Math.round(n / 365)} years`;
+  return daysLeft > 0 ? `In ${unit}` : `${unit} ago`;
+}
+
 export default function ProductDetail() {
   const { id = "" } = useParams();
+  const nav = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [lots, setLots] = useState<StockLot[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [locs, setLocs] = useState<Location[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const td = today();
 
   const reload = useCallback(() => {
     api.getProduct(id).then(
@@ -36,10 +55,9 @@ export default function ProductDetail() {
         setLots(d.lots);
         setError(null);
       },
-      (e) => setError(e instanceof Error ? e.message : "Failed to load"),
+      (e) => setError(e instanceof Error ? e.message : "Couldn’t load"),
     );
   }, [id]);
-
   useEffect(() => {
     reload();
     void api.categories().then(setCats);
@@ -49,19 +67,24 @@ export default function ProductDetail() {
   const guard = (p: Promise<unknown>) =>
     p.then(reload, (e) => setError(e instanceof Error ? e.message : "Update failed"));
 
-  if (error && !product)
+  const back = (
+    <header className="appbar">
+      <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
+        <IconBack />
+      </button>
+    </header>
+  );
+
+  if (!product)
     return (
-      <div className="py-12 text-center text-slate-600">
-        <p className="mb-1 font-semibold">Couldn’t load this product.</p>
-        <p className="text-sm text-slate-500">{error}</p>
-        <Link to="/" className="mt-4 inline-block text-sm text-emerald-600">
-          ← Back to cupboard
-        </Link>
-      </div>
+      <>
+        {back}
+        <p className="empty">{error ?? "Loading…"}</p>
+      </>
     );
-  if (!product) return <p className="py-8 text-center text-slate-400">Loading…</p>;
 
   const cat = cats.find((c) => c.id === product.categoryId);
+  const category = { openLifeDays: cat?.openLifeDays ?? null, warnDays: cat?.warnDays ?? 14 };
   const addLot = () =>
     guard(
       api.createLot({
@@ -71,44 +94,38 @@ export default function ProductDetail() {
     );
 
   return (
-    <div className="space-y-5">
-      <div>
-        <Link to="/" className="text-sm text-slate-500">
-          ← Cupboard
-        </Link>
-        <h2 className="mt-1 text-2xl font-bold">{product.name}</h2>
-        {product.brand && <p className="text-slate-500">{product.brand}</p>}
-        <p className="mt-1 text-sm text-slate-500">
+    <>
+      {back}
+      <div className="screen">
+        <h1 className="title-line">{product.name}</h1>
+        {product.brand && <p className="stock-line">{product.brand}</p>}
+        <p className="stock-line">
           {lots.length === 0
             ? "No stock left"
             : `${lots.length} ${lots.length === 1 ? "pack" : "packs"} in stock`}
         </p>
+        {error && <p className="alert">{error}</p>}
+
+        {lots.map((lot) => (
+          <LotCard
+            key={lot.id}
+            lot={lot}
+            category={category}
+            locs={locs}
+            td={td}
+            onEvent={(event, fractionAfter) =>
+              guard(api.postLotEvent(lot.id, { event, fractionAfter }))
+            }
+            onPatch={(patch) => guard(api.patchLot(lot.id, patch))}
+            onArchive={(reason) => guard(api.archiveLot(lot.id, reason))}
+          />
+        ))}
+
+        <button className="btn btn-line" style={{ marginTop: 18, width: "100%" }} onClick={addLot}>
+          + Add another pack
+        </button>
       </div>
-
-      {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-
-      {lots.map((lot) => (
-        <LotCard
-          key={lot.id}
-          lot={lot}
-          category={cat}
-          locs={locs}
-          onEvent={(event, fractionAfter) =>
-            guard(api.postLotEvent(lot.id, { event, fractionAfter }))
-          }
-          onPatch={(patch) => guard(api.patchLot(lot.id, patch))}
-          onArchive={(reason) => guard(api.archiveLot(lot.id, reason))}
-        />
-      ))}
-
-      <button onClick={addLot} className={`w-full ${cls.btnGhost}`} data-testid="add-lot">
-        + Add another pack
-      </button>
-    </div>
+    </>
   );
 }
 
@@ -116,145 +133,135 @@ function LotCard({
   lot,
   category,
   locs,
+  td,
   onEvent,
   onPatch,
   onArchive,
 }: {
   lot: StockLot;
-  category: Category | undefined;
+  category: { openLifeDays: number | null; warnDays: number };
   locs: Location[];
+  td: string;
   onEvent: (event: "fraction_changed" | "opened", fractionAfter?: number) => void;
-  onPatch: (patch: Parameters<typeof api.patchLot>[1]) => void;
+  onPatch: (patch: StockLotPatch) => void;
   onArchive: (reason: ArchiveReason) => void;
 }) {
+  const [editAmt, setEditAmt] = useState(false);
   const [archiving, setArchiving] = useState(false);
-  const st = category
-    ? computeStatus(
-        lot,
-        { openLifeDays: category.openLifeDays, warnDays: category.warnDays },
-        today(),
-      )
-    : null;
+  const fi = lotFreshInput(lot, category, td);
+  const f = freshOf(fi, td);
 
   return (
-    <section className={`${cls.card} space-y-4`} data-testid="lot-card">
-      <div className="flex items-center justify-between">
-        <p className={cls.label}>How much is left? ({fractionLabel(lot.fractionLeft)})</p>
-        {st && <StatusBadge status={st.status} />}
+    <section className="lotcard" data-testid="lot-card">
+      <div className={`verdict ${f.cls}`}>
+        <div className="kick">
+          <ClockIcon kind={fi.pressureKind} />
+          {clockLabel(fi.pressureKind)}
+        </div>
+        <h2>{bigPhrase(fi.daysLeft)}</h2>
       </div>
-
-      <div className="grid grid-cols-6 gap-1">
-        {FRACTIONS.map((f) => (
-          <button
-            key={f}
-            data-testid={`fraction-${f}`}
-            onClick={() => onEvent("fraction_changed", f)}
-            className={`min-h-11 rounded-lg text-sm font-semibold ${
-              lot.fractionLeft === f
-                ? "bg-emerald-600 text-white"
-                : "bg-slate-200 text-slate-700 active:bg-slate-300"
-            }`}
-          >
-            {fractionLabel(f)}
-          </button>
-        ))}
-      </div>
-
-      {st && (
-        <p className="text-sm text-slate-500">
-          {st.pressureDate
-            ? `${pressureLabel(st.pressureKind)} ${st.pressureDate} (${daysPhrase(st.daysLeft)})`
-            : "No date set"}
+      {fi.pressureKind != null && <FreshnessTimeline f={f} showVerdict={false} />}
+      {f.cls === "crit" && (
+        <p className="tl-verdict crit" style={{ marginTop: 8 }}>
+          <IconLock />
+          Past its use-by — do not eat
         </p>
       )}
 
-      <div>
-        <label className={cls.label}>Opened</label>
-        {lot.openedAt ? (
-          <p className="text-sm text-slate-600">Opened {lot.openedAt}</p>
-        ) : (
-          <button className={`mt-1 ${cls.btnGhost}`} onClick={() => onPatch({ openedAt: today() })}>
-            Mark opened today
-          </button>
+      <div className="facts">
+        <div className="fact">
+          <span className="k">Amount left</span>
+          <span className="v">
+            {fractionLabel(lot.fractionLeft)}
+            <button className="mini" onClick={() => setEditAmt((v) => !v)}>
+              {editAmt ? "Done" : "Update"}
+            </button>
+          </span>
+        </div>
+        {editAmt && (
+          <div className="pick" data-testid="fraction-pick">
+            {FRACTIONS.map((fr) => (
+              <button
+                key={fr}
+                className={lot.fractionLeft === fr ? "on" : undefined}
+                onClick={() => onEvent("fraction_changed", fr)}
+              >
+                {fractionLabel(fr)}
+              </button>
+            ))}
+          </div>
         )}
+        <div className="fact">
+          <span className="k">Opened</span>
+          <span className="v">
+            {lot.openedAt ? (
+              lot.openedAt
+            ) : (
+              <button className="mini" onClick={() => onPatch({ openedAt: td })}>
+                Mark opened today
+              </button>
+            )}
+          </span>
+        </div>
+        <div className="fact">
+          <span className="k">Location</span>
+          <span className="v">
+            <select
+              className="field"
+              style={{ width: 160 }}
+              aria-label="Location"
+              value={lot.locationId}
+              onChange={(e) => onPatch({ locationId: e.target.value })}
+            >
+              {locs.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </span>
+        </div>
       </div>
 
-      <div className="flex gap-2">
-        <div className="w-36">
-          <label className={cls.label} htmlFor={`dt-${lot.id}`}>
-            Date type
-          </label>
+      <div style={{ marginTop: 12 }}>
+        <label className="label">Date on the pack</label>
+        <div style={{ display: "flex", gap: 8 }}>
           <select
-            id={`dt-${lot.id}`}
-            className={cls.input}
+            className="field"
+            style={{ maxWidth: 150 }}
+            aria-label="Date type"
             value={lot.dateType ?? "best_before"}
             onChange={(e) => onPatch({ dateType: e.target.value as "use_by" | "best_before" })}
           >
             <option value="best_before">Best before</option>
             <option value="use_by">Use by</option>
           </select>
-        </div>
-        <div className="flex-1">
-          <label className={cls.label} htmlFor={`dv-${lot.id}`}>
-            Date
-          </label>
           <input
-            id={`dv-${lot.id}`}
+            className="field"
             type="date"
-            className={cls.input}
+            aria-label="Date"
             value={lot.dateValue ?? ""}
-            // null clears both value and type (JSON drops undefined)
             onChange={(e) => onPatch({ dateValue: e.target.value || null })}
           />
         </div>
       </div>
 
-      <div>
-        <label className={cls.label} htmlFor={`loc-${lot.id}`}>
-          Location
-        </label>
-        <select
-          id={`loc-${lot.id}`}
-          className={cls.input}
-          value={lot.locationId}
-          onChange={(e) => onPatch({ locationId: e.target.value })}
-        >
-          {locs.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {archiving ? (
-        <div>
-          <p className={cls.label}>Why are you removing this pack?</p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+        <div style={{ marginTop: 12 }}>
+          <p className="label">Why remove this pack?</p>
+          <div className="reasons">
             {ARCHIVE_REASONS.map((r) => (
-              <button
-                key={r}
-                data-testid={`archive-reason-${r}`}
-                onClick={() => onArchive(r)}
-                className={cls.btnGhost}
-              >
+              <button key={r} className="btn btn-line" onClick={() => onArchive(r)}>
                 {REASON_LABELS[r]}
               </button>
             ))}
           </div>
-          <button
-            onClick={() => setArchiving(false)}
-            className="mt-3 text-sm font-medium text-slate-500"
-          >
+          <button className="mini" style={{ marginTop: 10 }} onClick={() => setArchiving(false)}>
             Cancel
           </button>
         </div>
       ) : (
-        <button
-          onClick={() => setArchiving(true)}
-          data-testid="archive-lot"
-          className="text-sm font-medium text-red-600"
-        >
+        <button className="remove" onClick={() => setArchiving(true)} data-testid="archive-lot">
           Remove this pack
         </button>
       )}
