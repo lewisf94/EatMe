@@ -42,7 +42,7 @@ export async function registerInventory(app: FastifyInstance): Promise<void> {
         .code(400)
         .send({ error: { message: "invalid intake", issues: parsed.error.issues } });
     const d = parsed.data;
-    const result = idempotent(d.opId, () => {
+    const result = idempotent("intake", d.opId, () => {
       const product = findOrCreateProduct({
         name: d.name,
         brand: d.brand,

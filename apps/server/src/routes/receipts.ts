@@ -115,8 +115,29 @@ export async function registerReceipts(app: FastifyInstance): Promise<void> {
     const retailer = retailerOf(purchase);
     const fallbackLocation = parsed.data.defaultLocationId ?? listLocations()[0]?.id;
 
+    // Validate decisions up front: known ids, no duplicates, and (while still
+    // pending) every pending line decided exactly once. Silently skipping these
+    // could add the wrong stock or confirm a receipt with lines left out.
+    const allLines = receipts.linesFor(id);
+    const lineIds = new Set(allLines.map((l) => l.id));
+    const pendingIds = allLines.filter((l) => l.status === "pending").map((l) => l.id);
+    const decided = new Set<string>();
+    for (const d of parsed.data.lines) {
+      if (!lineIds.has(d.lineId))
+        return reply.code(400).send({ error: { message: `unknown line ${d.lineId}` } });
+      if (decided.has(d.lineId))
+        return reply.code(400).send({ error: { message: `duplicate decision for ${d.lineId}` } });
+      decided.add(d.lineId);
+    }
+    if (purchase.status === "pending")
+      for (const pid of pendingIds)
+        if (!decided.has(pid))
+          return reply
+            .code(400)
+            .send({ error: { message: "every pending line needs a decision" } });
+
     try {
-      const result = idempotent(parsed.data.opId, () => {
+      const result = idempotent(`receipt-confirm:${id}`, parsed.data.opId, () => {
         // Re-read inside the transaction: already-confirmed → no-op.
         const fresh = receipts.getPurchase(id)!;
         const summary = { added: 0, ignored: 0, notTracked: 0, newProducts: 0, alreadyConfirmed: false }; // prettier-ignore
@@ -142,32 +163,37 @@ export async function registerReceipts(app: FastifyInstance): Promise<void> {
             continue;
           }
 
-          // action === "add": resolve to a product (existing or newly created)
+          // action === "add": resolve to a product (existing or newly created).
+          // A new product remembers its chosen location as its default; an
+          // existing product's saved default is preferred when none is given, so
+          // fridge/cupboard placement starts to stick.
           let productId = d.productId ?? null;
+          const chosen = d.locationId ?? fallbackLocation;
           if (!productId && d.newProduct) {
             productId = createProduct({
               name: d.newProduct.name,
               brand: d.newProduct.brand,
               categoryId: d.newProduct.categoryId,
+              defaultLocationId: chosen,
             }).id;
             summary.newProducts++;
           }
-          if (!productId || !getProduct(productId))
-            throw new Error(`line ${line.line_no}: no product to add to`);
+          const product = productId ? getProduct(productId) : undefined;
+          if (!product) throw new Error(`line ${line.line_no}: no product to add to`);
 
-          const locationId = d.locationId ?? fallbackLocation;
+          const locationId = d.locationId ?? product.defaultLocationId ?? fallbackLocation;
           if (!locationId) throw new Error("no location available for the stock lot");
 
           createLot({
-            productId,
+            productId: product.id,
             locationId,
             count: d.quantity,
             fractionLeft: 1,
             purchasedAt: fresh.purchased_at ?? undefined, // keep the purchase date on the lot
             source: "receipt",
           });
-          receipts.learnAlias(retailer, line.normalized_text, productId);
-          receipts.setLineOutcome(line.id, "added", productId, locationId);
+          receipts.learnAlias(retailer, line.normalized_text, product.id);
+          receipts.setLineOutcome(line.id, "added", product.id, locationId);
           summary.added++;
         }
         receipts.setPurchaseStatus(id, "confirmed");

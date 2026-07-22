@@ -44,7 +44,7 @@ export async function registerStockLots(app: FastifyInstance): Promise<void> {
       return reply
         .code(400)
         .send({ error: { message: "invalid event", issues: parsed.error.issues } });
-    const lot = idempotent(parsed.data.opId, () =>
+    const lot = idempotent("lot-event", parsed.data.opId, () =>
       addEvent(id, parsed.data.event, parsed.data.fractionAfter ?? null),
     );
     if (!lot) return reply.code(404).send({ error: { message: "not found" } });
