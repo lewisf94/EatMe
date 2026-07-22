@@ -1,53 +1,49 @@
 import { NavLink, Routes, Route } from "react-router-dom";
+import type { ReactNode } from "react";
+import Today from "./pages/Today";
 import Inventory from "./pages/Inventory";
 import AddItem from "./pages/AddItem";
 import ReceiptImport from "./pages/ReceiptImport";
 import ProductDetail from "./pages/ProductDetail";
 import QrRedirect from "./pages/QrRedirect";
 import Settings from "./pages/Settings";
+import { IconHome, IconList, IconPlus } from "./ui/icons";
 
-function TabLink({ to, label, icon }: { to: string; label: string; icon: string }) {
+function BottomNav() {
+  const on = ({ isActive }: { isActive: boolean }) => (isActive ? "on" : undefined);
   return (
-    <NavLink
-      to={to}
-      end={to === "/"}
-      className={({ isActive }) =>
-        `flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${
-          isActive ? "text-emerald-600" : "text-slate-500"
-        }`
-      }
-    >
-      <span className="text-xl leading-none">{icon}</span>
-      {label}
-    </NavLink>
+    <nav className="botnav">
+      <NavLink to="/" end className={on}>
+        <IconHome />
+        Today
+      </NavLink>
+      <NavLink to="/add" className="add" aria-label="Add item">
+        <IconPlus />
+      </NavLink>
+      <NavLink to="/food" className={on}>
+        <IconList />
+        Food
+      </NavLink>
+    </nav>
   );
 }
 
+// Screens not yet ported to the new language still need padding + nav clearance.
+const wrap = (el: ReactNode) => <div className="screen">{el}</div>;
+
 export default function App() {
   return (
-    <div className="mx-auto flex min-h-screen max-w-xl flex-col bg-slate-50 text-slate-900">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
-        <h1 className="text-lg font-bold">
-          <span aria-hidden>🫙</span> EatMe
-        </h1>
-      </header>
-
-      <main className="flex-1 px-4 py-4 pb-24">
-        <Routes>
-          <Route path="/" element={<Inventory />} />
-          <Route path="/add" element={<AddItem />} />
-          <Route path="/receipt" element={<ReceiptImport />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/i/:qrUid" element={<QrRedirect />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </main>
-
-      <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-xl border-t border-slate-200 bg-white">
-        <TabLink to="/" label="Cupboard" icon="🗄️" />
-        <TabLink to="/add" label="Add" icon="➕" />
-        <TabLink to="/settings" label="Settings" icon="⚙️" />
-      </nav>
+    <div className="eatme">
+      <Routes>
+        <Route path="/" element={<Today />} />
+        <Route path="/food" element={<Inventory />} />
+        <Route path="/add" element={wrap(<AddItem />)} />
+        <Route path="/receipt" element={wrap(<ReceiptImport />)} />
+        <Route path="/product/:id" element={wrap(<ProductDetail />)} />
+        <Route path="/i/:qrUid" element={wrap(<QrRedirect />)} />
+        <Route path="/settings" element={wrap(<Settings />)} />
+      </Routes>
+      <BottomNav />
     </div>
   );
 }
