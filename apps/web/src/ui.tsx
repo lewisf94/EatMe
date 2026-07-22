@@ -49,6 +49,14 @@ export function daysPhrase(daysLeft: number | null): string {
   return `in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
 }
 
+/** Word for the *governing* freshness clock, so an open-life deadline is never
+ *  mislabelled as the printed date (safety "Use by" vs quality). */
+export function pressureLabel(kind: "use_by" | "best_before" | "open_life" | null): string {
+  if (kind === "use_by") return "Use by";
+  if (kind === "open_life") return "Best used by";
+  return "Best before";
+}
+
 // Shared Tailwind class strings, kept in one place for consistency.
 export const cls = {
   input:

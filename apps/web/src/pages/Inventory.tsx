@@ -149,7 +149,7 @@ export default function Inventory() {
                       .join(" · ")}
                   </div>
                 </div>
-                {it.lotCount > 1 ? (
+                {it.totalCount > 1 ? (
                   <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
                     {it.totalCount} packs
                   </span>

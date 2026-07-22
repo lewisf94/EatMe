@@ -11,7 +11,7 @@ import {
   type Location,
 } from "@eatme/shared";
 import { api } from "../api";
-import { StatusBadge, fractionLabel, daysPhrase, today, cls } from "../ui";
+import { StatusBadge, fractionLabel, daysPhrase, pressureLabel, today, cls } from "../ui";
 
 const REASON_LABELS: Record<ArchiveReason, string> = {
   finished: "Finished it",
@@ -163,7 +163,7 @@ function LotCard({
       {st && (
         <p className="text-sm text-slate-500">
           {st.pressureDate
-            ? `${lot.dateType === "use_by" ? "Use by" : "Best before"} ${st.pressureDate} (${daysPhrase(st.daysLeft)})`
+            ? `${pressureLabel(st.pressureKind)} ${st.pressureDate} (${daysPhrase(st.daysLeft)})`
             : "No date set"}
         </p>
       )}

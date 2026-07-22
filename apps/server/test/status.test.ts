@@ -80,6 +80,9 @@ describe("computeStatus", () => {
     );
     expect(r.status).toBe("use_soon");
     expect(r.daysLeft).toBe(10);
+    // the open-life clock governs here, not the far-off best-before, so the UI
+    // must label it as such rather than "Best before".
+    expect(r.pressureKind).toBe("open_life");
   });
 
   it("safety wins when both a use-by and the open-life have passed", () => {

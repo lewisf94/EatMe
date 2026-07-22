@@ -26,10 +26,13 @@ test("receipt import: photo → review → confirm creates stock, re-import auto
   await page.getByTestId("receipt-confirm").click();
   await expect(page.getByText(/Added 4 to the cupboard/)).toBeVisible();
 
-  // the products are now in the cupboard, and the "2 x" line made a 2-count lot
+  // the products are now in the cupboard, and the "2 x" line made a 2-count lot.
+  // Scope "2 packs" to the tinned-tomatoes row so a different product's pack
+  // count left in the shared test DB can't make this pass falsely.
   await page.goto("/");
-  await expect(page.getByText("tinned tomatoes")).toBeVisible();
-  await expect(page.getByText("2 packs")).toBeVisible();
+  const tomatoes = page.locator('[data-testid="inventory-list"] li', { hasText: "tinned tomatoes" });
+  await expect(tomatoes).toBeVisible();
+  await expect(tomatoes.getByText("2 packs")).toBeVisible();
 
   // second import of the same receipt → every line auto-matches via a learned alias
   await page.goto("/receipt");

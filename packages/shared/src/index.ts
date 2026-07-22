@@ -223,7 +223,12 @@ export function computeStatus(
   },
   category: { openLifeDays: number | null; warnDays: number },
   today: string = civilToday(),
-): { status: Status; pressureDate: string | null; daysLeft: number | null } {
+): {
+  status: Status;
+  pressureDate: string | null;
+  daysLeft: number | null;
+  pressureKind: DateType | "open_life" | null;
+} {
   const clocks: Clock[] = [];
   if (lot.dateValue && lot.dateType) clocks.push({ date: lot.dateValue, kind: lot.dateType });
 
@@ -234,7 +239,8 @@ export function computeStatus(
     clocks.push({ date: d.toISOString().slice(0, 10), kind: "open_life" });
   }
 
-  if (clocks.length === 0) return { status: "ok", pressureDate: null, daysLeft: null };
+  if (clocks.length === 0)
+    return { status: "ok", pressureDate: null, daysLeft: null, pressureKind: null };
 
   const msPerDay = 86_400_000;
   const diff = (date: string) =>
@@ -251,7 +257,7 @@ export function computeStatus(
         : gov.kind === "best_before"
           ? "past_best"
           : "quality_declining";
-    return { status, pressureDate: gov.date, daysLeft: diff(gov.date) };
+    return { status, pressureDate: gov.date, daysLeft: diff(gov.date), pressureKind: gov.kind };
   }
 
   // Nothing passed → nearest upcoming clock drives the warning window.
@@ -262,6 +268,7 @@ export function computeStatus(
     status: daysLeft <= category.warnDays ? "use_soon" : "ok",
     pressureDate: nearest.date,
     daysLeft,
+    pressureKind: nearest.kind,
   };
 }
 

@@ -102,8 +102,9 @@ test("two packs of one product aggregate into a single cupboard row", async ({ p
   await expect(page.getByTestId("lot-card")).toHaveCount(2);
 
   await page.goto("/");
-  await expect(page.getByText("Doubled Dates")).toHaveCount(1);
-  await expect(page.getByText("2 packs")).toBeVisible();
+  const row = page.locator('[data-testid="inventory-list"] li', { hasText: "Doubled Dates" });
+  await expect(row).toHaveCount(1);
+  await expect(row.getByText("2 packs")).toBeVisible();
   // sanity: server agrees it's one product with two active lots
   const lots = await page.evaluate(
     (id) =>
