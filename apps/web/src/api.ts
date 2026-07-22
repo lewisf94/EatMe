@@ -122,12 +122,8 @@ export const api = {
   lookup: (barcode: string) => req<OffResult>(`/lookup/${encodeURIComponent(barcode)}`),
   categories: () => req<Category[]>("/categories"),
   locations: () => req<Location[]>("/locations"),
-  createCategory: (input: {
-    name: string;
-    openLifeDays?: number | null;
-    warnDays?: number;
-    hardExpiry?: boolean;
-  }) => req<Category>("/categories", { method: "POST", body: JSON.stringify(input) }),
+  createCategory: (input: { name: string; openLifeDays?: number | null; warnDays?: number }) =>
+    req<Category>("/categories", { method: "POST", body: JSON.stringify(input) }),
   patchCategory: (id: string, patch: CategoryPatch) =>
     req<Category>(`/categories/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   createLocation: (input: { name: string; sortOrder?: number }) =>

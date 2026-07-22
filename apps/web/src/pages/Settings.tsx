@@ -62,7 +62,7 @@ export default function Settings() {
 
   const addCategory = async () => {
     if (!newCat.trim()) return;
-    await guard(api.createCategory({ name: newCat.trim(), warnDays: 14, hardExpiry: false }));
+    await guard(api.createCategory({ name: newCat.trim(), warnDays: 14 }));
     setNewCat("");
     reload();
   };
@@ -204,7 +204,7 @@ export default function Settings() {
 }
 
 /** One category row: a summary line, expanding to an editor for name +
- *  freshness rules (warn window, open-life, hard-expiry). */
+ *  freshness defaults (warn window, open-life). */
 function CategoryRow({
   cat,
   open,
@@ -216,19 +216,13 @@ function CategoryRow({
   open: boolean;
   onOpen: () => void;
   onClose: () => void;
-  onSave: (patch: {
-    name?: string;
-    warnDays?: number;
-    openLifeDays?: number | null;
-    hardExpiry?: boolean;
-  }) => void;
+  onSave: (patch: { name?: string; warnDays?: number; openLifeDays?: number | null }) => void;
 }) {
   const [name, setName] = useState(cat.name);
   const [warnDays, setWarnDays] = useState(String(cat.warnDays));
   const [openLife, setOpenLife] = useState(
     cat.openLifeDays == null ? "" : String(cat.openLifeDays),
   );
-  const [hardExpiry, setHardExpiry] = useState(cat.hardExpiry);
 
   if (!open) {
     return (
@@ -237,7 +231,6 @@ function CategoryRow({
         <span className="flex items-center gap-3">
           <span className="text-xs text-slate-400">
             {cat.openLifeDays ? `${cat.openLifeDays}d open-life` : "best-before only"}
-            {cat.hardExpiry ? " · hard expiry" : ""}
           </span>
           <button className="text-sm text-emerald-600" onClick={onOpen}>
             Edit
@@ -276,14 +269,6 @@ function CategoryRow({
           />
         </div>
       </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={hardExpiry}
-          onChange={(e) => setHardExpiry(e.target.checked)}
-        />
-        Hard expiry (past the date = unsafe, not just past its best)
-      </label>
       <div className="flex gap-2">
         <button
           className={cls.btn}
@@ -292,7 +277,6 @@ function CategoryRow({
               name: name.trim() || cat.name,
               warnDays: Number(warnDays) || 0,
               openLifeDays: openLife.trim() === "" ? null : Number(openLife),
-              hardExpiry,
             })
           }
         >

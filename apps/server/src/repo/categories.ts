@@ -6,7 +6,6 @@ type CatRow = {
   name: string;
   open_life_days: number | null;
   warn_days: number;
-  hard_expiry: number;
 };
 
 function toCat(r: CatRow): Category {
@@ -15,11 +14,10 @@ function toCat(r: CatRow): Category {
     name: r.name,
     openLifeDays: r.open_life_days,
     warnDays: r.warn_days,
-    hardExpiry: !!r.hard_expiry,
   };
 }
 
-const SELECT = "SELECT id, name, open_life_days, warn_days, hard_expiry FROM categories";
+const SELECT = "SELECT id, name, open_life_days, warn_days FROM categories";
 
 export function listCategories(): Category[] {
   return (db.prepare(`${SELECT} ORDER BY name`).all() as CatRow[]).map(toCat);
@@ -33,8 +31,8 @@ export function getCategory(id: string): Category | undefined {
 export function createCategory(input: CategoryInput): Category {
   const id = newId();
   db.prepare(
-    "INSERT INTO categories (id, name, open_life_days, warn_days, hard_expiry) VALUES (?, ?, ?, ?, ?)",
-  ).run(id, input.name, input.openLifeDays ?? null, input.warnDays, input.hardExpiry ? 1 : 0);
+    "INSERT INTO categories (id, name, open_life_days, warn_days) VALUES (?, ?, ?, ?)",
+  ).run(id, input.name, input.openLifeDays ?? null, input.warnDays);
   return getCategory(id) as Category;
 }
 
@@ -43,7 +41,6 @@ export function updateCategory(id: string, patch: CategoryPatch): Category | und
     name: "name",
     openLifeDays: "open_life_days",
     warnDays: "warn_days",
-    hardExpiry: "hard_expiry",
   };
   const sets: string[] = [];
   const vals: Array<string | number | null> = [];
@@ -51,8 +48,7 @@ export function updateCategory(id: string, patch: CategoryPatch): Category | und
   for (const [key, col] of Object.entries(cols)) {
     if (p[key] === undefined) continue;
     sets.push(`${col} = ?`);
-    if (key === "hardExpiry") vals.push(p[key] ? 1 : 0);
-    else vals.push((p[key] as string | number | null) ?? null);
+    vals.push((p[key] as string | number | null) ?? null);
   }
   if (sets.length === 0) return getCategory(id);
   const info = db.prepare(`UPDATE categories SET ${sets.join(", ")} WHERE id = ?`).run(...vals, id);

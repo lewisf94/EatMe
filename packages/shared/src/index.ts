@@ -149,7 +149,6 @@ export const Category = z.object({
   name: z.string(),
   openLifeDays: z.number().int().positive().nullable(),
   warnDays: z.number().int().nonnegative(),
-  hardExpiry: z.boolean(),
 });
 export type Category = z.infer<typeof Category>;
 
@@ -157,7 +156,6 @@ export const CategoryInput = z.object({
   name: z.string().min(1),
   openLifeDays: z.number().int().positive().nullable().optional(),
   warnDays: z.number().int().nonnegative().default(14),
-  hardExpiry: z.boolean().default(false),
 });
 export type CategoryInput = z.infer<typeof CategoryInput>;
 
