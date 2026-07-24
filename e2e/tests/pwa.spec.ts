@@ -36,7 +36,7 @@ test("service worker installs and serves the app shell offline", async ({ page, 
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.locator("h1")).toContainText("EatMe");
+  await expect(page.locator(".wm")).toContainText("EatMe");
   await context.setOffline(false);
 
   // Nothing should come from a CDN — everything is bundled/self-hosted.

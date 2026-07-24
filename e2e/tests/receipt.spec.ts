@@ -21,7 +21,7 @@ test("receipt import: photo → review → confirm creates stock, re-import auto
   await page.locator('[data-testid="receipt-file"]').setInputFiles(RECEIPT);
   await expect(page.getByTestId("receipt-review")).toBeVisible();
   // the parser kept 4 product lines (totals/bag/discount dropped)
-  await expect(page.locator('[data-testid="receipt-review"] > li')).toHaveCount(4);
+  await expect(page.getByTestId("receipt-line")).toHaveCount(4);
 
   await page.getByTestId("receipt-confirm").click();
   await expect(page.getByText(/Added 4 to the cupboard/)).toBeVisible();
@@ -29,8 +29,8 @@ test("receipt import: photo → review → confirm creates stock, re-import auto
   // the products are now in the cupboard, and the "2 x" line made a 2-count lot.
   // Scope "2 packs" to the tinned-tomatoes row so a different product's pack
   // count left in the shared test DB can't make this pass falsely.
-  await page.goto("/");
-  const tomatoes = page.locator('[data-testid="inventory-list"] li', { hasText: "tinned tomatoes" });
+  await page.goto("/food");
+  const tomatoes = page.locator('[data-testid="inventory-row"]', { hasText: "Tinned Tomatoes" });
   await expect(tomatoes).toBeVisible();
   await expect(tomatoes.getByText("2 packs")).toBeVisible();
 
@@ -38,9 +38,6 @@ test("receipt import: photo → review → confirm creates stock, re-import auto
   await page.goto("/receipt");
   await page.locator('[data-testid="receipt-file"]').setInputFiles(RECEIPT);
   await expect(page.getByTestId("receipt-review")).toBeVisible();
-  const aliasMatches = await page
-    .locator('[data-testid="receipt-review"] option')
-    .filter({ hasText: "(alias)" })
-    .count();
-  expect(aliasMatches).toBe(4);
+  // every line auto-matches via a learned alias → all shown as "Matched"
+  await expect(page.locator(".rmatch")).toHaveCount(4);
 });

@@ -249,7 +249,7 @@ export default function ReceiptImport() {
 
     if (off(d.value))
       return (
-        <div key={l.id} className="rline off">
+        <div key={l.id} className="rline off" data-testid="receipt-line">
           <div className="rline-head">
             <span className="rline-name">{titleCase(l.normalizedText)}</span>
             <button
@@ -267,7 +267,7 @@ export default function ReceiptImport() {
 
     const adding = d.value === "new" || d.value.startsWith("p:");
     return (
-      <div key={l.id} className="rline">
+      <div key={l.id} className="rline" data-testid="receipt-line">
         <div className="rline-head">
           {d.value === "new" ? (
             <input

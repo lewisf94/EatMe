@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import type { InventoryRow, Location } from "@eatme/shared";
 import { api, isAbort } from "../api";
+import { loadInventory } from "../offline";
 import { today } from "../ui";
 import { ProductRow } from "../ui/freshness";
+import { SyncStatus } from "../ui/SyncStatus";
 import { IconSearch } from "../ui/icons";
 
 const NO_DATE = "__nodate__";
@@ -14,6 +16,8 @@ export default function Inventory() {
   const [chip, setChip] = useState(""); // "" = all · a locationId · NO_DATE
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
+  const [offline, setOffline] = useState(false);
   const td = today();
 
   useEffect(() => {
@@ -22,14 +26,21 @@ export default function Inventory() {
 
   const load = useCallback(
     (signal: AbortSignal) => {
+      // Only search + sort go to the server; location is filtered client-side so
+      // the same cached snapshot answers every chip when offline.
       const p = new URLSearchParams();
       if (q) p.set("q", q);
-      if (chip && chip !== NO_DATE) p.set("location", chip);
       p.set("sort", "urgency");
       setLoading(true);
-      api.inventory("?" + p.toString(), signal).then(
+      loadInventory("?" + p.toString(), signal).then(
         (d) => {
-          setRows(chip === NO_DATE ? d.filter((r) => r.pressureKind == null) : d);
+          setRows(
+            d.rows.filter((r) =>
+              chip === NO_DATE ? r.pressureKind == null : chip ? r.locationId === chip : true,
+            ),
+          );
+          setSyncedAt(d.syncedAt);
+          setOffline(d.offline);
           setError(null);
           setLoading(false);
         },
@@ -105,6 +116,7 @@ export default function Inventory() {
           ))}
         </div>
 
+        <SyncStatus syncedAt={syncedAt} offline={offline} />
         {error && <p className="alert">{error}</p>}
 
         {loading && rows.length === 0 ? (

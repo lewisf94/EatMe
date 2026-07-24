@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { InventoryRow, Location } from "@eatme/shared";
 import { api, isAbort } from "../api";
+import { loadInventory } from "../offline";
 import { today } from "../ui";
 import { ProductRow, FreshnessTimeline, freshOf, ClockIcon, qtyLabel } from "../ui/freshness";
+import { SyncStatus } from "../ui/SyncStatus";
 import { IconMenu } from "../ui/icons";
 
 const isPast = (s: InventoryRow["status"]) =>
@@ -14,15 +16,18 @@ export default function Today() {
   const [locs, setLocs] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
+  const [offline, setOffline] = useState(false);
   const td = today();
 
   useEffect(() => {
     void api.locations().then(setLocs);
     const ctrl = new AbortController();
-    api
-      .inventory("?sort=urgency", ctrl.signal)
+    loadInventory("?sort=urgency", ctrl.signal)
       .then((d) => {
-        setRows(d);
+        setRows(d.rows);
+        setSyncedAt(d.syncedAt);
+        setOffline(d.offline);
         setError(null);
       })
       .catch((e) => !isAbort(e) && setError(e instanceof Error ? e.message : "Couldn’t load"))
@@ -52,6 +57,7 @@ export default function Today() {
       </header>
 
       <div className="screen">
+        <SyncStatus syncedAt={syncedAt} offline={offline} />
         {error && <p className="alert">{error}</p>}
 
         {loading && rows.length === 0 ? (

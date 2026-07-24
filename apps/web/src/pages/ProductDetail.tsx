@@ -11,8 +11,10 @@ import {
   type Location,
 } from "@eatme/shared";
 import { api } from "../api";
+import { loadProduct, submitLotEvent, usePending } from "../offline";
 import { today, fractionLabel } from "../ui";
 import { FreshnessTimeline, freshOf, lotFreshInput, clockLabel, ClockIcon } from "../ui/freshness";
+import { SyncStatus } from "../ui/SyncStatus";
 import { IconBack, IconLock } from "../ui/icons";
 
 const REASON_LABELS: Record<ArchiveReason, string> = {
@@ -46,13 +48,21 @@ export default function ProductDetail() {
   const [cats, setCats] = useState<Category[]>([]);
   const [locs, setLocs] = useState<Location[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
   const td = today();
 
   const reload = useCallback(() => {
-    api.getProduct(id).then(
+    loadProduct(id).then(
       (d) => {
+        if (!d) {
+          setError("Couldn’t load");
+          return;
+        }
         setProduct(d.product);
         setLots(d.lots);
+        setOffline(d.offline);
+        setSyncedAt(d.syncedAt);
         setError(null);
       },
       (e) => setError(e instanceof Error ? e.message : "Couldn’t load"),
@@ -97,6 +107,7 @@ export default function ProductDetail() {
     <>
       {back}
       <div className="screen">
+        <SyncStatus syncedAt={syncedAt} offline={offline} />
         <h1 className="title-line">{product.name}</h1>
         {product.brand && <p className="stock-line">{product.brand}</p>}
         <p className="stock-line">
@@ -114,14 +125,22 @@ export default function ProductDetail() {
             locs={locs}
             td={td}
             onEvent={(event, fractionAfter) =>
-              guard(api.postLotEvent(lot.id, { event, fractionAfter }))
+              submitLotEvent(lot.id, product.id, product.name, { event, fractionAfter }).then(
+                reload,
+                (e) => setError(e instanceof Error ? e.message : "Update failed"),
+              )
             }
             onPatch={(patch) => guard(api.patchLot(lot.id, patch))}
             onArchive={(reason) => guard(api.archiveLot(lot.id, reason))}
           />
         ))}
 
-        <button className="btn btn-line" style={{ marginTop: 18, width: "100%" }} onClick={addLot}>
+        <button
+          className="btn btn-line"
+          data-testid="add-lot"
+          style={{ marginTop: 18, width: "100%" }}
+          onClick={addLot}
+        >
           + Add another pack
         </button>
       </div>
@@ -148,6 +167,7 @@ function LotCard({
 }) {
   const [editAmt, setEditAmt] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const isPending = usePending().some((p) => p.lotId === lot.id);
   const fi = lotFreshInput(lot, category, td);
   const f = freshOf(fi, td);
 
@@ -160,6 +180,7 @@ function LotCard({
         </div>
         <h2>{bigPhrase(fi.daysLeft)}</h2>
       </div>
+      {isPending && <p className="pendingtag">Waiting to sync</p>}
       {fi.pressureKind != null && <FreshnessTimeline f={f} showVerdict={false} />}
       {f.cls === "crit" && (
         <p className="tl-verdict crit" style={{ marginTop: 8 }}>
@@ -183,6 +204,7 @@ function LotCard({
             {FRACTIONS.map((fr) => (
               <button
                 key={fr}
+                data-testid={`fraction-${fr}`}
                 className={lot.fractionLeft === fr ? "on" : undefined}
                 onClick={() => onEvent("fraction_changed", fr)}
               >
@@ -251,7 +273,12 @@ function LotCard({
           <p className="label">Why remove this pack?</p>
           <div className="reasons">
             {ARCHIVE_REASONS.map((r) => (
-              <button key={r} className="btn btn-line" onClick={() => onArchive(r)}>
+              <button
+                key={r}
+                data-testid={`archive-reason-${r}`}
+                className="btn btn-line"
+                onClick={() => onArchive(r)}
+              >
                 {REASON_LABELS[r]}
               </button>
             ))}

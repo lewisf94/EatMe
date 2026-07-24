@@ -14,8 +14,8 @@ export default defineConfig({
         name: "EatMe",
         short_name: "EatMe",
         description: "Track the jars and spices at the back of the cupboard.",
-        theme_color: "#0f172a",
-        background_color: "#ffffff",
+        theme_color: "#16130d",
+        background_color: "#f4f1e8",
         display: "standalone",
         start_url: "/",
         icons: [

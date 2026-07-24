@@ -25,16 +25,17 @@ function plusDays(n: number): string {
 
 test("app shell is served by the server (production build)", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("h1")).toContainText("EatMe");
+  await expect(page.locator(".wm")).toContainText("EatMe");
 });
 
 test("add → product page shows a freshness badge and quick-tap fraction persists", async ({
   page,
 }) => {
   await addItem(page, "Playwright Paprika", plusDays(3));
-  await expect(page.locator("h2")).toContainText("Playwright Paprika");
-  await expect(page.getByText("Use soon")).toBeVisible();
+  await expect(page.locator(".title-line")).toContainText("Playwright Paprika");
+  await expect(page.getByTestId("lot-card")).toContainText("Best before");
 
+  await page.getByRole("button", { name: "Update" }).first().click();
   await page.getByTestId("fraction-0.5").click();
   await page.waitForTimeout(250);
   await page.reload();
@@ -43,7 +44,7 @@ test("add → product page shows a freshness badge and quick-tap fraction persis
 
 test("cupboard lists the product and search narrows it", async ({ page }) => {
   await addItem(page, "Searchable Saffron");
-  await page.goto("/");
+  await page.goto("/food");
   await expect(page.getByText("Searchable Saffron")).toBeVisible();
 
   await page.locator('input[aria-label="Search"]').fill("saffron");
@@ -84,7 +85,7 @@ test("removing the only pack empties the product (and drops it from the cupboard
   await expect(page.getByText("No stock left")).toBeVisible();
 
   // gone from the aggregated cupboard (no active lots) but the archived lot remains
-  await page.goto("/");
+  await page.goto("/food");
   await expect(page.getByText("Archivable Anchovies")).toHaveCount(0);
   const stillThere = await page.evaluate(
     (id) =>
@@ -101,8 +102,8 @@ test("two packs of one product aggregate into a single cupboard row", async ({ p
   await page.getByTestId("add-lot").click();
   await expect(page.getByTestId("lot-card")).toHaveCount(2);
 
-  await page.goto("/");
-  const row = page.locator('[data-testid="inventory-list"] li', { hasText: "Doubled Dates" });
+  await page.goto("/food");
+  const row = page.locator('[data-testid="inventory-row"]', { hasText: "Doubled Dates" });
   await expect(row).toHaveCount(1);
   await expect(row.getByText("2 packs")).toBeVisible();
   // sanity: server agrees it's one product with two active lots

@@ -229,7 +229,7 @@ export function ProductRow({
     .filter(Boolean)
     .join(" · ");
   return (
-    <Link className="row" to={`/product/${row.productId}`}>
+    <Link className="row" data-testid="inventory-row" to={`/product/${row.productId}`}>
       <div className="row-top">
         <span className="name">{row.name}</span>
         <span className="qty">{qtyLabel(row.totalCount, row.fractionLeft)}</span>
