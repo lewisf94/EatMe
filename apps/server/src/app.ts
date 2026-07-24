@@ -10,6 +10,8 @@ import { registerTaxonomy } from "./routes/taxonomy.js";
 import { registerLookup } from "./routes/lookup.js";
 import { registerSettings } from "./routes/settings.js";
 import { registerDisplay } from "./routes/display.js";
+import { registerRecipes } from "./routes/recipes.js";
+import { registerShopping } from "./routes/shopping.js";
 
 /** Build the Fastify app. Call migrate()/seedIfEmpty() before this so the
  *  repositories' prepared statements bind against existing tables. */
@@ -52,6 +54,8 @@ export function buildApp(): FastifyInstance {
   app.register(registerLookup, { prefix: "/api" });
   app.register(registerSettings, { prefix: "/api" });
   app.register(registerDisplay, { prefix: "/api" });
+  app.register(registerRecipes, { prefix: "/api" });
+  app.register(registerShopping, { prefix: "/api" });
 
   const webDist = process.env.WEB_DIST;
   if (webDist) {

@@ -379,3 +379,49 @@ export const ReceiptConfirmInput = z.object({
   opId: z.string().optional(), // idempotency key so a retried confirm applies once
 });
 export type ReceiptConfirmInput = z.infer<typeof ReceiptConfirmInput>;
+
+// --- recipes + shopping list -------------------------------------------
+// A recipe's ingredients are loose match text tested against product names, so
+// "chickpea" finds "Chickpeas 400g". Good enough to rank what to cook tonight.
+export type Recipe = {
+  id: string;
+  name: string;
+  url: string | null;
+  notes: string | null;
+  createdAt: string;
+  ingredients: string[];
+};
+
+export const RecipeInput = z.object({
+  name: z.string().min(1),
+  url: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  // The whole ingredient list is sent on every save (the UI edits them as chips).
+  ingredients: z.array(z.string().min(1)).default([]),
+});
+export type RecipeInput = z.infer<typeof RecipeInput>;
+export const RecipePatch = RecipeInput.partial();
+export type RecipePatch = z.infer<typeof RecipePatch>;
+
+/** One ranked suggestion: the recipe, which expiring items it would use up, and
+ *  what you'd still be missing. */
+export type UseItUpHit = {
+  recipe: Recipe;
+  matchedUrgentCount: number;
+  matchedItems: { productId: string; name: string }[];
+  missing: string[];
+};
+
+export type ShoppingItem = {
+  id: string;
+  productId: string | null; // set when it came from something you finished
+  name: string;
+  addedAt: string;
+  doneAt: string | null;
+};
+
+export const ShoppingInput = z.object({
+  name: z.string().min(1).optional(), // defaults to the product's name
+  productId: z.string().optional(),
+});
+export type ShoppingInput = z.infer<typeof ShoppingInput>;

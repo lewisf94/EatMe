@@ -7,7 +7,10 @@ import ReceiptImport from "./pages/ReceiptImport";
 import ProductDetail from "./pages/ProductDetail";
 import QrRedirect from "./pages/QrRedirect";
 import Settings from "./pages/Settings";
-import { IconHome, IconList, IconPlus } from "./ui/icons";
+import UseItUp from "./pages/UseItUp";
+import Recipes from "./pages/Recipes";
+import Shopping from "./pages/Shopping";
+import { IconHome, IconList, IconPlus, IconLeaf, IconCart } from "./ui/icons";
 
 function BottomNav() {
   const on = ({ isActive }: { isActive: boolean }) => (isActive ? "on" : undefined);
@@ -17,12 +20,20 @@ function BottomNav() {
         <IconHome />
         Today
       </NavLink>
+      <NavLink to="/use-it-up" className={on}>
+        <IconLeaf />
+        Cook
+      </NavLink>
       <NavLink to="/add" className="add" aria-label="Add item">
         <IconPlus />
       </NavLink>
       <NavLink to="/food" className={on}>
         <IconList />
         Food
+      </NavLink>
+      <NavLink to="/shopping" className={on}>
+        <IconCart />
+        Shop
       </NavLink>
     </nav>
   );
@@ -37,6 +48,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Today />} />
         <Route path="/food" element={<Inventory />} />
+        <Route path="/use-it-up" element={<UseItUp />} />
+        <Route path="/recipes" element={<Recipes />} />
+        <Route path="/shopping" element={<Shopping />} />
         <Route path="/add" element={<AddItem />} />
         <Route path="/receipt" element={<ReceiptImport />} />
         <Route path="/product/:id" element={<ProductDetail />} />

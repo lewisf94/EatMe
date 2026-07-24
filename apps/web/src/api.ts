@@ -14,6 +14,11 @@ import type {
   DateType,
   ReceiptDraft,
   ReceiptConfirmInput,
+  Recipe,
+  RecipeInput,
+  RecipePatch,
+  ShoppingItem,
+  UseItUpHit,
 } from "@eatme/shared";
 
 export type ReceiptSummary = {
@@ -130,6 +135,28 @@ export const api = {
     req<Location>("/locations", { method: "POST", body: JSON.stringify(input) }),
   patchLocation: (id: string, patch: LocationPatch) =>
     req<Location>(`/locations/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  // recipes: what to cook with the things about to go off
+  recipes: () => req<Recipe[]>("/recipes"),
+  useItUp: () => req<{ expiring: InventoryRow[]; recipes: UseItUpHit[] }>("/recipes/use-it-up"),
+  createRecipe: (input: RecipeInput) =>
+    req<Recipe>("/recipes", { method: "POST", body: JSON.stringify(input) }),
+  patchRecipe: (id: string, patch: RecipePatch) =>
+    req<Recipe>(`/recipes/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteRecipe: (id: string) => req<{ ok: true }>(`/recipes/${id}`, { method: "DELETE" }),
+
+  // shopping list: what's finished and needs buying again
+  shopping: (includeDone = false) =>
+    req<ShoppingItem[]>(`/shopping-list${includeDone ? "?includeDone=1" : ""}`),
+  addShopping: (input: { name?: string; productId?: string }) =>
+    req<ShoppingItem>("/shopping-list", { method: "POST", body: JSON.stringify(input) }),
+  tickShopping: (id: string) =>
+    req<{ item: ShoppingItem; lot: StockLot | null }>(`/shopping-list/${id}/done`, {
+      method: "POST",
+    }),
+  untickShopping: (id: string) =>
+    req<ShoppingItem>(`/shopping-list/${id}/undone`, { method: "POST" }),
+  deleteShopping: (id: string) => req<{ ok: true }>(`/shopping-list/${id}`, { method: "DELETE" }),
+
   getSettings: () => req<Settings>("/settings"),
   putSettings: (patch: Partial<Settings>) =>
     req<Settings>("/settings", { method: "PUT", body: JSON.stringify(patch) }),
