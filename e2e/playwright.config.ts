@@ -1,9 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
+import { rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..");
+
+// Wipe the per-run SQLite data here, in the config, rather than in globalSetup:
+// Playwright launches `webServer` *before* globalSetup runs, so wiping there
+// deleted the directory out from under a server that had already opened it —
+// leaving it writing to a deleted-but-open database and unable to create any
+// new file in DATA_DIR. This module is evaluated before anything starts.
+rmSync(path.join(here, ".e2e-tmp"), { recursive: true, force: true });
 
 // Two independent servers off one web build: a normal one, and one with the
 // optional bearer-token gate on (so the auth spec can prove the client sends it).

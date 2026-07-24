@@ -157,6 +157,18 @@ export const api = {
     req<ShoppingItem>(`/shopping-list/${id}/undone`, { method: "POST" }),
   deleteShopping: (id: string) => req<{ ok: true }>(`/shopping-list/${id}`, { method: "DELETE" }),
 
+  // web push
+  pushPublicKey: () => req<{ publicKey: string; subscribers: number }>("/push/public-key"),
+  pushSubscribe: (sub: { endpoint: string; keys: Record<string, string> }) =>
+    req<{ id: string }>("/push/subscribe", { method: "POST", body: JSON.stringify(sub) }),
+  pushUnsubscribe: (endpoint: string) =>
+    req<{ removed: boolean }>("/push/unsubscribe", {
+      method: "POST",
+      body: JSON.stringify({ endpoint }),
+    }),
+  pushTest: () =>
+    req<{ sent: number; pruned: number; failed: number }>("/push/test", { method: "POST" }),
+
   getSettings: () => req<Settings>("/settings"),
   putSettings: (patch: Partial<Settings>) =>
     req<Settings>("/settings", { method: "PUT", body: JSON.stringify(patch) }),

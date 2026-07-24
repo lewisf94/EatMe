@@ -1,9 +1,4 @@
-import { rmSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-
-/** Wipe the per-run SQLite data dirs so every e2e run starts from the seed. */
-export default function globalSetup() {
-  const tmp = path.join(path.dirname(fileURLToPath(import.meta.url)), ".e2e-tmp");
-  rmSync(tmp, { recursive: true, force: true });
-}
+/** The per-run SQLite wipe now happens in playwright.config.ts, which is
+ *  evaluated before the web servers launch — see the note there. Kept as a
+ *  no-op so there's an obvious home for any future global setup. */
+export default function globalSetup(): void {}
