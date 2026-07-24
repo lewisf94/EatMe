@@ -43,7 +43,7 @@ Three parts, all optional beyond the first:
 | **Phone app** | A **PWA** served by the server and installed to the iPhone Home Screen — no App Store, no Apple Developer account. Camera barcode scanning, offline-tolerant, Web Push notifications (iOS 16.4+). |
 | **Display** | Any battery e-paper board that runs **ESPHome** (~60 lines of YAML) — it wakes a few times a day, fetches a server-rendered image, and deep-sleeps. Board choice is deferred and swappable; the current front-runner is the **Seeed reTerminal E1001** (7.5″, ESP32-S3, ~3-month battery). |
 
-## Repo layout (planned)
+## Repo layout
 
 ```
 eatme/
@@ -77,9 +77,13 @@ eatme/
 - **Data model** — products (identity) · stock lots (the physical packs you own) · QR containers · usage history. Freshness is tracked per-pack: a printed **use-by** (safety) is kept distinct from **best-before** and from an **opened → best-used-by** window (quality), so nothing is called "expired" without a real use-by.
 - **Local receipt import** — photograph a receipt; it is read **entirely on your own hardware** (a local OCR engine — no cloud, ever), parsed, matched against what you already own (learning aliases as you confirm), and shown for review before anything is added.
 - **Reliability pass** — every mutation is atomic and idempotent, so a flaky connection or a double-tap can't double-add or corrupt stock.
+- **Works with no signal** — the cupboard is cached on the phone and stays searchable offline ("do I already have cumin?"), and changes made offline are queued and replayed exactly once when you're back in range.
+- **Kitchen e-ink display** — the server renders the whole 400×300 dashboard as a PNG; the battery panel just wakes, draws it and sleeps. ESPHome config included.
+- **Recipes & shopping list** — recipes are ranked by how much expiring food they'd use up (and never suggest anything past its use-by); running a pack down to empty puts it on the shopping list, and ticking it off puts a fresh pack back.
+- **Notifications** — a Monday digest of what to use this week and a warning the day before anything hits its use-by. Nothing else.
 
 Run it locally with `pnpm install && pnpm dev`, then open `http://localhost:5173` (the API runs on `:8099`); install on the Pi via [`addon/DOCS.md`](addon/DOCS.md). Receipt OCR uses a built-in stub by default, so the whole flow works on a laptop with no Pi and no cloud.
 
-**Next:** true offline (read a cached cupboard and queue changes with no signal, replayed on reconnect) → the e-ink kitchen display → use-it-up recipes & shopping list → Web Push reminders. Full sequence and per-phase specs in [docs/plan/](docs/plan/README.md).
+**Next:** QR labels for decanted jars (P5), then the stretch list — Home Assistant sensors, usage stats, NFC. The hardware and iPhone pieces (flashing the display, Web Push on iOS) are the remaining hands-on steps. Full sequence and per-phase specs in [docs/plan/](docs/plan/README.md).
 
 MIT licensed.
