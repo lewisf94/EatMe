@@ -1,7 +1,20 @@
 import type { FastifyInstance } from "fastify";
 import { StockLotInput, StockLotPatch, EventInput, ArchiveInput } from "@eatme/shared";
-import { createLot, updateLot, archiveLot, addEvent } from "../repo/stockLots.js";
+import { createLot, updateLot, archiveLot, addEvent, getLot } from "../repo/stockLots.js";
 import { idempotent } from "../services/idempotency.js";
+import { getProduct } from "../repo/products.js";
+import { addShopping, hasOpenFor } from "../repo/shopping.js";
+
+/** Running a pack down to empty is the moment you know you need more, so it
+ *  goes straight on the shopping list. Deduped, so finishing a second pack of
+ *  the same thing doesn't add it twice. The pack itself is left alone —
+ *  removing it stays an explicit choice with a reason. */
+function offerToRebuy(lotId: string): void {
+  const lot = getLot(lotId);
+  if (!lot || hasOpenFor(lot.productId)) return;
+  const product = getProduct(lot.productId);
+  if (product) addShopping({ name: product.name, productId: product.id });
+}
 
 export async function registerStockLots(app: FastifyInstance): Promise<void> {
   app.post("/stock-lots", async (req, reply) => {
@@ -44,9 +57,12 @@ export async function registerStockLots(app: FastifyInstance): Promise<void> {
       return reply
         .code(400)
         .send({ error: { message: "invalid event", issues: parsed.error.issues } });
-    const lot = idempotent("lot-event", parsed.data.opId, () =>
-      addEvent(id, parsed.data.event, parsed.data.fractionAfter ?? null),
-    );
+    const lot = idempotent("lot-event", parsed.data.opId, () => {
+      const updated = addEvent(id, parsed.data.event, parsed.data.fractionAfter ?? null);
+      if (updated && (parsed.data.fractionAfter === 0 || parsed.data.event === "finished"))
+        offerToRebuy(id);
+      return updated;
+    });
     if (!lot) return reply.code(404).send({ error: { message: "not found" } });
     return { data: lot };
   });

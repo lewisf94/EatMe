@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { byUrgency, civilToday } from "@eatme/shared";
 import { config } from "../config.js";
 import { listInventory } from "../repo/inventory.js";
+import { listRecipes } from "../repo/recipes.js";
+import { rankUseItUp } from "../services/recipes.js";
 import { getSetting, setSetting, timezone } from "../repo/settings.js";
 import {
   buildDashboardSvg,
@@ -23,7 +25,8 @@ function gatherDashboardData(now = new Date()): DashboardData {
       .filter((r) => r.status !== "ok")
       .slice(0, DISPLAY_ROWS)
       .map((r) => ({ name: r.name, sub: urgencyPhrase(r) })),
-    // `recipe` is filled in by the use-it-up ranking once recipes exist (P7).
+    // The best thing to cook with what's going off, if any recipe fits.
+    recipe: rankUseItUp(listRecipes(), rows)[0]?.recipe.name,
     lowStock: rows.filter((r) => r.fractionLeft != null && r.fractionLeft <= 0.25).length,
     battery: stored === "" ? undefined : Number(stored),
     rendered: new Intl.DateTimeFormat("en-GB", {

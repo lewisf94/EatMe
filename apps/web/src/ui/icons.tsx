@@ -75,6 +75,13 @@ export const IconReceipt = (p: SVGProps<SVGSVGElement>) =>
     <path key="b" d="M9 8h6M9 12h6" />,
   ]);
 
+export const IconCart = (p: SVGProps<SVGSVGElement>) =>
+  S(p, [
+    <path key="a" d="M3 5h2.2l2.3 10h9.5l2-7H6.5" />,
+    <circle key="b" cx="9" cy="19" r="1.4" />,
+    <circle key="c" cx="17" cy="19" r="1.4" />,
+  ]);
+
 export const IconCheck = (p: SVGProps<SVGSVGElement>) =>
   S({ ...p, strokeWidth: 2.4 }, <path d="M5 12.5l4.5 4.5L19 6.5" />);
 

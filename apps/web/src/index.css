@@ -432,10 +432,13 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 9px 24px calc(10px + env(safe-area-inset-bottom));
+  padding: 9px 10px calc(10px + env(safe-area-inset-bottom));
   background: var(--color-ink);
 }
 .botnav a {
+  /* Equal shares so five labels can't collide at narrow widths. */
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -456,6 +459,7 @@
   color: var(--color-paper);
 }
 .botnav .add {
+  flex: none;
   width: 54px;
   height: 54px;
   margin-top: -24px;
@@ -903,6 +907,91 @@
   color: var(--color-calm);
   font-weight: 600;
   font-size: 13px;
+}
+
+/* ------------------------------------------------- recipes / use it up --- */
+.cook {
+  padding: 14px 0;
+  border-top: 1.5px solid var(--color-line);
+}
+.cook:first-child {
+  border-top: 0;
+}
+.cook-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cook h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.012em;
+}
+.uses {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  color: var(--color-calm);
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.uses svg {
+  width: 13px;
+  height: 13px;
+}
+.cook-items {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+.cook-missing {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--color-ink-2);
+}
+.recipe-row {
+  width: 100%;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+/* ------------------------------------------------------------ shopping --- */
+.tickbox {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid var(--color-line-2);
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-paper);
+}
+.tickbox.on {
+  background: var(--color-calm);
+  border-color: var(--color-calm);
+}
+.tickbox svg {
+  width: 15px;
+  height: 15px;
+}
+.srow.bought .grow {
+  color: var(--color-ink-2);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-line-2);
 }
 
 /* ------------------------------------------------------- offline / sync --- */
