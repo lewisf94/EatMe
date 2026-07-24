@@ -12,3 +12,6 @@ data/
 e2e/.e2e-tmp/
 e2e/test-results/
 e2e/playwright-report/
+
+# ESPHome secrets (copy firmware/secrets.yaml.example)
+firmware/secrets.yaml

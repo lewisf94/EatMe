@@ -294,6 +294,18 @@ export type InventoryRow = {
   createdAt: string; // newest lot, for the "recent" sort
 };
 
+/** Urgency ordering: safety-critical first (a passed use-by must outrank an old
+ *  open-life reminder), then the soonest date within a severity band. */
+export function byUrgency(
+  a: { status: Status; daysLeft: number | null },
+  b: { status: Status; daysLeft: number | null },
+): number {
+  return (
+    STATUS_SEVERITY[b.status] - STATUS_SEVERITY[a.status] ||
+    (a.daysLeft ?? Infinity) - (b.daysLeft ?? Infinity)
+  );
+}
+
 // --- intake ------------------------------------------------------------
 // Adding stock in one call: find-or-create the product identity, then a lot.
 export const IntakeInput = ProductInput.extend({

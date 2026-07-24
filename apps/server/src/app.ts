@@ -9,6 +9,7 @@ import { registerReceipts } from "./routes/receipts.js";
 import { registerTaxonomy } from "./routes/taxonomy.js";
 import { registerLookup } from "./routes/lookup.js";
 import { registerSettings } from "./routes/settings.js";
+import { registerDisplay } from "./routes/display.js";
 
 /** Build the Fastify app. Call migrate()/seedIfEmpty() before this so the
  *  repositories' prepared statements bind against existing tables. */
@@ -30,7 +31,11 @@ export function buildApp(): FastifyInstance {
   // reachability). Off by default; /api/health stays open for the HA watchdog.
   if (config.authToken) {
     app.addHook("onRequest", async (req, reply) => {
-      if (!req.url.startsWith("/api/") || req.url === "/api/health") return;
+      const path = req.url.split("?")[0];
+      if (!path.startsWith("/api/") || path === "/api/health") return;
+      // The e-ink panel can't send an Authorization header, so display.png
+      // carries its own ?token= gate (checked in the route) when one is set.
+      if (path === "/api/display.png" && config.displayToken) return;
       if (req.headers.authorization !== `Bearer ${config.authToken}`) {
         return reply.code(401).send({ error: { message: "unauthorized" } });
       }
@@ -46,6 +51,7 @@ export function buildApp(): FastifyInstance {
   app.register(registerTaxonomy, { prefix: "/api" });
   app.register(registerLookup, { prefix: "/api" });
   app.register(registerSettings, { prefix: "/api" });
+  app.register(registerDisplay, { prefix: "/api" });
 
   const webDist = process.env.WEB_DIST;
   if (webDist) {
