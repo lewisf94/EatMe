@@ -656,6 +656,255 @@
   margin-top: 8px;
 }
 
+/* ------------------------------------------ secondary screens: add / etc --- */
+.bar-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.note {
+  text-align: center;
+  color: var(--color-ink-2);
+  font-size: 13px;
+}
+.note.left {
+  text-align: left;
+}
+.note.tiny {
+  font-size: 11.5px;
+  color: var(--color-none);
+}
+
+/* the receipt fast-path, an ink feature block */
+.feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border-radius: var(--radius-eat-lg);
+  padding: 14px 16px;
+  text-decoration: none;
+}
+.feature .fic {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--color-butter);
+  color: #17130a;
+  flex: none;
+}
+.feature .fic svg {
+  width: 22px;
+  height: 22px;
+}
+.feature .ft {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.feature .ft b {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+}
+.feature .ft span {
+  font-size: 12.5px;
+  color: rgba(244, 241, 232, 0.62);
+}
+.feature .arr {
+  margin-left: auto;
+  font-size: 20px;
+  color: rgba(244, 241, 232, 0.7);
+}
+
+/* capture / success state (receipt) */
+.capture {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 34px 8px;
+}
+.capture h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+.capture .btn {
+  margin-top: 4px;
+}
+.capture-badge {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: var(--color-paper-2);
+  border: 1.5px solid var(--color-line-2);
+  color: var(--color-ink);
+}
+.capture-badge svg {
+  width: 30px;
+  height: 30px;
+}
+.capture-badge.done {
+  background: var(--color-calm);
+  border-color: var(--color-calm);
+  color: var(--color-paper);
+}
+.capture-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* ---------------------------------------------------- receipt review lines --- */
+.rgroup {
+  display: flex;
+  flex-direction: column;
+}
+.rline {
+  padding: 13px 0;
+  border-top: 1.5px solid var(--color-line);
+}
+.rline:first-child {
+  border-top: 0;
+}
+.rline-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rline-name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.rline-name-input {
+  flex: 1;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+}
+.rmatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-calm);
+}
+.rmatch svg {
+  width: 12px;
+  height: 12px;
+}
+.rline-sub {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--color-ink-2);
+}
+.rline-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
+}
+.rline-controls .field {
+  flex: 1 1 46%;
+  min-width: 130px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+.rline.off {
+  opacity: 0.72;
+}
+.rline.off .rline-name {
+  color: var(--color-ink-2);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-line-2);
+}
+
+/* touch stepper for receipt quantities */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+}
+.stepper button {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--color-line-2);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.stepper button svg {
+  width: 16px;
+  height: 16px;
+}
+.stepper-n {
+  min-width: 26px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+/* ------------------------------------------------------------- settings --- */
+.srow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1.5px solid var(--color-line);
+}
+.srow:first-child {
+  border-top: 0;
+}
+.srow .grow {
+  flex: 1;
+  font-size: 15px;
+}
+.srow-sub {
+  font-size: 12px;
+  color: var(--color-none);
+}
+.saved {
+  align-self: center;
+  color: var(--color-calm);
+  font-weight: 600;
+  font-size: 13px;
+}
+
 :focus-visible {
   outline: 2px solid var(--color-butter-deep);
   outline-offset: 2px;

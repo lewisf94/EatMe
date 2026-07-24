@@ -37,11 +37,11 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Today />} />
         <Route path="/food" element={<Inventory />} />
-        <Route path="/add" element={wrap(<AddItem />)} />
-        <Route path="/receipt" element={wrap(<ReceiptImport />)} />
+        <Route path="/add" element={<AddItem />} />
+        <Route path="/receipt" element={<ReceiptImport />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/i/:qrUid" element={wrap(<QrRedirect />)} />
-        <Route path="/settings" element={wrap(<Settings />)} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
       <BottomNav />
     </div>

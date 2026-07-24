@@ -60,6 +60,27 @@ export const IconBack = (p: SVGProps<SVGSVGElement>) => S(p, <path d="M15 5l-7 7
 export const IconEdit = (p: SVGProps<SVGSVGElement>) =>
   S(p, [<path key="a" d="M4 20h4L18 10l-4-4L4 16z" />, <path key="b" d="M13 7l4 4" />]);
 
+export const IconCamera = (p: SVGProps<SVGSVGElement>) =>
+  S(p, [
+    <path
+      key="a"
+      d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"
+    />,
+    <circle key="b" cx="12" cy="13" r="3.2" />,
+  ]);
+
+export const IconReceipt = (p: SVGProps<SVGSVGElement>) =>
+  S(p, [
+    <path key="a" d="M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5V3Z" />,
+    <path key="b" d="M9 8h6M9 12h6" />,
+  ]);
+
+export const IconCheck = (p: SVGProps<SVGSVGElement>) =>
+  S({ ...p, strokeWidth: 2.4 }, <path d="M5 12.5l4.5 4.5L19 6.5" />);
+
+export const IconMinus = (p: SVGProps<SVGSVGElement>) =>
+  S({ ...p, strokeWidth: 2.3 }, <path d="M5 12h14" />);
+
 export const IconGear = (p: SVGProps<SVGSVGElement>) =>
   S(p, [
     <circle key="a" cx="12" cy="12" r="3" />,

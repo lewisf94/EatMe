@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import type { Category, Location } from "@eatme/shared";
 import { api } from "../api";
-import { cls } from "../ui";
 import { BarcodeScanner } from "../scanner/BarcodeScanner";
+import { IconReceipt, IconCamera } from "../ui/icons";
 
 export default function AddItem() {
   const nav = useNavigate();
@@ -74,139 +74,160 @@ export default function AddItem() {
   };
 
   return (
-    <form className="space-y-4" onSubmit={submit}>
-      <Link
-        to="/receipt"
-        className="flex items-center justify-between rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white active:bg-emerald-700"
-      >
-        <span>🧾 Scan a receipt</span>
-        <span aria-hidden>→</span>
-      </Link>
-      <p className="text-center text-xs text-slate-400">
-        The fast way to stock up — no typing each item
-      </p>
+    <>
+      <header className="appbar">
+        <h1>Add to cupboard</h1>
+      </header>
+      <div className="screen">
+        <Link to="/receipt" className="feature">
+          <span className="fic">
+            <IconReceipt />
+          </span>
+          <span className="ft">
+            <b>Scan a receipt</b>
+            <span>Stock up fast — no typing each item</span>
+          </span>
+          <span className="arr" aria-hidden>
+            →
+          </span>
+        </Link>
 
-      <h2 className="pt-2 text-xl font-bold">Or add one item</h2>
+        <div className="sec-head" style={{ marginTop: 22, marginBottom: 12 }}>
+          <span className="eyebrow">Or add one item</span>
+        </div>
 
-      <div>
-        <label className={cls.label} htmlFor="barcode">
-          Barcode
-        </label>
-        <input
-          id="barcode"
-          className={`${cls.input} mt-1`}
-          inputMode="numeric"
-          placeholder="e.g. 5000159407236"
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-        />
-        <div className="mt-2 flex gap-2">
-          <button type="button" className={`flex-1 ${cls.btn}`} onClick={() => setScanning(true)}>
-            📷 Scan
+        <form className="form" onSubmit={submit}>
+          <div>
+            <label className="label" htmlFor="barcode">
+              Barcode
+            </label>
+            <input
+              id="barcode"
+              className="field"
+              inputMode="numeric"
+              placeholder="e.g. 5000159407236"
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+            />
+            <div className="two" style={{ marginTop: 8 }}>
+              <button type="button" className="btn btn-line" onClick={() => setScanning(true)}>
+                <IconCamera />
+                Scan
+              </button>
+              <button type="button" className="btn btn-line" onClick={() => doLookup()}>
+                Look up typed
+              </button>
+            </div>
+            {lookupMsg && (
+              <p className="note left" style={{ marginTop: 6 }}>
+                {lookupMsg}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="label" htmlFor="name">
+              Name
+            </label>
+            <input
+              id="name"
+              required
+              className="field"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="label" htmlFor="brand">
+              Brand (optional)
+            </label>
+            <input
+              id="brand"
+              className="field"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+            />
+          </div>
+
+          <div className="two">
+            <div>
+              <label className="label" htmlFor="cat">
+                Category
+              </label>
+              <select
+                id="cat"
+                className="field"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
+                {cats.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor="loc">
+                Location
+              </label>
+              <select
+                id="loc"
+                className="field"
+                value={locationId}
+                onChange={(e) => setLocationId(e.target.value)}
+              >
+                {locs.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="two">
+            <div>
+              <label className="label" htmlFor="dt">
+                Date type
+              </label>
+              <select
+                id="dt"
+                className="field"
+                value={dateType}
+                onChange={(e) => setDateType(e.target.value as "best_before" | "use_by")}
+              >
+                <option value="best_before">Best before</option>
+                <option value="use_by">Use by</option>
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor="bb">
+                Date (optional)
+              </label>
+              <input
+                id="bb"
+                type="date"
+                className="field"
+                value={dateValue}
+                onChange={(e) => setDateValue(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: "100%", marginTop: 4 }}
+            disabled={saving || !name}
+          >
+            {saving ? "Saving…" : "Add to cupboard"}
           </button>
-          <button type="button" className={`flex-1 ${cls.btnGhost}`} onClick={() => doLookup()}>
-            Look up typed
-          </button>
-        </div>
-        {lookupMsg && <p className="mt-1 text-sm text-slate-500">{lookupMsg}</p>}
+        </form>
+
+        {scanning && <BarcodeScanner onDetected={onScan} onClose={() => setScanning(false)} />}
       </div>
-
-      <div>
-        <label className={cls.label} htmlFor="name">
-          Name
-        </label>
-        <input
-          id="name"
-          required
-          className={cls.input}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
-
-      <div>
-        <label className={cls.label} htmlFor="brand">
-          Brand (optional)
-        </label>
-        <input
-          id="brand"
-          className={cls.input}
-          value={brand}
-          onChange={(e) => setBrand(e.target.value)}
-        />
-      </div>
-
-      <div className="flex gap-2">
-        <div className="flex-1">
-          <label className={cls.label} htmlFor="cat">
-            Category
-          </label>
-          <select
-            id="cat"
-            className={cls.input}
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            {cats.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex-1">
-          <label className={cls.label} htmlFor="loc">
-            Location
-          </label>
-          <select
-            id="loc"
-            className={cls.input}
-            value={locationId}
-            onChange={(e) => setLocationId(e.target.value)}
-          >
-            {locs.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        <div className="w-36">
-          <label className={cls.label} htmlFor="dt">
-            Date type
-          </label>
-          <select
-            id="dt"
-            className={cls.input}
-            value={dateType}
-            onChange={(e) => setDateType(e.target.value as "best_before" | "use_by")}
-          >
-            <option value="best_before">Best before</option>
-            <option value="use_by">Use by</option>
-          </select>
-        </div>
-        <div className="flex-1">
-          <label className={cls.label} htmlFor="bb">
-            Date (optional)
-          </label>
-          <input
-            id="bb"
-            type="date"
-            className={cls.input}
-            value={dateValue}
-            onChange={(e) => setDateValue(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <button type="submit" className={`w-full ${cls.btn}`} disabled={saving || !name}>
-        {saving ? "Saving…" : "Add to cupboard"}
-      </button>
-
-      {scanning && <BarcodeScanner onDetected={onScan} onClose={() => setScanning(false)} />}
-    </form>
+    </>
   );
 }

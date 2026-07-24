@@ -1,11 +1,33 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import type { Category, Location, ReceiptDraft, ReceiptLineDecision } from "@eatme/shared";
+import { Link, useNavigate } from "react-router-dom";
+import type {
+  Category,
+  Location,
+  ReceiptDraft,
+  ReceiptDraftLine,
+  ReceiptLineDecision,
+} from "@eatme/shared";
 import { api, type ReceiptSummary } from "../api";
-import { cls } from "../ui";
+import { IconBack, IconCamera, IconCheck, IconReceipt, IconPlus, IconMinus } from "../ui/icons";
 
-type Decision = { value: string; categoryId: string; quantity: number; locationId: string };
-// value: `p:<productId>` add existing · "new" · "ignore" · "not_tracked"
+type Decision = {
+  value: string; // `p:<productId>` add existing · "new" · "ignore" · "not_tracked"
+  name: string; // editable name when creating a new product
+  categoryId: string;
+  quantity: number;
+  locationId: string;
+};
+
+/** Receipt text is usually shouted in caps ("MANGO CHUTNEY") — gently title-case
+ *  it so a new product name reads like a name, still fully editable. */
+const titleCase = (s: string) => s.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+
+/** Name to show for a line that's being added to an existing/suggested product. */
+function chosenName(l: ReceiptDraftLine, value: string): string {
+  const id = value.slice(2);
+  if (l.match?.productId === id) return l.match.name;
+  return l.suggestions.find((s) => s.productId === id)?.name ?? titleCase(l.normalizedText);
+}
 
 /** Downscale + re-encode to JPEG. Drawing through a canvas also strips EXIF, so
  *  no location/time metadata leaves the device. */
@@ -21,7 +43,22 @@ async function compressImage(file: File, maxDim = 1600, quality = 0.8): Promise<
   return new Promise((res) => canvas.toBlob((b) => res(b!), "image/jpeg", quality));
 }
 
+function Stepper({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <span className="stepper">
+      <button type="button" aria-label="One fewer" onClick={() => onChange(Math.max(1, value - 1))}>
+        <IconMinus />
+      </button>
+      <span className="stepper-n">{value}</span>
+      <button type="button" aria-label="One more" onClick={() => onChange(value + 1)}>
+        <IconPlus />
+      </button>
+    </span>
+  );
+}
+
 export default function ReceiptImport() {
+  const nav = useNavigate();
   const [cats, setCats] = useState<Category[]>([]);
   const [locs, setLocs] = useState<Location[]>([]);
   const [draft, setDraft] = useState<ReceiptDraft | null>(null);
@@ -51,6 +88,7 @@ export default function ReceiptImport() {
             l.id,
             {
               value: l.match ? `p:${l.match.productId}` : "new",
+              name: titleCase(l.normalizedText),
               categoryId: defCat,
               quantity: l.quantity,
               locationId: defLoc,
@@ -82,7 +120,10 @@ export default function ReceiptImport() {
           return {
             lineId: l.id,
             action: "add",
-            newProduct: { name: l.normalizedText, categoryId: d.categoryId || cats[0]?.id || "" },
+            newProduct: {
+              name: d.name.trim() || l.normalizedText,
+              categoryId: d.categoryId || cats[0]?.id || "",
+            },
             quantity: d.quantity,
             locationId: d.locationId || undefined, // server falls back to a default
           };
@@ -102,168 +143,249 @@ export default function ReceiptImport() {
     }
   };
 
+  const bar = (title: string) => (
+    <header className="appbar">
+      <div className="bar-left">
+        <button className="iconbtn" onClick={() => nav("/add")} aria-label="Back">
+          <IconBack />
+        </button>
+        <h1>{title}</h1>
+      </div>
+    </header>
+  );
+
+  // ---- success -----------------------------------------------------------
   if (summary)
     return (
-      <div className="py-10 text-center">
-        <p className="mb-2 text-4xl">🧾</p>
-        <p className="font-semibold">Added {summary.added} to the cupboard.</p>
-        <p className="mt-1 text-sm text-slate-500">
-          {summary.newProducts} new · {summary.ignored} ignored · {summary.notTracked} not tracked
-        </p>
-        <div className="mt-4 flex justify-center gap-2">
-          <Link to="/" className={cls.btn}>
-            View cupboard
-          </Link>
-          <button
-            className={cls.btnGhost}
-            onClick={() => {
-              setSummary(null);
-              setDraft(null);
-            }}
+      <>
+        {bar("All done")}
+        <div className="screen">
+          <div className="capture">
+            <div className="capture-badge done">
+              <IconCheck />
+            </div>
+            <h2>Added {summary.added} to the cupboard</h2>
+            <p className="note">
+              {summary.newProducts} new · {summary.ignored} ignored · {summary.notTracked} not
+              tracked
+            </p>
+            <div className="capture-actions">
+              <Link to="/" className="btn btn-line">
+                View cupboard
+              </Link>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setSummary(null);
+                  setDraft(null);
+                }}
+              >
+                Scan another
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+
+  // ---- capture -----------------------------------------------------------
+  if (!draft)
+    return (
+      <>
+        {bar("Scan a receipt")}
+        <div className="screen">
+          {error && (
+            <p className="alert" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="capture">
+            <div className="capture-badge">
+              <IconReceipt />
+            </div>
+            <h2>Snap the receipt</h2>
+            <p className="note">Photograph it and confirm what to add — no typing each item.</p>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              data-testid="receipt-file"
+              hidden
+              onChange={(e) => e.target.files?.[0] && void onFile(e.target.files[0])}
+            />
+            <button
+              className="btn btn-primary"
+              disabled={busy === "reading"}
+              onClick={() => fileRef.current?.click()}
+            >
+              <IconCamera />
+              {busy === "reading" ? "Reading…" : "Take a photo"}
+            </button>
+            <p className="note tiny">
+              Read on your Pi and never stored — only the parsed lines are kept.
+            </p>
+          </div>
+        </div>
+      </>
+    );
+
+  // ---- review ------------------------------------------------------------
+  const off = (v?: string) => v === "ignore" || v === "not_tracked";
+  const needs: ReceiptDraftLine[] = [];
+  const matched: ReceiptDraftLine[] = [];
+  const notFood: ReceiptDraftLine[] = [];
+  for (const l of draft.lines) {
+    const d = decisions[l.id];
+    if (off(d?.value)) notFood.push(l);
+    else if (l.match) matched.push(l);
+    else needs.push(l);
+  }
+  const addCount = draft.lines.length - notFood.length;
+
+  const renderLine = (l: ReceiptDraftLine) => {
+    const d = decisions[l.id];
+    if (!d) return null;
+
+    if (off(d.value))
+      return (
+        <div key={l.id} className="rline off">
+          <div className="rline-head">
+            <span className="rline-name">{titleCase(l.normalizedText)}</span>
+            <button
+              className="mini"
+              onClick={() => setDec(l.id, { value: l.match ? `p:${l.match.productId}` : "new" })}
+            >
+              Add it back
+            </button>
+          </div>
+          <div className="rline-sub">
+            {d.value === "not_tracked" ? "Not tracked" : "Ignored"} · {l.rawText}
+          </div>
+        </div>
+      );
+
+    const adding = d.value === "new" || d.value.startsWith("p:");
+    return (
+      <div key={l.id} className="rline">
+        <div className="rline-head">
+          {d.value === "new" ? (
+            <input
+              className="field rline-name-input"
+              aria-label={`Name for ${l.rawText}`}
+              value={d.name}
+              onChange={(e) => setDec(l.id, { name: e.target.value })}
+            />
+          ) : (
+            <span className="rline-name">
+              {chosenName(l, d.value)}
+              <span className="rmatch">
+                <IconCheck />
+                {l.match && d.value === `p:${l.match.productId}` ? "Matched" : "Chosen"}
+              </span>
+            </span>
+          )}
+          <Stepper value={d.quantity} onChange={(n) => setDec(l.id, { quantity: n })} />
+        </div>
+        <div className="rline-sub">
+          {l.rawText}
+          {l.lineTotal != null ? ` · £${l.lineTotal.toFixed(2)}` : ""}
+        </div>
+        <div className="rline-controls">
+          <select
+            className="field"
+            aria-label={`Decision for ${l.normalizedText}`}
+            value={d.value}
+            onChange={(e) => setDec(l.id, { value: e.target.value })}
           >
-            Scan another
-          </button>
+            {l.match && <option value={`p:${l.match.productId}`}>✓ {l.match.name}</option>}
+            {l.suggestions
+              .filter((s) => s.productId !== l.match?.productId)
+              .map((s) => (
+                <option key={s.productId} value={`p:${s.productId}`}>
+                  {s.name}
+                  {s.brand ? ` · ${s.brand}` : ""}
+                </option>
+              ))}
+            <option value="new">+ New product</option>
+            <option value="ignore">Ignore this line</option>
+            <option value="not_tracked">Not food — don’t track</option>
+          </select>
+          {d.value === "new" && (
+            <select
+              className="field"
+              aria-label="Category"
+              value={d.categoryId}
+              onChange={(e) => setDec(l.id, { categoryId: e.target.value })}
+            >
+              {cats.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {adding && (
+            <select
+              className="field"
+              aria-label="Location"
+              value={d.locationId}
+              onChange={(e) => setDec(l.id, { locationId: e.target.value })}
+            >
+              {locs.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
     );
+  };
+
+  const section = (title: string, lines: ReceiptDraftLine[], hint?: string) =>
+    lines.length === 0 ? null : (
+      <section className="sec">
+        <div className="sec-head">
+          <span className="eyebrow">{title}</span>
+          <span className="sec-count">{lines.length}</span>
+        </div>
+        {hint && <p className="note left">{hint}</p>}
+        <div className="rgroup">{lines.map(renderLine)}</div>
+      </section>
+    );
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Link to="/add" className="text-sm text-slate-500">
-          ← Add
-        </Link>
-        <h2 className="text-xl font-bold">Scan a receipt</h2>
-      </div>
-
-      {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-          {error}
+    <>
+      {bar("Review receipt")}
+      <div className="screen" data-testid="receipt-review">
+        <p className="stock-line">
+          {draft.purchase.merchant ? `${draft.purchase.merchant} · ` : ""}
+          {draft.lines.length} lines found — tick, fix, or skip.
         </p>
-      )}
-
-      {!draft ? (
-        <div className="py-8 text-center text-slate-500">
-          <p className="mb-4">
-            Photograph a receipt and confirm what to add — no typing each item.
+        {error && (
+          <p className="alert" role="alert">
+            {error}
           </p>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            data-testid="receipt-file"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && void onFile(e.target.files[0])}
-          />
-          <button
-            className={cls.btn}
-            disabled={busy === "reading"}
-            onClick={() => fileRef.current?.click()}
-          >
-            {busy === "reading" ? "Reading…" : "📷 Choose / take a photo"}
-          </button>
-          <p className="mt-3 text-xs text-slate-400">
-            The photo is processed on your Pi and never stored — only the parsed lines are kept.
-          </p>
-        </div>
-      ) : (
-        <>
-          <p className="text-sm text-slate-500">
-            {draft.purchase.merchant ? `${draft.purchase.merchant} · ` : ""}
-            {draft.lines.length} lines — tick, fix, or ignore, then confirm.
-          </p>
+        )}
 
-          <ul className="space-y-2" data-testid="receipt-review">
-            {draft.lines.map((l) => {
-              const d = decisions[l.id];
-              return (
-                <li key={l.id} className={`${cls.card} space-y-2 py-3`}>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate font-mono text-sm">{l.rawText}</span>
-                    {l.lineTotal != null && (
-                      <span className="shrink-0 text-xs text-slate-400">
-                        £{l.lineTotal.toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                  <select
-                    className={cls.input}
-                    aria-label={`Decision for ${l.normalizedText}`}
-                    value={d?.value}
-                    onChange={(e) => setDec(l.id, { value: e.target.value })}
-                  >
-                    {l.match && (
-                      <option value={`p:${l.match.productId}`}>
-                        ✓ {l.match.name} ({l.match.via})
-                      </option>
-                    )}
-                    {l.suggestions
-                      .filter((s) => s.productId !== l.match?.productId)
-                      .map((s) => (
-                        <option key={s.productId} value={`p:${s.productId}`}>
-                          {s.name}
-                          {s.brand ? ` · ${s.brand}` : ""}
-                        </option>
-                      ))}
-                    <option value="new">+ New product “{l.normalizedText}”</option>
-                    <option value="ignore">Ignore this line</option>
-                    <option value="not_tracked">Don’t track</option>
-                  </select>
+        {section("Needs your help", needs, "No match found — name it, categorise it, or skip it.")}
+        {section("Matched automatically", matched)}
+        {section("Not food", notFood)}
 
-                  {(d?.value === "new" || d?.value?.startsWith("p:")) && (
-                    <div className="flex gap-2">
-                      {d.value === "new" && (
-                        <select
-                          className={cls.input}
-                          aria-label="Category"
-                          value={d.categoryId}
-                          onChange={(e) => setDec(l.id, { categoryId: e.target.value })}
-                        >
-                          {cats.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                      <input
-                        type="number"
-                        min={1}
-                        className={`${cls.input} w-20`}
-                        aria-label="Quantity"
-                        value={d.quantity}
-                        onChange={(e) => setDec(l.id, { quantity: Math.max(1, +e.target.value) })}
-                      />
-                      <select
-                        className={cls.input}
-                        aria-label="Location"
-                        value={d.locationId}
-                        onChange={(e) => setDec(l.id, { locationId: e.target.value })}
-                      >
-                        {locs.map((loc) => (
-                          <option key={loc.id} value={loc.id}>
-                            {loc.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-
-          <button
-            className={`w-full ${cls.btn}`}
-            disabled={busy === "confirming"}
-            onClick={confirm}
-            data-testid="receipt-confirm"
-          >
-            {busy === "confirming" ? "Adding…" : "Confirm & add to cupboard"}
-          </button>
-        </>
-      )}
-    </div>
+        <button
+          className="btn btn-primary"
+          style={{ width: "100%", marginTop: 20 }}
+          disabled={busy === "confirming" || addCount === 0}
+          onClick={confirm}
+          data-testid="receipt-confirm"
+        >
+          {busy === "confirming"
+            ? "Adding…"
+            : `Add ${addCount} ${addCount === 1 ? "item" : "items"} to the cupboard`}
+        </button>
+      </div>
+    </>
   );
 }
