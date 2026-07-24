@@ -37,7 +37,15 @@ export default function Today() {
 
   const locName = (id: string | null) => locs.find((l) => l.id === id)?.name ?? "";
 
-  const soon = rows.filter((r) => r.status === "use_soon");
+  // Among items due equally soon, safety outranks quality: eating past a use-by
+  // is a health risk, past a best-before is only a question of how good it is.
+  const soon = rows
+    .filter((r) => r.status === "use_soon")
+    .sort(
+      (a, b) =>
+        (a.daysLeft ?? 1e9) - (b.daysLeft ?? 1e9) ||
+        Number(b.pressureKind === "use_by") - Number(a.pressureKind === "use_by"),
+    );
   const past = rows.filter((r) => isPast(r.status));
   const hero = soon[0] ?? past[0] ?? null;
   const alsoSoon = soon.filter((r) => r.productId !== hero?.productId);
