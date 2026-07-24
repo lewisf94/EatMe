@@ -8,6 +8,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      // We ship our own service worker (src/sw.ts) so it can handle Web Push;
+      // it still precaches the same shell, via the injected manifest.
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       registerType: "autoUpdate",
       includeAssets: ["apple-touch-icon-180x180.png"],
       manifest: {
@@ -29,12 +34,11 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      injectManifest: {
         // Precache the app shell + the scanner wasm so scanning works offline.
+        // (The navigation fallback and its /api denylist now live in sw.ts.)
         globPatterns: ["**/*.{js,css,html,woff2,wasm,png,svg}"],
-        navigateFallback: "/index.html",
-        // Never serve the SPA shell for API calls.
-        navigateFallbackDenylist: [/^\/api/],
+        maximumFileSizeToCacheInBytes: 4_000_000, // the zxing wasm is ~1 MB
       },
     }),
   ],

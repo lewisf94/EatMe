@@ -11,4 +11,6 @@ export const config = {
   /** When set, /api/display.png needs ?token= — the e-ink panel's own gate, so
    *  the display keeps working when AUTH_TOKEN locks down the rest of the API. */
   displayToken: process.env.DISPLAY_TOKEN ?? "",
+  /** Contact address pushed to the VAPID service (spec wants a mailto/URL). */
+  vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:eatme@localhost",
 };

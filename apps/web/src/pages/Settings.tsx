@@ -2,7 +2,101 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Category, Location } from "@eatme/shared";
 import { api, TOKEN_KEY } from "../api";
+import { enablePush, disablePush, pushState, type PushState } from "../push";
 import { IconBack } from "../ui/icons";
+
+/** Sparse by design: a Monday digest of what to use, and a day-before warning
+ *  for anything with a use-by. */
+function NotificationsSection() {
+  const [state, setState] = useState<PushState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    void pushState().then(setState);
+  }, []);
+
+  const run = async (fn: () => Promise<PushState>, after?: string) => {
+    setBusy(true);
+    setNote(null);
+    try {
+      setState(await fn());
+      if (after) setNote(after);
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "That didn’t work");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="sec">
+      <div className="sec-head">
+        <span className="eyebrow">Notifications</span>
+      </div>
+      <p className="note left" style={{ marginBottom: 10 }}>
+        A Monday morning digest of what to use this week, plus a warning the day before anything
+        hits its use-by. Nothing else.
+      </p>
+
+      {state === "unsupported" ? (
+        <p className="note left tiny">
+          This browser can’t do notifications. On an iPhone, add EatMe to your Home Screen first.
+        </p>
+      ) : state === "denied" ? (
+        <p className="note left tiny">
+          Notifications are blocked for EatMe — turn them back on in your browser settings.
+        </p>
+      ) : (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {state === "on" ? (
+            <>
+              <button
+                className="btn btn-line"
+                disabled={busy}
+                onClick={() => void run(disablePush, "Notifications turned off")}
+              >
+                Turn off
+              </button>
+              <button
+                className="btn btn-line"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    const { sent, failed } = await api.pushTest();
+                    setNote(
+                      sent > 0
+                        ? "Test sent — check your notifications"
+                        : failed > 0
+                          ? "Couldn’t reach the notification service"
+                          : "No devices are subscribed yet",
+                    );
+                    return "on";
+                  })
+                }
+              >
+                Send a test
+              </button>
+            </>
+          ) : (
+            <button
+              className="btn btn-primary"
+              disabled={busy || state === null}
+              onClick={() => void run(enablePush, "Notifications are on")}
+            >
+              {busy ? "Just a second…" : "Turn on notifications"}
+            </button>
+          )}
+        </div>
+      )}
+      {note && (
+        <p className="note left tiny" style={{ marginTop: 8 }}>
+          {note}
+        </p>
+      )}
+    </section>
+  );
+}
 
 // A small, robust set of household timezones; the stored value is unioned in so
 // an unusual zone set elsewhere still shows up as the selected option.
@@ -191,6 +285,8 @@ export default function Settings() {
             </button>
           </div>
         </section>
+
+        <NotificationsSection />
 
         <section className="sec">
           <div className="sec-head">
