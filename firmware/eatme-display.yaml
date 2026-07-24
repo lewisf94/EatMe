@@ -1,0 +1,126 @@
+# EatMe kitchen display — Seeed XIAO ESP32-C3 + Waveshare 4.2" e-paper (400x300 B/W).
+#
+# The device is deliberately dumb: it wakes, downloads a fully-rendered PNG from
+# the server (/api/display.png), draws it, reports battery, and deep-sleeps. All
+# layout lives on the server, so changing the dashboard never means reflashing.
+#
+# Flash via the ESPHome dashboard in Home Assistant. Copy secrets.yaml.example to
+# secrets.yaml (git-ignored) and fill in your WiFi.
+#
+# NOTE: the SPI/CS/DC/BUSY/RESET pins below are a sensible XIAO mapping, but they
+# are YOUR wiring choice — match them to how you solder the panel. Hardware SPI on
+# the XIAO C3 is SCK=GPIO8 (D8) and MOSI=GPIO10 (D10); the rest are any free GPIO.
+#
+# Verify against current ESPHome docs when you build: the `online_image` trigger
+# name, the XIAO-C3 `board:` id, and the `4.20in` model string (there is also
+# `4.20inV2`, and `4.20in-bV2` is the three-colour variant — use the plain B/W).
+substitutions:
+  server: "http://homeassistant.local:8099"
+  # If the server runs with DISPLAY_TOKEN set, add "&token=YOUR_TOKEN" to both
+  # URLs below (the panel can't send an Authorization header).
+  dashboard_url: "http://homeassistant.local:8099/api/display.png"
+
+esphome:
+  name: eatme-display
+  on_boot:
+    # -100 runs late, once WiFi/HTTP are up.
+    priority: -100
+    then:
+      - script.execute: refresh_dashboard
+
+esp32:
+  board: esp32-c3-devkitm-1 # XIAO ESP32-C3 (the ESPHome XIAO preset also works)
+  framework:
+    type: esp-idf
+
+logger:
+  baud_rate: 0 # frees the UART pins and trims a little power
+
+api:
+  # A deep-sleep device is offline nearly all the time; without this it would
+  # reboot itself whenever Home Assistant isn't connected.
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+  # A static IP skips DHCP on every wake — usually the biggest slice of wake
+  # time, so this is the largest easy battery win.
+  # manual_ip:
+  #   static_ip: 192.168.1.60
+  #   gateway: 192.168.1.1
+  #   subnet: 255.255.255.0
+
+http_request:
+  timeout: 15s
+
+spi:
+  clk_pin: GPIO8 # XIAO D8 (SCK)
+  mosi_pin: GPIO10 # XIAO D10 (MOSI)
+
+globals:
+  - id: battery_pct
+    type: int
+    restore_value: false
+    initial_value: "0"
+
+# LiPo %: the XIAO has no fuel gauge, so read the cell through a 2x100k divider
+# and hand the number to the server, which prints it in the dashboard footer.
+sensor:
+  - platform: adc
+    pin: GPIO2
+    id: battery_volts
+    attenuation: 12db
+    update_interval: never
+
+online_image:
+  - id: dashboard
+    url: ${dashboard_url}
+    format: PNG
+    type: GRAYSCALE
+    buffer_size: 30000 # 400x300 needs far less than a 7.5" panel
+    update_interval: never # fetched explicitly by the script below
+    on_download_finished:
+      then:
+        - component.update: epaper_display
+        - delay: 5s # let the panel finish refreshing before we cut power
+        - deep_sleep.enter: deep_sleep_1
+
+display:
+  - platform: waveshare_epaper
+    id: epaper_display
+    model: 4.20in # Waveshare 4.2" B/W 400x300; try 4.20inV2 if yours ghosts
+    cs_pin: GPIO4 # ↓ these four are wiring choices — any free GPIO
+    dc_pin: GPIO5
+    busy_pin: GPIO6
+    reset_pin: GPIO7
+    update_interval: never # drawn explicitly once the download lands
+    lambda: |-
+      it.image(0, 0, id(dashboard));
+
+script:
+  - id: refresh_dashboard
+    then:
+      # Report the battery first, so the image we then fetch already shows the
+      # fresh value. (That first call also renders a PNG we discard — one extra
+      # render a day on the Pi, in exchange for a much simpler device.)
+      - lambda: |-
+          float v = id(battery_volts).sample() * 2.0f;   // 2x100k divider
+          int pct = (int) roundf((v - 3.3f) / (4.2f - 3.3f) * 100.0f);
+          id(battery_pct) = pct < 0 ? 0 : (pct > 100 ? 100 : pct);
+      - http_request.get:
+          url: !lambda |-
+            return std::string("${server}/api/display.png?battery=") + to_string(id(battery_pct));
+      - online_image.update:
+          id: dashboard
+
+deep_sleep:
+  id: deep_sleep_1
+  # A safety net: the script above normally enters sleep as soon as the panel has
+  # drawn. Food expiry moves slowly, so once a day is plenty for a cupboard.
+  run_duration: 60s
+  sleep_duration: 24h

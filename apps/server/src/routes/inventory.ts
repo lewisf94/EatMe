@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { IntakeInput, civilToday, STATUS_SEVERITY } from "@eatme/shared";
+import { IntakeInput, civilToday, byUrgency } from "@eatme/shared";
 import { listInventory } from "../repo/inventory.js";
 import { findOrCreateProduct } from "../repo/products.js";
 import { createLot } from "../repo/stockLots.js";
@@ -27,12 +27,7 @@ export async function registerInventory(app: FastifyInstance): Promise<void> {
     rows.sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name);
       if (sort === "recent") return b.createdAt.localeCompare(a.createdAt);
-      // urgency: safety-critical first (a passed use-by must outrank an old
-      // open-life reminder), then soonest date within a severity band.
-      return (
-        STATUS_SEVERITY[b.status] - STATUS_SEVERITY[a.status] ||
-        (a.daysLeft ?? Infinity) - (b.daysLeft ?? Infinity)
-      );
+      return byUrgency(a, b);
     });
 
     return { data: rows };
