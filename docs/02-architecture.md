@@ -76,7 +76,7 @@ A `?panel=` parameter (a P9 extension) lets a second/different display request i
 
 ## HA add-on packaging
 
-An HA OS add-on is a Docker image plus a manifest. `addon/config.yaml` sketch:
+An HA OS add-on is a Docker image plus a manifest. `config.yaml` (repo root) sketch:
 
 ```yaml
 name: EatMe

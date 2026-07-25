@@ -47,12 +47,15 @@ Three parts, all optional beyond the first:
 
 ```
 eatme/
+├── config.yaml      # HA add-on manifest (at the root so Supervisor's build
+├── Dockerfile        #   context is the whole monorepo — see addon/DOCS.md)
+├── repository.yaml  # lets Home Assistant add this repo as an add-on source
 ├── apps/
 │   ├── server/      # Fastify API, display renderer, scheduled jobs
 │   └── web/         # React PWA (Vite + vite-plugin-pwa)
 ├── packages/
 │   └── shared/      # zod schemas & types shared by server and web
-├── addon/           # Home Assistant add-on packaging (config.yaml, Dockerfile)
+├── addon/           # add-on docs + the OCR sidecar (separate Docker image)
 ├── firmware/        # ESPHome YAML for the e-ink display
 └── docs/            # the plan (start here)
 ```

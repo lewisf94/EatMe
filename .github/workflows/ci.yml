@@ -52,6 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Build context is the repo root (see addon/Dockerfile); this is a smoke
-      # test that the Home Assistant add-on image still assembles.
-      - run: docker build -f addon/Dockerfile -t eatme-addon:ci .
+      # Build context is the repo root (Dockerfile lives there so the Supervisor
+      # can use the whole monorepo as the add-on's build context). This is a
+      # smoke test that the Home Assistant add-on image still assembles.
+      - run: docker build -f Dockerfile -t eatme-addon:ci .

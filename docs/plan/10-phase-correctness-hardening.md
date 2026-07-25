@@ -59,7 +59,7 @@ must be green.
 - **`.github/workflows/ci.yml`**: on push/PR — Node 22 + 24 matrix,
   `pnpm install --frozen-lockfile`, `pnpm check`, unit tests, the Playwright e2e
   (build web, boot the server with `WEB_DIST`, run), and a `docker build` of
-  `addon/Dockerfile` (amd64) as a smoke test.
+  `Dockerfile` (repo root, amd64) as a smoke test.
 
 ## Acceptance checklist
 

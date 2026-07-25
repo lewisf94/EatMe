@@ -94,7 +94,7 @@ WORKDIR /app
 COPY --from=build /out /app
 COPY --from=build /app/apps/web/dist /app/web-dist
 COPY --from=build /app/apps/server/migrations /app/migrations
-COPY addon/run.sh /run.sh
+COPY run.sh /run.sh
 RUN chmod +x /run.sh
 ENV WEB_DIST=/app/web-dist  DATA_DIR=/data  NODE_ENV=production  PORT=8099
 EXPOSE 8099
@@ -139,7 +139,7 @@ Cover, in copy-paste form: install the **SSH & Web Terminal** or **Samba** add-o
 
 ## Acceptance checklist
 
-- [ ] `docker build -f addon/Dockerfile -t eatme .` succeeds (build it for amd64 locally at least).
+- [ ] `docker build -f Dockerfile -t eatme .` succeeds (build it for amd64 locally at least). Note: `config.yaml`/`Dockerfile` now live at the repo root, not under `addon/` — see addon/DOCS.md.
 - [ ] `docker run -p 8099:8099 -v $PWD/data:/data eatme` boots; `/api/health` responds; data persists in the mounted volume across `docker run`s.
 - [ ] With `AUTH_TOKEN` set (env), `/api/*` returns 401 without the bearer header and 200 with it; `/api/health` stays open.
 - [ ] The container serves the **built web app** at `/` (no Vite).
