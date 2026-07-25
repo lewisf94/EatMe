@@ -32,14 +32,14 @@ if [ -n "$TS_AUTHKEY" ]; then
   tailscale up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME"
 
   echo "[eatme] enabling HTTPS with tailscale serve"
-  # Flag spellings drift between Tailscale versions. Try the current form,
-  # then older fallbacks. Confirm with 'tailscale serve --help' if all fail.
-  tailscale serve --bg --https=443 http://127.0.0.1:8099 \
+  # Current Tailscale Serve selects the HTTPS listener automatically.
+  # Older flag forms are retained as fallbacks for previously built images.
+  tailscale serve --bg http://127.0.0.1:8099 \
+    || tailscale serve --bg --https=443 http://127.0.0.1:8099 \
     || tailscale serve --bg https / http://127.0.0.1:8099 \
-    || tailscale serve --bg 8099 \
     || echo "[eatme] tailscale serve failed; see 'tailscale serve --help' and adjust run.sh"
 
-  echo "[eatme] app URL (once MagicDNS+HTTPS are on): https://${TS_HOSTNAME}.<your-tailnet>.ts.net"
+  echo "[eatme] app URL: https://${TS_HOSTNAME}.<your-tailnet>.ts.net"
 fi
 
 echo "[eatme] starting server on :8099"
