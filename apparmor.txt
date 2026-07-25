@@ -23,6 +23,10 @@ profile eatme flags=(attach_disconnected,mediate_deleted) {
   /usr/local/bin/tailscale rix,
   /usr/local/bin/tailscaled rix,
 
+  # tsx uses this single architecture-specific helper to load the TypeScript
+  # server. Keep the rest of /app read-only and non-executable.
+  /app/node_modules/.pnpm/@esbuild+linux-*/node_modules/@esbuild/linux-*/bin/esbuild rix,
+
   # Runtime libraries and application code are immutable.
   /lib/** mr,
   /usr/lib/** mr,
