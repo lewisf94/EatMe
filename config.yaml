@@ -1,6 +1,6 @@
 name: EatMe
 slug: eatme
-version: "0.6.4"
+version: "0.6.5"
 description: Self-hosted food inventory for jars, spices and cupboard staples
 url: https://github.com/lewisf94/EatMe
 arch:
@@ -29,7 +29,7 @@ options:
   receipt_provider: stub
   ocr_url: ""
 schema:
-  auth_token: str?
+  auth_token: password?
   tailscale_authkey: password?
   tailscale_hostname: str?
   receipt_provider: list(stub|local)?

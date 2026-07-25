@@ -12,14 +12,17 @@ export RECEIPT_PROVIDER="$(opt receipt_provider)"
 export OCR_URL="$(opt ocr_url)"
 TS_AUTHKEY="$(opt tailscale_authkey)"
 TS_HOSTNAME="$(opt tailscale_hostname)"
+TS_STATE=/data/tailscale/tailscaled.state
+TS_HAD_STATE=0
+[ -s "$TS_STATE" ] && TS_HAD_STATE=1
 [ -z "$TS_HOSTNAME" ] && TS_HOSTNAME="eatme"
 
-if [ -n "$TS_AUTHKEY" ]; then
+if [ -n "$TS_AUTHKEY" ] || [ -s "$TS_STATE" ]; then
   echo "[eatme] starting tailscaled in userspace mode"
   mkdir -p /data/tailscale /var/run/tailscale
   tailscaled \
     --tun=userspace-networking \
-    --state=/data/tailscale/tailscaled.state \
+    --state="$TS_STATE" \
     --socket=/var/run/tailscale/tailscaled.sock &
 
   # wait for the control socket
@@ -29,7 +32,21 @@ if [ -n "$TS_AUTHKEY" ]; then
     sleep 1
   done
 
-  tailscale up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME"
+  if [ "$TS_HAD_STATE" -eq 1 ]; then
+    echo "[eatme] reusing the saved tailscale identity"
+    if ! tailscale up --hostname="$TS_HOSTNAME"; then
+      if [ -n "$TS_AUTHKEY" ]; then
+        echo "[eatme] saved identity needs re-enrolling"
+        tailscale up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME"
+      else
+        echo "[eatme] saved tailscale identity could not connect; add a new auth key"
+        exit 1
+      fi
+    fi
+  else
+    echo "[eatme] enrolling this app with tailscale"
+    tailscale up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME"
+  fi
 
   echo "[eatme] enabling HTTPS with tailscale serve"
   # Serve configuration persists across restarts. Clear any rule created by an
