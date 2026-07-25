@@ -10,12 +10,13 @@ import {
   type Category,
   type Location,
 } from "@eatme/shared";
-import { api } from "../api";
+import { api, type LabelContainer } from "../api";
+import { printLabelSheet } from "../labels";
 import { loadProduct, submitLotEvent, usePending } from "../offline";
 import { today, fractionLabel } from "../ui";
 import { FreshnessTimeline, freshOf, lotFreshInput, clockLabel, ClockIcon } from "../ui/freshness";
 import { SyncStatus } from "../ui/SyncStatus";
-import { IconBack, IconLock } from "../ui/icons";
+import { IconBack, IconLock, IconQr } from "../ui/icons";
 
 const REASON_LABELS: Record<ArchiveReason, string> = {
   finished: "Finished it",
@@ -47,6 +48,8 @@ export default function ProductDetail() {
   const [lots, setLots] = useState<StockLot[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [locs, setLocs] = useState<Location[]>([]);
+  const [containers, setContainers] = useState<LabelContainer[]>([]);
+  const [printing, setPrinting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
@@ -72,6 +75,7 @@ export default function ProductDetail() {
     reload();
     void api.categories().then(setCats);
     void api.locations().then(setLocs);
+    void api.labelContainers(id).then(setContainers, () => setContainers([]));
   }, [reload]);
 
   const guard = (p: Promise<unknown>) =>
@@ -134,6 +138,36 @@ export default function ProductDetail() {
             onArchive={(reason) => guard(api.archiveLot(lot.id, reason))}
           />
         ))}
+
+        {containers.length > 0 && (
+          <section className="sec">
+            <div className="sec-head">
+              <span className="eyebrow">Container label</span>
+              <span className="sec-count">{containers.length}</span>
+            </div>
+            <button
+              className="btn btn-line"
+              style={{ width: "100%" }}
+              disabled={printing}
+              onClick={() => {
+                setPrinting(true);
+                setError(null);
+                void printLabelSheet(containers.map((container) => container.id)).then(
+                  () => setPrinting(false),
+                  (reason) => {
+                    setPrinting(false);
+                    setError(reason instanceof Error ? reason.message : "Couldn’t prepare label");
+                  },
+                );
+              }}
+            >
+              <IconQr />
+              {printing
+                ? "Preparing…"
+                : `Print ${containers.length === 1 ? "label" : `${containers.length} labels`}`}
+            </button>
+          </section>
+        )}
 
         <button
           className="btn btn-line"

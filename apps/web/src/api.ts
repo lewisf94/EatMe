@@ -31,6 +31,12 @@ export type ReceiptSummary = {
 
 export type Settings = { household_timezone: string };
 
+export type LabelContainer = Container & {
+  displayName: string;
+  productName: string | null;
+  locationName: string | null;
+};
+
 export type OffResult = {
   found: boolean;
   barcode: string;
@@ -78,6 +84,22 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   return (body as { data: T }).data;
 }
 
+async function htmlReq(path: string): Promise<string> {
+  const res = await fetch("/api" + path, {
+    headers: {
+      accept: "text/html",
+      ...(authToken() ? { authorization: `Bearer ${authToken()}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as {
+      error?: { message?: string };
+    } | null;
+    throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
+  }
+  return res.text();
+}
+
 export const api = {
   // cupboard: aggregated product rows
   inventory: (query = "", signal?: AbortSignal) =>
@@ -109,6 +131,11 @@ export const api = {
     req<{ container: Container; lot: StockLot | null; product: Product | null }>(
       `/qr/${encodeURIComponent(qrUid)}`,
     ),
+  labelContainers: (productId?: string) =>
+    req<LabelContainer[]>(
+      `/labels/containers${productId ? `?productId=${encodeURIComponent(productId)}` : ""}`,
+    ),
+  labelSheet: (ids: string[]) => htmlReq(`/labels?ids=${encodeURIComponent(ids.join(","))}`),
 
   // receipts: upload raw image bytes → reviewable draft → confirm → stock lots
   uploadReceipt: (image: Blob) =>

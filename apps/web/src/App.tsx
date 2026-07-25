@@ -10,6 +10,7 @@ import Settings from "./pages/Settings";
 import UseItUp from "./pages/UseItUp";
 import Recipes from "./pages/Recipes";
 import Shopping from "./pages/Shopping";
+import Labels from "./pages/Labels";
 import { IconHome, IconList, IconPlus, IconLeaf, IconCart } from "./ui/icons";
 
 function BottomNav() {
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/i/:qrUid" element={wrap(<QrRedirect />)} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/labels" element={<Labels />} />
       </Routes>
       <BottomNav />
     </div>
