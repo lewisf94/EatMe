@@ -29,7 +29,11 @@ RUN apk add --no-cache jq ca-certificates
 WORKDIR /app
 COPY --from=build /app ./
 COPY run.sh /run.sh
-RUN chmod +x /run.sh
+# The Home Assistant builder can preserve this optional ARM/x64 dependency
+# without its executable bit. tsx starts esbuild on boot, so restore that bit
+# while creating the image rather than crash-looping the add-on at runtime.
+RUN chmod 755 /run.sh \
+ && chmod 755 /app/node_modules/.pnpm/@esbuild+linux-*/node_modules/@esbuild/linux-*/bin/esbuild
 
 ENV NODE_ENV=production \
     DATA_DIR=/data \
