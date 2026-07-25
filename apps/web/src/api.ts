@@ -19,6 +19,9 @@ import type {
   RecipePatch,
   ShoppingItem,
   UseItUpHit,
+  FoodGuidanceSuggestion,
+  DietaryRequirement,
+  StockLotCreateInput,
 } from "@eatme/shared";
 
 export type ReceiptSummary = {
@@ -29,7 +32,15 @@ export type ReceiptSummary = {
   newProducts: number;
 };
 
-export type Settings = { household_timezone: string };
+export type Settings = {
+  household_timezone: string;
+  dietary_requirements: DietaryRequirement[];
+};
+
+export type StarterRecipe = RecipeInput & {
+  key: string;
+  alreadyImported: boolean;
+};
 
 export type LabelContainer = Container & {
   displayName: string;
@@ -44,6 +55,7 @@ export type OffResult = {
   brand?: string;
   size?: string;
   imageUrl?: string;
+  categoryHints?: string[];
 };
 
 /** What the Add screen sends; the server fills defaults + find-or-creates the product. */
@@ -51,8 +63,9 @@ export type IntakeBody = {
   name: string;
   brand?: string;
   barcode?: string;
-  categoryId: string;
-  locationId: string;
+  categoryId?: string;
+  locationId?: string;
+  categoryHints?: string[];
   count?: number;
   fractionLeft?: number;
   dateType?: DateType;
@@ -115,7 +128,7 @@ export const api = {
   patchProduct: (id: string, patch: ProductPatch) =>
     req<Product>(`/products/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
 
-  createLot: (input: { productId: string; locationId: string } & Partial<StockLot>) =>
+  createLot: (input: StockLotCreateInput) =>
     req<StockLot>("/stock-lots", { method: "POST", body: JSON.stringify(input) }),
   patchLot: (id: string, patch: StockLotPatch) =>
     req<StockLot>(`/stock-lots/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
@@ -152,6 +165,18 @@ export const api = {
     }),
 
   lookup: (barcode: string) => req<OffResult>(`/lookup/${encodeURIComponent(barcode)}`),
+  guidance: (input: {
+    name: string;
+    brand?: string;
+    categoryHints?: string[];
+    purchasedAt?: string;
+  }) => {
+    const query = new URLSearchParams({ name: input.name });
+    if (input.brand) query.set("brand", input.brand);
+    if (input.purchasedAt) query.set("purchasedAt", input.purchasedAt);
+    for (const hint of input.categoryHints ?? []) query.append("categoryHint", hint);
+    return req<FoodGuidanceSuggestion>(`/guidance?${query}`);
+  },
   categories: () => req<Category[]>("/categories"),
   locations: () => req<Location[]>("/locations"),
   createCategory: (input: { name: string; openLifeDays?: number | null; warnDays?: number }) =>
@@ -170,6 +195,14 @@ export const api = {
   patchRecipe: (id: string, patch: RecipePatch) =>
     req<Recipe>(`/recipes/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteRecipe: (id: string) => req<{ ok: true }>(`/recipes/${id}`, { method: "DELETE" }),
+  starterRecipes: () =>
+    req<{ requirements: DietaryRequirement[]; recipes: StarterRecipe[] }>("/recipes/starter-pack"),
+  importStarterRecipes: () =>
+    req<{
+      added: number;
+      alreadyImported: number;
+      requirements: DietaryRequirement[];
+    }>("/recipes/starter-pack/import", { method: "POST" }),
 
   // shopping list: what's finished and needs buying again
   shopping: (includeDone = false) =>

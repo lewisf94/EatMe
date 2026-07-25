@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import type { Category, Location } from "@eatme/shared";
+import type { Category, FoodGuidanceSuggestion, Location } from "@eatme/shared";
 import { api } from "../api";
 import { BarcodeScanner } from "../scanner/BarcodeScanner";
 import { IconReceipt, IconCamera } from "../ui/icons";
@@ -17,19 +17,32 @@ export default function AddItem() {
   const [dateValue, setDateValue] = useState("");
   const [dateType, setDateType] = useState<"best_before" | "use_by">("best_before");
   const [lookupMsg, setLookupMsg] = useState("");
+  const [categoryHints, setCategoryHints] = useState<string[]>([]);
+  const [guidance, setGuidance] = useState<FoodGuidanceSuggestion | null>(null);
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
-    void api.categories().then((c) => {
-      setCats(c);
-      if (c[0]) setCategoryId(c[0].id);
-    });
-    void api.locations().then((l) => {
-      setLocs(l);
-      if (l[0]) setLocationId(l[0].id);
-    });
+    void api.categories().then(setCats);
+    void api.locations().then(setLocs);
   }, []);
+
+  useEffect(() => {
+    if (!name.trim()) {
+      setGuidance(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void api
+        .guidance({
+          name: name.trim(),
+          brand: brand.trim() || undefined,
+          categoryHints,
+        })
+        .then(setGuidance, () => setGuidance(null));
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [name, brand, categoryHints]);
 
   const doLookup = async (code = barcode) => {
     if (!code) return;
@@ -39,6 +52,7 @@ export default function AddItem() {
       if (r.found) {
         setName(r.name ?? "");
         setBrand(r.brand ?? "");
+        setCategoryHints(r.categoryHints ?? []);
         setLookupMsg(`Found: ${r.name ?? "(unnamed)"}`);
       } else {
         setLookupMsg("Not in Open Food Facts — enter the details manually.");
@@ -62,8 +76,9 @@ export default function AddItem() {
         name,
         brand: brand || undefined,
         barcode: barcode || undefined,
-        categoryId,
-        locationId,
+        categoryId: categoryId || undefined,
+        locationId: locationId || undefined,
+        categoryHints,
         ...(dateValue ? { dateType, dateValue } : {}),
       });
       nav(`/product/${product.id}`);
@@ -76,7 +91,7 @@ export default function AddItem() {
   return (
     <>
       <header className="appbar">
-        <h1>Add to cupboard</h1>
+        <h1>Add food</h1>
       </header>
       <div className="screen">
         <Link to="/receipt" className="feature">
@@ -161,6 +176,9 @@ export default function AddItem() {
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
               >
+                <option value="">
+                  {guidance ? `Automatic — ${guidance.categoryName}` : "Automatic"}
+                </option>
                 {cats.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -178,6 +196,9 @@ export default function AddItem() {
                 value={locationId}
                 onChange={(e) => setLocationId(e.target.value)}
               >
+                <option value="">
+                  {guidance ? `Automatic — ${guidance.locationName}` : "Automatic"}
+                </option>
                 {locs.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
@@ -186,6 +207,16 @@ export default function AddItem() {
               </select>
             </div>
           </div>
+
+          {guidance && (
+            <p className="note left">
+              Suggested: {guidance.locationName}, {guidance.categoryName}
+              {guidance.estimatedDate
+                ? `, best-quality reminder ${guidance.estimatedDate}`
+                : ", no date guessed"}
+              . {guidance.note}
+            </p>
+          )}
 
           <div className="two">
             <div>
@@ -204,7 +235,7 @@ export default function AddItem() {
             </div>
             <div>
               <label className="label" htmlFor="bb">
-                Date (optional)
+                Printed date (optional)
               </label>
               <input
                 id="bb"
@@ -222,7 +253,7 @@ export default function AddItem() {
             style={{ width: "100%", marginTop: 4 }}
             disabled={saving || !name}
           >
-            {saving ? "Saving…" : "Add to cupboard"}
+            {saving ? "Saving…" : "Add to inventory"}
           </button>
         </form>
 

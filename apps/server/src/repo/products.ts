@@ -2,7 +2,7 @@ import { db } from "../db.js";
 import { newId, type Product, type ProductInput, type ProductPatch } from "@eatme/shared";
 
 const COLS =
-  "id, name, brand, barcode, category_id, default_location_id, package_quantity, package_unit, image_url, created_at, updated_at";
+  "id, name, brand, barcode, category_id, default_location_id, guidance_rule_id, package_quantity, package_unit, image_url, created_at, updated_at";
 
 type ProductRow = {
   id: string;
@@ -11,6 +11,7 @@ type ProductRow = {
   barcode: string | null;
   category_id: string;
   default_location_id: string | null;
+  guidance_rule_id: string | null;
   package_quantity: number | null;
   package_unit: string | null;
   image_url: string | null;
@@ -26,6 +27,7 @@ function toProduct(r: ProductRow): Product {
     barcode: r.barcode,
     categoryId: r.category_id,
     defaultLocationId: r.default_location_id,
+    guidanceRuleId: r.guidance_rule_id,
     packageQuantity: r.package_quantity,
     packageUnit: r.package_unit,
     imageUrl: r.image_url,
@@ -37,7 +39,7 @@ function toProduct(r: ProductRow): Product {
 const byIdStmt = db.prepare(`SELECT ${COLS} FROM products WHERE id = ?`);
 const insertStmt = db.prepare(
   `INSERT INTO products (${COLS})
-   VALUES (@id,@name,@brand,@barcode,@categoryId,@defaultLocationId,@packageQuantity,@packageUnit,@imageUrl,@createdAt,@updatedAt)`,
+   VALUES (@id,@name,@brand,@barcode,@categoryId,@defaultLocationId,@guidanceRuleId,@packageQuantity,@packageUnit,@imageUrl,@createdAt,@updatedAt)`,
 );
 
 export function getProduct(id: string): Product | undefined {
@@ -60,6 +62,7 @@ export function createProduct(input: ProductInput): Product {
     barcode: input.barcode ?? null,
     categoryId: input.categoryId,
     defaultLocationId: input.defaultLocationId ?? null,
+    guidanceRuleId: input.guidanceRuleId ?? null,
     packageQuantity: input.packageQuantity ?? null,
     packageUnit: input.packageUnit ?? null,
     imageUrl: input.imageUrl ?? null,
@@ -95,6 +98,7 @@ const PATCH_COLS: Record<string, string> = {
   barcode: "barcode",
   categoryId: "category_id",
   defaultLocationId: "default_location_id",
+  guidanceRuleId: "guidance_rule_id",
   packageQuantity: "package_quantity",
   packageUnit: "package_unit",
   imageUrl: "image_url",

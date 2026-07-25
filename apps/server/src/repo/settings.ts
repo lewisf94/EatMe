@@ -1,3 +1,4 @@
+import { DIETARY_REQUIREMENTS, type DietaryRequirement } from "@eatme/shared";
 import { db } from "../db.js";
 
 const getStmt = db.prepare("SELECT value FROM settings WHERE key = ?");
@@ -17,4 +18,17 @@ export function setSetting(key: string, value: string): void {
 /** The household's IANA timezone — used for all civil-date calculations. */
 export function timezone(): string {
   return getSetting("household_timezone", "Europe/London");
+}
+
+export function dietaryRequirements(): DietaryRequirement[] {
+  try {
+    const values = JSON.parse(getSetting("dietary_requirements", "[]")) as unknown;
+    return Array.isArray(values)
+      ? values.filter((value): value is DietaryRequirement =>
+          DIETARY_REQUIREMENTS.includes(value as DietaryRequirement),
+        )
+      : [];
+  } catch {
+    return [];
+  }
 }

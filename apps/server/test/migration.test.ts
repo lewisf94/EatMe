@@ -153,3 +153,52 @@ describe("004 receipts migration", () => {
     ).toThrow();
   });
 });
+
+describe("009 guidance and recipe-pack migration", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec("PRAGMA foreign_keys = ON;");
+  for (const f of [
+    "001_init.sql",
+    "002_settings_and_reason.sql",
+    "003_data_model.sql",
+    "004_receipts.sql",
+    "005_oplog.sql",
+    "006_drop_hard_expiry.sql",
+    "007_recipes_shopping.sql",
+    "008_push.sql",
+  ])
+    db.exec(sql(f));
+
+  db.exec("INSERT INTO locations (id,name,sort_order) VALUES ('custom-loc','Garage shelf',99)");
+  db.exec(
+    "INSERT INTO categories (id,name,open_life_days,warn_days) VALUES ('custom-cat','Home-grown',NULL,7)",
+  );
+  db.exec(sql("009_guidance_and_recipe_pack.sql"));
+
+  it("adds stable guidance metadata without removing custom taxonomy", () => {
+    const locations = db.prepare("SELECT COUNT(*) n FROM locations").get() as { n: number };
+    const categories = db.prepare("SELECT COUNT(*) n FROM categories").get() as { n: number };
+    expect(locations.n).toBeGreaterThanOrEqual(7);
+    expect(categories.n).toBeGreaterThanOrEqual(21);
+    expect(db.prepare("SELECT guidance_key FROM locations WHERE id='custom-loc'").get()).toEqual({
+      guidance_key: null,
+    });
+    expect(db.prepare("SELECT guidance_key FROM categories WHERE id='custom-cat'").get()).toEqual({
+      guidance_key: null,
+    });
+  });
+
+  it("adds estimated-date and recipe preference columns with safe defaults", () => {
+    const lotColumn = (
+      db.prepare("PRAGMA table_info(stock_lots)").all() as Array<{ name: string }>
+    ).map((column) => column.name);
+    const recipeColumns = (
+      db.prepare("PRAGMA table_info(recipes)").all() as Array<{ name: string }>
+    ).map((column) => column.name);
+    expect(lotColumn).toContain("date_estimated");
+    expect(recipeColumns).toEqual(expect.arrayContaining(["dietary_tags", "starter_key"]));
+    expect(db.prepare("SELECT value FROM settings WHERE key='dietary_requirements'").get()).toEqual(
+      { value: "[]" },
+    );
+  });
+});

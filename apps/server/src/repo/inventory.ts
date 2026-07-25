@@ -10,6 +10,7 @@ type Row = {
   fraction_left: number;
   date_type: string | null;
   date_value: string | null;
+  date_estimated: number;
   opened_at: string | null;
   open_life_days_override: number | null;
   purchased_at: string | null;
@@ -48,7 +49,7 @@ export function listInventory(
     .prepare(
       `SELECT l.id AS lot_id, l.product_id, l.location_id, l.count, l.fraction_left,
               l.date_type, l.date_value, l.opened_at, l.open_life_days_override,
-              l.purchased_at, l.created_at,
+              l.date_estimated, l.purchased_at, l.created_at,
               p.name, p.brand, p.category_id
        FROM stock_lots l JOIN products p ON p.id = l.product_id
        ${where.length ? "WHERE " + where.join(" AND ") : ""}`,
@@ -90,6 +91,7 @@ export function listInventory(
           status: "ok",
           pressureDate: null,
           pressureKind: null,
+          dateEstimated: false,
           daysLeft: null,
           startDate: null,
           startKind: null,
@@ -116,6 +118,7 @@ export function listInventory(
       a.row.pressureDate = s.pressureDate;
       a.row.pressureKind = s.pressureKind;
       a.row.daysLeft = s.daysLeft;
+      a.row.dateEstimated = s.pressureKind === "best_before" && r.date_estimated === 1;
       a.row.locationId = r.location_id;
       // Start the timeline at the governing clock's origin: an open-life clock
       // begins when opened; a printed date's track begins when bought (or, as a

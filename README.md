@@ -1,18 +1,20 @@
 # EatMe
 
-EatMe is a self-hosted food inventory app for jars, spices, tins and cupboard staples. Scan a barcode, track what remains, and see what needs using first.
+EatMe is a self-hosted household food inventory. Add food manually, scan a barcode or import a receipt, then see what needs using first.
 
 ## Features
 
 - Barcode scanning with Open Food Facts product lookup
 - Printable QR labels for decanted jars and containers
 - Best-before, use-by and opened-date freshness tracking
+- Automatic storage, category and best-quality suggestions from a researched local rules table
 - Quick updates for quantity remaining
 - Searchable inventory and shopping list
 - Local receipt import with a review step before stock is added
 - Offline inventory access and queued changes
 - Optional e-ink kitchen display
 - Optional web-push reminders for items to use soon
+- Dietary-filtered starter recipes with repeat-safe one-click import
 
 ## Components
 
@@ -45,9 +47,11 @@ Open `http://localhost:5173`. The API runs on port `8099`.
 
 For Home Assistant installation and configuration, see [addon/DOCS.md](addon/DOCS.md). Receipt import uses a local stub by default, so the complete workflow can be tested without cloud services.
 
+Automatic guidance works offline and is applied consistently to manual adds, barcode scans, receipt imports, extra packs and shopping-list rebuys. A date printed on the pack always takes priority. Generated dates are clearly marked as estimated best-quality reminders, never as manufacturer use-by dates. See [food guidance and sources](docs/food-guidance.md) for the method and references.
+
 ## Project status
 
-The core server, web app, camera scanning, Home Assistant packaging, offline support, receipt import, QR labels, recipes, shopping list, e-ink display support and push notifications are implemented. Hardware flashing, printer setup and on-device iPhone verification remain hands-on tasks.
+The core server, web app, camera scanning, Home Assistant packaging, offline support, receipt import, automatic food guidance, QR labels, recipes, shopping list, e-ink display support and push notifications are implemented. Hardware flashing and printer setup remain hands-on tasks.
 
 Detailed product, architecture and implementation notes are in [docs](docs).
 

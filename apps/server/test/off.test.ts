@@ -10,6 +10,8 @@ describe("mapOff", () => {
         brands: "Mars",
         quantity: "48 g",
         image_front_small_url: "https://images.off/x.jpg",
+        categories: "Chocolate bars, Snacks",
+        categories_tags: ["en:confectioneries", "en:chocolate-bars"],
       },
     });
     expect(r).toEqual({
@@ -19,6 +21,7 @@ describe("mapOff", () => {
       brand: "Mars",
       size: "48 g",
       imageUrl: "https://images.off/x.jpg",
+      categoryHints: ["confectioneries", "chocolate bars", "Snacks"],
     });
   });
 

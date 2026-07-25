@@ -8,20 +8,45 @@ export type OffResult = {
   brand?: string;
   size?: string;
   imageUrl?: string;
+  categoryHints?: string[];
 };
 
 /** Pure mapper from an Open Food Facts v2 response to our shape (unit-tested). */
 export function mapOff(barcode: string, json: unknown): OffResult {
-  const j = json as { status?: number; product?: Record<string, string> } | null;
+  const j = json as {
+    status?: number;
+    product?: Record<string, string | string[] | undefined>;
+  } | null;
   if (!j || j.status === 0 || !j.product) return { found: false, barcode };
   const p = j.product;
+  const seenCategories = new Set<string>();
+  const categoryHints = [
+    ...(Array.isArray(p.categories_tags) ? p.categories_tags : []),
+    ...(typeof p.categories === "string" ? p.categories.split(",") : []),
+  ]
+    .map((value) =>
+      value
+        .replace(/^[a-z]{2}:/, "")
+        .replace(/-/g, " ")
+        .trim(),
+    )
+    .filter((value) => {
+      const key = value.toLowerCase();
+      if (!value || seenCategories.has(key)) return false;
+      seenCategories.add(key);
+      return true;
+    });
   return {
     found: true,
     barcode,
-    name: p.product_name || undefined,
-    brand: p.brands || undefined,
-    size: p.quantity || undefined,
-    imageUrl: p.image_front_small_url || undefined,
+    name: typeof p.product_name === "string" ? p.product_name || undefined : undefined,
+    brand: typeof p.brands === "string" ? p.brands || undefined : undefined,
+    size: typeof p.quantity === "string" ? p.quantity || undefined : undefined,
+    imageUrl:
+      typeof p.image_front_small_url === "string"
+        ? p.image_front_small_url || undefined
+        : undefined,
+    categoryHints: categoryHints.length ? categoryHints.slice(0, 20) : undefined,
   };
 }
 
@@ -46,7 +71,7 @@ export async function lookup(barcode: string): Promise<OffResult> {
 
   const url =
     `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json` +
-    `?fields=product_name,brands,quantity,image_front_small_url`;
+    `?fields=product_name,brands,quantity,image_front_small_url,categories,categories_tags`;
   let json: unknown;
   try {
     const res = await fetch(url, { headers: { "User-Agent": config.offUserAgent } });

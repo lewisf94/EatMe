@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type {
   Category,
+  FoodGuidanceSuggestion,
   Location,
   ReceiptDraft,
   ReceiptDraftLine,
@@ -63,6 +64,7 @@ export default function ReceiptImport() {
   const [locs, setLocs] = useState<Location[]>([]);
   const [draft, setDraft] = useState<ReceiptDraft | null>(null);
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
+  const [guidance, setGuidance] = useState<Record<string, FoodGuidanceSuggestion>>({});
   const [busy, setBusy] = useState<"" | "reading" | "confirming">("");
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<ReceiptSummary | null>(null);
@@ -80,8 +82,6 @@ export default function ReceiptImport() {
       const blob = await compressImage(file);
       const d = await api.uploadReceipt(blob);
       setDraft(d);
-      const defLoc = locs[0]?.id ?? "";
-      const defCat = cats[0]?.id ?? "";
       setDecisions(
         Object.fromEntries(
           d.lines.map((l) => [
@@ -89,11 +89,30 @@ export default function ReceiptImport() {
             {
               value: l.match ? `p:${l.match.productId}` : "new",
               name: titleCase(l.normalizedText),
-              categoryId: defCat,
+              categoryId: "",
               quantity: l.quantity,
-              locationId: defLoc,
+              locationId: "",
             } as Decision,
           ]),
+        ),
+      );
+      const suggested = await Promise.all(
+        d.lines.map(async (line) => {
+          const result = await api
+            .guidance({
+              name: titleCase(line.normalizedText),
+              categoryHints: [line.normalizedText],
+              purchasedAt: d.purchase.purchasedAt ?? undefined,
+            })
+            .catch(() => null);
+          return [line.id, result] as const;
+        }),
+      );
+      setGuidance(
+        Object.fromEntries(
+          suggested.filter(
+            (entry): entry is readonly [string, FoodGuidanceSuggestion] => entry[1] != null,
+          ),
         ),
       );
     } catch (e) {
@@ -122,7 +141,8 @@ export default function ReceiptImport() {
             action: "add",
             newProduct: {
               name: d.name.trim() || l.normalizedText,
-              categoryId: d.categoryId || cats[0]?.id || "",
+              categoryId: d.categoryId || undefined,
+              categoryHints: [l.normalizedText],
             },
             quantity: d.quantity,
             locationId: d.locationId || undefined, // server falls back to a default
@@ -164,14 +184,14 @@ export default function ReceiptImport() {
             <div className="capture-badge done">
               <IconCheck />
             </div>
-            <h2>Added {summary.added} to the cupboard</h2>
+            <h2>Added {summary.added} to the inventory</h2>
             <p className="note">
               {summary.newProducts} new · {summary.ignored} ignored · {summary.notTracked} not
               tracked
             </p>
             <div className="capture-actions">
               <Link to="/" className="btn btn-line">
-                View cupboard
+                View inventory
               </Link>
               <button
                 className="btn btn-primary"
@@ -245,6 +265,7 @@ export default function ReceiptImport() {
 
   const renderLine = (l: ReceiptDraftLine) => {
     const d = decisions[l.id];
+    const suggested = guidance[l.id];
     if (!d) return null;
 
     if (off(d.value))
@@ -298,7 +319,7 @@ export default function ReceiptImport() {
             value={d.value}
             onChange={(e) => setDec(l.id, { value: e.target.value })}
           >
-            {l.match && <option value={`p:${l.match.productId}`}>✓ {l.match.name}</option>}
+            {l.match && <option value={`p:${l.match.productId}`}>Matched: {l.match.name}</option>}
             {l.suggestions
               .filter((s) => s.productId !== l.match?.productId)
               .map((s) => (
@@ -318,6 +339,9 @@ export default function ReceiptImport() {
               value={d.categoryId}
               onChange={(e) => setDec(l.id, { categoryId: e.target.value })}
             >
+              <option value="">
+                {suggested ? `Automatic — ${suggested.categoryName}` : "Automatic"}
+              </option>
               {cats.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -332,6 +356,9 @@ export default function ReceiptImport() {
               value={d.locationId}
               onChange={(e) => setDec(l.id, { locationId: e.target.value })}
             >
+              <option value="">
+                {suggested ? `Automatic — ${suggested.locationName}` : "Automatic"}
+              </option>
               {locs.map((loc) => (
                 <option key={loc.id} value={loc.id}>
                   {loc.name}
@@ -383,7 +410,7 @@ export default function ReceiptImport() {
         >
           {busy === "confirming"
             ? "Adding…"
-            : `Add ${addCount} ${addCount === 1 ? "item" : "items"} to the cupboard`}
+            : `Add ${addCount} ${addCount === 1 ? "item" : "items"} to the inventory`}
         </button>
       </div>
     </>

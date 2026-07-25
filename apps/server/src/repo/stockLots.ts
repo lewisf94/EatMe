@@ -2,7 +2,7 @@ import { db } from "../db.js";
 import { newId, type StockLot, type StockLotInput, type StockLotPatch } from "@eatme/shared";
 
 const COLS =
-  "id, product_id, location_id, count, fraction_left, purchased_at, date_type, date_value, opened_at, open_life_days_override, archived_at, archive_reason, source, created_at, updated_at";
+  "id, product_id, location_id, count, fraction_left, purchased_at, date_type, date_value, date_estimated, opened_at, open_life_days_override, archived_at, archive_reason, source, created_at, updated_at";
 
 type LotRow = {
   id: string;
@@ -13,6 +13,7 @@ type LotRow = {
   purchased_at: string | null;
   date_type: string | null;
   date_value: string | null;
+  date_estimated: number;
   opened_at: string | null;
   open_life_days_override: number | null;
   archived_at: string | null;
@@ -31,6 +32,7 @@ function toLot(r: LotRow): StockLot {
     fractionLeft: r.fraction_left,
     dateType: (r.date_type as StockLot["dateType"]) ?? null,
     dateValue: r.date_value,
+    dateEstimated: r.date_estimated === 1,
     openedAt: r.opened_at,
     openLifeDaysOverride: r.open_life_days_override,
     purchasedAt: r.purchased_at,
@@ -45,7 +47,7 @@ function toLot(r: LotRow): StockLot {
 const byIdStmt = db.prepare(`SELECT ${COLS} FROM stock_lots WHERE id = ?`);
 const insertStmt = db.prepare(
   `INSERT INTO stock_lots (${COLS})
-   VALUES (@id,@productId,@locationId,@count,@fractionLeft,@purchasedAt,@dateType,@dateValue,@openedAt,@openLifeDaysOverride,NULL,NULL,@source,@createdAt,@updatedAt)`,
+   VALUES (@id,@productId,@locationId,@count,@fractionLeft,@purchasedAt,@dateType,@dateValue,@dateEstimated,@openedAt,@openLifeDaysOverride,NULL,NULL,@source,@createdAt,@updatedAt)`,
 );
 const logStmt = db.prepare(
   "INSERT INTO usage_events (id, stock_lot_id, event, fraction_after, reason, at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -72,7 +74,9 @@ export function lotsForProduct(productId: string, includeArchived = false): Stoc
   return (db.prepare(sql).all(productId) as LotRow[]).map(toLot);
 }
 
-export function createLot(input: StockLotInput): StockLot {
+export type ResolvedStockLotInput = StockLotInput & { dateEstimated?: boolean };
+
+export function createLot(input: ResolvedStockLotInput): StockLot {
   const now = new Date().toISOString();
   const id = newId();
   insertStmt.run({
@@ -86,6 +90,7 @@ export function createLot(input: StockLotInput): StockLot {
     // non-alarming default); a use-by must be stated deliberately.
     dateType: input.dateValue ? (input.dateType ?? "best_before") : null,
     dateValue: input.dateValue ?? null,
+    dateEstimated: input.dateEstimated ? 1 : 0,
     openedAt: input.openedAt ?? null,
     openLifeDaysOverride: input.openLifeDaysOverride ?? null,
     source: input.source ?? "manual",
@@ -123,6 +128,10 @@ export function updateLot(id: string, patch: StockLotPatch): StockLot | undefine
   if (p.dateValue !== undefined && p.dateType === undefined) {
     sets.push("date_type = ?");
     vals.push(p.dateValue ? "best_before" : null);
+  }
+  // Any direct date edit replaces the generated estimate with user-supplied data.
+  if (p.dateValue !== undefined || p.dateType !== undefined) {
+    sets.push("date_estimated = 0");
   }
   if (sets.length === 0) return getLot(id);
   sets.push("updated_at = ?");

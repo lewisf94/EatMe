@@ -6,21 +6,63 @@ import {
   createRecipe,
   updateRecipe,
   deleteRecipe,
+  hasStarterRecipe,
 } from "../repo/recipes.js";
 import { listInventory } from "../repo/inventory.js";
-import { timezone } from "../repo/settings.js";
+import { dietaryRequirements, timezone } from "../repo/settings.js";
 import { rankUseItUp } from "../services/recipes.js";
+import { recipeMeetsRequirements, STARTER_RECIPES } from "../data/starterRecipes.js";
 
 export async function registerRecipes(app: FastifyInstance): Promise<void> {
   app.get("/recipes", async () => ({ data: listRecipes() }));
 
+  app.get("/recipes/starter-pack", async () => {
+    const requirements = dietaryRequirements();
+    return {
+      data: {
+        requirements,
+        recipes: STARTER_RECIPES.filter((recipe) =>
+          recipeMeetsRequirements(recipe.dietaryTags, requirements),
+        ).map((recipe) => ({
+          ...recipe,
+          alreadyImported: hasStarterRecipe(recipe.key),
+        })),
+      },
+    };
+  });
+
+  app.post("/recipes/starter-pack/import", async () => {
+    const requirements = dietaryRequirements();
+    const compatible = STARTER_RECIPES.filter((recipe) =>
+      recipeMeetsRequirements(recipe.dietaryTags, requirements),
+    );
+    let added = 0;
+    for (const starter of compatible) {
+      if (hasStarterRecipe(starter.key)) continue;
+      const { key, ...input } = starter;
+      createRecipe(input, key);
+      added++;
+    }
+    return {
+      data: {
+        added,
+        alreadyImported: compatible.length - added,
+        requirements,
+      },
+    };
+  });
+
   app.get("/recipes/use-it-up", async () => {
     const rows = listInventory({}, civilToday(timezone())).sort(byUrgency);
+    const requirements = dietaryRequirements();
+    const recipes = listRecipes().filter((recipe) =>
+      recipeMeetsRequirements(recipe.dietaryTags, requirements),
+    );
     return {
       data: {
         // Useful even with no recipes saved yet: the things to eat, listed plainly.
         expiring: rows.filter((r) => r.status !== "ok"),
-        recipes: rankUseItUp(listRecipes(), rows),
+        recipes: rankUseItUp(recipes, rows),
       },
     };
   });
