@@ -1,6 +1,6 @@
 name: EatMe
 slug: eatme
-version: "0.5.0"
+version: "0.6.0"
 description: Food inventory for jars, spices and the back of the cupboard
 url: https://github.com/lewisf94/EatMe
 arch:

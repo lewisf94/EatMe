@@ -5,35 +5,38 @@ in `/data`, so it's included in Home Assistant backups. Optionally brings up a
 real HTTPS URL (via bundled Tailscale) so you can install the phone app and use
 the camera scanner on iOS.
 
-## Install (local add-on)
+## Install (add-on repository — recommended)
 
-The add-on builds from the repo root, so the whole repo needs to be the build
-context. Two ways:
-
-**A. Custom add-on repository (recommended, one-click updates)**
+`config.yaml`, `Dockerfile` and `repository.yaml` live at the **repo root** on
+purpose: the Supervisor uses the directory containing `config.yaml` as the
+Docker build context, and the Dockerfile needs the whole monorepo (`apps/`,
+`packages/`, `pnpm-*`) to build the web app. This repo is set up as a
+single-add-on repository — `config.yaml` at the root *is* the add-on.
 
 1. Home Assistant → **Settings → Add-ons → Add-on store → ⋮ → Repositories**.
-2. Add `https://github.com/lewisf94/EatMe`.
-3. The store needs the add-on manifest at the repo root. Either move `addon/` to
-   the repo root, or keep this layout and use route B. *(If you want route A,
-   tell me and I'll add a root-level `eatme/` add-on folder + `repository.yaml`.)*
+2. Add `https://github.com/lewisf94/EatMe` → **Add**.
+3. Refresh the store (⋮ → **Check for updates** if it doesn't appear). "EatMe"
+   shows up as a new add-on (not under "Local add-ons").
+4. **Install**. The first build takes a few minutes — it clones the repo,
+   installs deps and builds the web app in-container. Watch progress in the
+   add-on's **Log** tab.
+5. **Start**. Open the **Web UI** (or `http://homeassistant.local:8099`) to
+   confirm it's up on the LAN.
+6. Future updates: **Settings → Add-ons → Add-on store → ⋮ → Check for
+   updates**, then **Update** on the EatMe card — no manual copying.
 
-**B. Local add-on (works with this repo layout as-is)**
+> LAN-only (`http://…:8099`) works for browsing, but **the camera scanner and
+> Web Push need HTTPS** — see below.
+
+## Install (local add-on — fallback if the repository doesn't show up)
 
 1. Install the **Samba share** or **Advanced SSH & Web Terminal** add-on.
 2. Copy the **entire repo** to `/addons/eatme` on the Pi (the Dockerfile needs
-   `apps/`, `packages/`, `pnpm-*` etc. — the build context is the repo root).
-   Make sure `config.yaml`, `Dockerfile`, `run.sh` sit at `/addons/eatme/`
-   (move the contents of `addon/` up to the folder root, or copy the repo and
-   point the add-on at the `addon/` subfolder).
+   `apps/`, `packages/`, `pnpm-*` etc. — the build context is the repo root,
+   and `config.yaml`/`Dockerfile` are already at that root).
 3. **Settings → Add-ons → Add-on store → ⋮ → Check for updates**. "EatMe"
-   appears under **Local add-ons**. Click **Install** (the first build takes a
-   few minutes — it installs deps and builds the web app in-container).
-4. **Start**. Open the Web UI (the `8099` port) to confirm it's up on the LAN:
-   `http://homeassistant.local:8099`.
-
-> LAN-only (`http://…:8099`) works for browsing, but **the camera scanner needs
-> HTTPS** on iOS — that's what the Tailscale option below is for.
+   appears under **Local add-ons**. Click **Install**.
+4. **Start**. Open `http://homeassistant.local:8099` to confirm it's up.
 
 ## Options
 
@@ -42,8 +45,10 @@ context. Two ways:
 | `tailscale_authkey` | Paste a Tailscale **auth key** to enable the private HTTPS URL. Leave blank for LAN-only. |
 | `tailscale_hostname` | The device name on your tailnet (default `eatme`). |
 | `auth_token` | Optional. If set, the API requires this token; paste the same value into the app's **Settings → Access token** on each device. Leave blank on a trusted home network. |
+| `receipt_provider` | `stub` (canned OCR, works out of the box) or `local` (the [eatme-ocr sidecar](ocr/README.md) on the Pi — real receipt scanning). |
+| `ocr_url` | Base URL of the OCR sidecar when `receipt_provider` is `local` (e.g. `http://homeassistant.local:8765`). |
 
-## Enabling HTTPS (for the phone app + camera)
+## Enabling HTTPS (for the phone app, camera, and Web Push)
 
 1. In the **Tailscale admin console**: enable **MagicDNS** and **HTTPS
    Certificates** (Settings → Features). Generate an **auth key** (Settings →
@@ -54,17 +59,24 @@ context. Two ways:
 3. On your iPhone: install the **Tailscale** app and sign in to the same tailnet.
    Open `https://<hostname>.<your-tailnet>.ts.net` in Safari → **Share → Add to
    Home Screen**. The same URL works at home and away.
+4. **This is a hard requirement for Web Push (P8) and the camera scanner**: iOS
+   only delivers push to an installed PWA served over HTTPS, and only allows
+   camera access over a secure context. LAN-only HTTP won't do either.
 
 ## Notes & troubleshooting
 
 - **Backups**: the SQLite DB is at `/data/eatme.db` and is included in HA
-  backups automatically.
+  backups automatically. So are the generated **VAPID push keys**
+  (`/data/vapid.json`) — don't delete that file, or every existing
+  notification subscription breaks.
 - **`tailscale serve` failed** in the log: flag names vary by Tailscale version.
   Open a terminal in the add-on container and run `tailscale serve --help`, then
   adjust the command in `run.sh`. (The intent: background-serve HTTPS:443 →
   `http://127.0.0.1:8099`.)
-- **e-ink display (P6)**: it talks to this add-on over plain LAN HTTP on `8099`,
-  so it needs no Tailscale.
+- **e-ink display (P6)**: it talks to this add-on over plain LAN HTTP on
+  `8099`, so it needs no Tailscale. Set `DISPLAY_TOKEN` (an env var, not an
+  add-on option today — see `apps/server/src/config.ts`) if you want the
+  display endpoint gated even with `auth_token` off.
 - This add-on **bundles its own Tailscale** on purpose — the official Home
   Assistant Tailscale add-on only serves Home Assistant itself, not other
   add-ons.

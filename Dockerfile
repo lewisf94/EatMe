@@ -1,4 +1,6 @@
-# Build context is the repo root (see build note in addon/DOCS.md).
+# Build context is the repo root (config.yaml lives alongside this file, so
+# Home Assistant's Supervisor builds with the whole monorepo as context —
+# see addon/DOCS.md).
 # ---- build stage: install deps + build the web PWA ----
 FROM node:24-alpine AS build
 RUN corepack enable
@@ -26,7 +28,7 @@ RUN apk add --no-cache jq ca-certificates
 
 WORKDIR /app
 COPY --from=build /app ./
-COPY addon/run.sh /run.sh
+COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
 ENV NODE_ENV=production \
