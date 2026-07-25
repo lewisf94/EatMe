@@ -68,7 +68,6 @@ eatme/
 | `OFF_USER_AGENT` | `EatMe/0.x (github.com/lewisf94/EatMe)` | P1 (Open Food Facts requires a custom UA) |
 | `AUTH_TOKEN` | *(empty = auth off)* | P4 |
 | `VAPID_PUBLIC` / `VAPID_PRIVATE` | *(generated on first boot, persisted to `DATA_DIR`)* | P8 |
-| `ANTHROPIC_API_KEY` | *(empty = LLM off)* | P9 |
 
 ## Definition of "green"
 

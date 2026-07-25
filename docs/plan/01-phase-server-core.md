@@ -265,7 +265,7 @@ Insert the default locations (Cupboard, Spice rack, Fridge, Freezer, Baking shel
 
 ## Acceptance checklist
 
-Run from repo root. All automated unless marked 🖐.
+Run from the repository root. All checks are automated unless marked as manual.
 
 - [ ] `pnpm install` completes.
 - [ ] `pnpm check` green (types + prettier).

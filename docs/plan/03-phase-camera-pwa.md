@@ -4,7 +4,7 @@
 
 **Prerequisites:** P2 green.
 
-> **Secure-context caveat:** `getUserMedia` (camera) only works on `https://` or `localhost`. On a laptop `http://localhost:5173` is fine for dev. On the **iPhone** it needs real HTTPS — that's delivered in **P4** (bundled Tailscale). So: build and unit-test scanning against a laptop webcam here; the on-iPhone verification box is 🖐 and may slip to after P4. Don't block P3 on it.
+> **Secure-context caveat:** `getUserMedia` (camera) only works on `https://` or `localhost`. On a laptop `http://localhost:5173` is fine for development. On the iPhone it needs real HTTPS, delivered in P4 through bundled Tailscale. Test scanning against a laptop webcam here; iPhone verification is manual and may follow P4.
 
 ## Deliverables
 
@@ -24,7 +24,7 @@ import wasmUrl from "zxing-wasm/reader/zxing_reader.wasm?url"; // Vite emits a h
 setZXingModuleOverrides({ locateFile: () => wasmUrl });
 export { BarcodeDetector } from "barcode-detector/pure";
 ```
-> ⚠️ The exact wasm sub-path/export name can shift between `barcode-detector`/`zxing-wasm` majors. If `zxing-wasm/reader/zxing_reader.wasm?url` doesn't resolve, find the shipped `.wasm` under `node_modules/zxing-wasm/dist/**` and import that path. Verify the wasm loads with **no network request** (DevTools → Network, filter `.wasm`, should be same-origin). Record the resolved path in research-notes if it differs.
+> Note: the wasm sub-path/export name can shift between `barcode-detector` and `zxing-wasm` majors. If `zxing-wasm/reader/zxing_reader.wasm?url` does not resolve, find the shipped `.wasm` under `node_modules/zxing-wasm/dist/**` and import that path. Verify it loads from the same origin and record any change in research notes.
 
 `<BarcodeScanner onDetected>`:
 - `navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })` → `<video autoplay playsinline muted>` (`playsinline` is mandatory on iOS or it goes fullscreen).
@@ -51,7 +51,7 @@ VitePWA({
 ```
 - `display: standalone` is **non-negotiable** — iOS Web Push (P8) silently won't work without it.
 - Precache the wasm (`**/*.wasm` above) so scanning works offline.
-- Provide real icons (generate from a simple 🫙 mark; commit the PNGs under `apps/web/public/`).
+- Provide real icons and commit the PNGs under `apps/web/public/`.
 - The service worker caches the **app shell**; API calls stay network-first (don't cache `/api` responses in this phase — stale inventory is worse than a spinner).
 
 ## Acceptance checklist
@@ -61,7 +61,7 @@ VitePWA({
 - [ ] DevTools → Network shows the zxing `.wasm` loading **same-origin**, not from a CDN.
 - [ ] Camera tracks stop when the scanner closes (camera indicator turns off).
 - [ ] Lighthouse/PWA audit: **installable** (manifest + SW + offline shell). App shell loads with the network throttled to offline after first visit.
-- [ ] 🖐 (may follow P4) On the **iPhone** over the P4 HTTPS URL: Add to Home Screen, launch standalone, Scan a real jar's barcode → prefilled. If HTTPS isn't up yet, note "deferred to post-P4" in your summary.
+- [ ] Manual (may follow P4): on the iPhone over the P4 HTTPS URL, add to Home Screen, launch standalone, and scan a real jar barcode.
 
 ## Definition of done
 

@@ -10,7 +10,7 @@ Requirements: readable at a glance, lives on a wall or shelf, no cable if possib
 
 | Device | Screen | Price (ish) | Power | Effort | Notes |
 |---|---|---|---|---|---|
-| **Seeed reTerminal E1001** ⭐ | 7.5″ · 800×480 · 4-grey | ~$79 | Built-in 2000 mAh, **~3-month** battery | **Very low** | ESP32-S3 in a finished case with buttons; **first-class ESPHome support with documented pins**. Nothing to wire, solder or print. |
+| **Seeed reTerminal E1001** | 7.5″ · 800×480 · 4-grey | ~$79 | Built-in 2000 mAh, **~3-month** battery | **Very low** | ESP32-S3 in a finished case with buttons; **first-class ESPHome support with documented pins**. Nothing to wire, solder or print. |
 | Seeed XIAO 7.5″ ePaper Panel | 7.5″ · 800×480 · B/W | ~$50 | Built-in 2000 mAh, ~3-month | Low | Cheaper Seeed sibling (XIAO ESP32-C3); panel + battery, ESPHome-ready; less case/fewer buttons than the E1001. |
 | LILYGO T5 4.7″ (S3) | 4.7″ · 960×540 · 16-grey | ~£45–55 | 18650/LiPo on-board, USB-C | Medium | Cheapest DIY board, lovely panel — but the **S3 needs a community ESPHome external component**, not a built-in driver. Plan-B. |
 | Waveshare 7.5″ + ESP32 driver board | 7.5″ · 800×480 · B/W | ~£55–65 | Add your own LiPo + charger board | Medium | Biggest screen per pound; DIY battery wiring; rock-solid `waveshare_epaper` support. |
@@ -70,7 +70,7 @@ The display's load is tiny (one wake/day ≈ 0.25 mAh; everything else is deep-s
 |---|---|---|
 | **Inkplate 6 / 10** | **~18–25 µA** | Best finished pick — LiPo charging + native ESPHome; add solar/LiFePO4 for forever |
 | Inkplate 2 | ~8 µA | Lowest of the range (small 2.9″ tri-colour) |
-| **DIY: XIAO ESP32-C3 + Waveshare 4.2″** ⭐ | ~44–80 µA (board); ~5 µA bare chip | **Chosen build.** On-board USB-C + LiPo charging; you wire the panel + solar. Smaller/cheaper than 7.5″, easily readable for 4 items. |
+| **DIY: XIAO ESP32-C3 + Waveshare 4.2″** | ~44–80 µA (board); ~5 µA bare chip | **Chosen build.** On-board USB-C + LiPo charging; you wire the panel + solar. Smaller/cheaper than 7.5″, easily readable for 4 items. |
 | reTerminal E1001 | ~0.9 mA | Sleep-limited → ~3 months regardless of wake rate; not for max-life |
 
 Either low-power board runs the **same** server-rendered dashboard — they're WiFi ESP32 boards with ESPHome `online_image` support, so only `firmware/*.yaml` and the resolution change. Least-hassle "never recharge": **Inkplate 6 + small solar panel + LiFePO4**. Absolute minimum power (a build project): **ESP32-C3 + Waveshare + supercap/LiFePO4 solar**.

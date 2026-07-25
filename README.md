@@ -1,92 +1,54 @@
-# EatMe 🫙
+# EatMe
 
-Never lose a jar at the back of the cupboard again.
+EatMe is a self-hosted food inventory app for jars, spices, tins and cupboard staples. Scan a barcode, track what remains, and see what needs using first.
 
-EatMe is a self-hosted food inventory tracker for the stuff that gets forgotten — jars, spices, tins and dried goods. Add items by scanning their barcode with your phone, say how much is left with one tap, and let a battery-powered e-ink display in the kitchen quietly point out what needs eating first.
+## Features
 
-## What it does
+- Barcode scanning with Open Food Facts product lookup
+- Printable QR labels for decanted jars and containers
+- Best-before, use-by and opened-date freshness tracking
+- Quick updates for quantity remaining
+- Searchable inventory and shopping list
+- Local receipt import with a review step before stock is added
+- Offline inventory access and queued changes
+- Optional e-ink kitchen display
+- Optional web-push reminders for items to use soon
 
-- 📷 **Scan to add** — point the phone at a barcode; product details are filled in from Open Food Facts
-- 🏷️ **QR labels for jars without barcodes** — decanted spices get printable QR labels; scan the lid to update that jar
-- 🕰️ **Expiry & freshness tracking** — best-before dates, plus "opened 8 months ago" warnings for spices that fade long before the printed date
-- 🫗 **How much is left** — quick-tap fractions: full / ¾ / ½ / ¼ / nearly empty / empty
-- 🔎 **"Do I already have cumin?"** — search the cupboard from the supermarket
-- 🍛 **Use-it-up recipes** — suggestions ranked by what is closest to going off
-- 🛒 **Shopping list** — anything marked low or finished lands on the list
-- 🖼️ **Kitchen e-ink display** — glanceable "eat me first" dashboard, months per battery charge
+## Components
 
-## How it fits together
-
-```mermaid
-flowchart LR
-    subgraph phone["iPhone"]
-        pwa["EatMe PWA<br/>(installed to Home Screen)"]
-    end
-    subgraph pi["Raspberry Pi · Home Assistant OS"]
-        addon["EatMe add-on<br/>Node + Fastify + SQLite"]
-        ts["Tailscale add-on<br/>HTTPS, at home and out"]
-    end
-    epaper["E-ink kitchen display<br/>ESP32 · ESPHome"]
-    off["Open Food Facts"]
-
-    pwa -->|"HTTPS (REST)"| ts
-    ts --> addon
-    epaper -->|"GET /api/display.png<br/>a few times a day, then deep sleep"| addon
-    addon -->|"barcode lookup, cached"| off
-```
-
-Three parts, all optional beyond the first:
-
-| Part | What it is |
+| Component | Purpose |
 |---|---|
-| **Server** | TypeScript (Node 22 + Fastify + SQLite), packaged as a **Home Assistant add-on** so it runs on the HA Raspberry Pi already in the house. The inventory database lives in `/data`, so it is covered by normal HA backups. |
-| **Phone app** | A **PWA** served by the server and installed to the iPhone Home Screen — no App Store, no Apple Developer account. Camera barcode scanning, offline-tolerant, Web Push notifications (iOS 16.4+). |
-| **Display** | Any battery e-paper board that runs **ESPHome** (~60 lines of YAML) — it wakes a few times a day, fetches a server-rendered image, and deep-sleeps. Board choice is deferred and swappable; the current front-runner is the **Seeed reTerminal E1001** (7.5″, ESP32-S3, ~3-month battery). |
+| Server | Fastify API and SQLite database, packaged as a Home Assistant app. Data is stored in `/data` and included in Home Assistant backups. |
+| Phone app | Installable web app with barcode scanning, offline access and notifications. |
+| Display | Optional ESPHome e-ink display that fetches a small dashboard image from the server. |
 
-## Repo layout
+## Repository layout
 
-```
-eatme/
-├── config.yaml      # HA add-on manifest (at the root so Supervisor's build
-├── Dockerfile        #   context is the whole monorepo — see addon/DOCS.md)
-├── repository.yaml  # lets Home Assistant add this repo as an add-on source
-├── apps/
-│   ├── server/      # Fastify API, display renderer, scheduled jobs
-│   └── web/         # React PWA (Vite + vite-plugin-pwa)
-├── packages/
-│   └── shared/      # zod schemas & types shared by server and web
-├── addon/           # add-on docs + the OCR sidecar (separate Docker image)
-├── firmware/        # ESPHome YAML for the e-ink display
-└── docs/            # the plan (start here)
+```text
+config.yaml      Home Assistant app manifest
+apps/server/     Fastify API, migrations and scheduled jobs
+apps/web/        React progressive web app
+packages/shared/ Shared schemas and types
+addon/           App documentation and local OCR sidecar
+firmware/        ESPHome configuration for the e-ink display
+docs/            Product, architecture, hardware and implementation notes
 ```
 
-## The plan
+## Development
 
-| Doc | Contents |
-|---|---|
-| [docs/01-product.md](docs/01-product.md) | What it does and why — user stories, features, freshness rules, data model |
-| [docs/02-architecture.md](docs/02-architecture.md) | How it's built — API, HA add-on packaging, the HTTPS problem, display rendering |
-| [docs/03-hardware.md](docs/03-hardware.md) | What to buy — e-ink device comparison and recommendation, ESPHome approach |
-| [docs/04-roadmap.md](docs/04-roadmap.md) | Build order — nine phases, each independently useful |
-| **[docs/plan/](docs/plan/README.md)** | **The executable build spec** — one file per phase, code skeletons, verified facts, acceptance checklists (built to be run by a smaller model) |
+```sh
+pnpm install
+pnpm dev
+```
 
-## Status
+Open `http://localhost:5173`. The API runs on port `8099`.
 
-🚧 **In active build.** On `main` today:
+For Home Assistant installation and configuration, see [addon/DOCS.md](addon/DOCS.md). Receipt import uses a local stub by default, so the complete workflow can be tested without cloud services.
 
-- **Server** — TypeScript (Node 22 + Fastify + built-in SQLite) with numbered migrations run at boot.
-- **Phone app** — installable PWA: cupboard list / search / one-tap fractions / add item / per-jar editing / settings, plus camera barcode scanning.
-- **Home Assistant add-on** — packaged with bundled Tailscale so the iPhone reaches it over HTTPS, at home and away.
-- **Data model** — products (identity) · stock lots (the physical packs you own) · QR containers · usage history. Freshness is tracked per-pack: a printed **use-by** (safety) is kept distinct from **best-before** and from an **opened → best-used-by** window (quality), so nothing is called "expired" without a real use-by.
-- **Local receipt import** — photograph a receipt; it is read **entirely on your own hardware** (a local OCR engine — no cloud, ever), parsed, matched against what you already own (learning aliases as you confirm), and shown for review before anything is added.
-- **Reliability pass** — every mutation is atomic and idempotent, so a flaky connection or a double-tap can't double-add or corrupt stock.
-- **Works with no signal** — the cupboard is cached on the phone and stays searchable offline ("do I already have cumin?"), and changes made offline are queued and replayed exactly once when you're back in range.
-- **Kitchen e-ink display** — the server renders the whole 400×300 dashboard as a PNG; the battery panel just wakes, draws it and sleeps. ESPHome config included.
-- **Recipes & shopping list** — recipes are ranked by how much expiring food they'd use up (and never suggest anything past its use-by); running a pack down to empty puts it on the shopping list, and ticking it off puts a fresh pack back.
-- **Notifications** — a Monday digest of what to use this week and a warning the day before anything hits its use-by. Nothing else.
+## Project status
 
-Run it locally with `pnpm install && pnpm dev`, then open `http://localhost:5173` (the API runs on `:8099`); install on the Pi via [`addon/DOCS.md`](addon/DOCS.md). Receipt OCR uses a built-in stub by default, so the whole flow works on a laptop with no Pi and no cloud.
+The core server, web app, camera scanning, Home Assistant packaging, offline support, receipt import, QR labels, recipes, shopping list, e-ink display support and push notifications are implemented. Hardware flashing, printer setup and on-device iPhone verification remain hands-on tasks.
 
-**Next:** QR labels for decanted jars (P5), then the stretch list — Home Assistant sensors, usage stats, NFC. The hardware and iPhone pieces (flashing the display, Web Push on iOS) are the remaining hands-on steps. Full sequence and per-phase specs in [docs/plan/](docs/plan/README.md).
+Detailed product, architecture and implementation notes are in [docs](docs).
 
 MIT licensed.

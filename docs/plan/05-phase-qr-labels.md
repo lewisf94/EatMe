@@ -57,7 +57,7 @@ Document (in `docs/03-hardware.md`, already noted) that a Niimbot D110 can print
 - [ ] `GET /i/<qrUid>` 302s to `/item/<id>`; hitting it in a browser lands on the item screen.
 - [ ] `GET /api/labels?all=1` renders a printable grid; print preview shows tidy, correctly-sized labels with names.
 - [ ] The QR encodes an **absolute** URL using the request's external scheme/host (verify it's `https://…ts.net/i/…` when accessed via the tailnet, not `http://127.0.0.1`).
-- [ ] 🖐 Print one, tape it to a jar, scan with the iOS Camera app → opens that item's quick-update screen.
+- [ ] Manual: print one, tape it to a jar, then scan it with the iOS Camera app to open that item's quick-update screen.
 
 ## Definition of done
 

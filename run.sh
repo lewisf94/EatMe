@@ -15,7 +15,7 @@ TS_HOSTNAME="$(opt tailscale_hostname)"
 [ -z "$TS_HOSTNAME" ] && TS_HOSTNAME="eatme"
 
 if [ -n "$TS_AUTHKEY" ]; then
-  echo "[eatme] starting tailscaled (userspace networking)…"
+  echo "[eatme] starting tailscaled in userspace mode"
   mkdir -p /data/tailscale /var/run/tailscale
   tailscaled \
     --tun=userspace-networking \
@@ -31,16 +31,18 @@ if [ -n "$TS_AUTHKEY" ]; then
 
   tailscale up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME"
 
-  echo "[eatme] enabling HTTPS via 'tailscale serve'…"
-  # Flag spellings drift between Tailscale versions — try the current form,
+  echo "[eatme] enabling HTTPS with tailscale serve"
+  # Flag spellings drift between Tailscale versions. Try the current form,
   # then older fallbacks. Confirm with 'tailscale serve --help' if all fail.
   tailscale serve --bg --https=443 http://127.0.0.1:8099 \
     || tailscale serve --bg https / http://127.0.0.1:8099 \
     || tailscale serve --bg 8099 \
-    || echo "[eatme] 'tailscale serve' failed — see 'tailscale serve --help' and adjust run.sh"
+    || echo "[eatme] tailscale serve failed; see 'tailscale serve --help' and adjust run.sh"
 
   echo "[eatme] app URL (once MagicDNS+HTTPS are on): https://${TS_HOSTNAME}.<your-tailnet>.ts.net"
 fi
 
 echo "[eatme] starting server on :8099"
-exec node_modules/.bin/tsx apps/server/src/index.ts
+# tsx is a server-workspace dependency, not a root dependency. Run its CLI
+# directly so this works in the packaged add-on as well as from the source tree.
+exec node /app/apps/server/node_modules/tsx/dist/cli.mjs /app/apps/server/src/index.ts

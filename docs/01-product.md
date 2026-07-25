@@ -44,7 +44,6 @@ The effort budget is the whole design constraint: if updating the inventory take
 ### Stretch (P7)
 
 - Home Assistant sensors (`expiring_soon`, `low_stock`) for automations and dashboards; sync shopping list to an HA todo list
-- LLM suggestions (Claude API, optional key): "what can I make with these five things?"
 - NFC stickers as an alternative to QR labels (iPhone reads NTAG tags natively)
 - Waste/usage stats ("you binned 3 things this month; you never finish coriander")
 

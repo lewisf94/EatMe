@@ -2,7 +2,7 @@
 
 **Goal:** package the whole thing as a **local Home Assistant add-on** that runs on Lewis's Pi, persists to `/data` (inside HA backups), and exposes a **real HTTPS URL reachable from the iPhone at home and away** — which the camera (P3) and Web Push (P8) require.
 
-**Prerequisites:** P1–P3 green. Much of the verification here is 🖐 **manual on the Pi** — do everything automatable (build the image, boot the container locally), then hand Lewis a tested, documented install.
+**Prerequisites:** P1-P3 green. Much of the verification is manual on the Pi; complete automated checks before installation.
 
 ## The constraint that dictates this design (verified — see research-notes)
 
@@ -143,8 +143,8 @@ Cover, in copy-paste form: install the **SSH & Web Terminal** or **Samba** add-o
 - [ ] `docker run -p 8099:8099 -v $PWD/data:/data eatme` boots; `/api/health` responds; data persists in the mounted volume across `docker run`s.
 - [ ] With `AUTH_TOKEN` set (env), `/api/*` returns 401 without the bearer header and 200 with it; `/api/health` stays open.
 - [ ] The container serves the **built web app** at `/` (no Vite).
-- [ ] 🖐 On the Pi: add-on installs from Local, starts, watchdog healthy, survives a reboot, appears in an HA backup's contents.
-- [ ] 🖐 With a Tailscale auth key set: `https://eatme.<tailnet>.ts.net` loads with a valid cert; the iPhone can install the PWA and **the camera scanner now works** (closes the deferred P3 box).
+- [ ] Manual: on the Pi, the app installs locally, starts, watchdog is healthy, survives a reboot and appears in a Home Assistant backup.
+- [ ] Manual: with a Tailscale auth key set, `https://eatme.<tailnet>.ts.net` has a valid certificate and the iPhone can install the web app and scan a barcode.
 
 ## Definition of done
 
