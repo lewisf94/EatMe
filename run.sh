@@ -32,11 +32,11 @@ if [ -n "$TS_AUTHKEY" ]; then
   tailscale up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME"
 
   echo "[eatme] enabling HTTPS with tailscale serve"
+  # Serve configuration persists across restarts. Clear any rule created by an
+  # earlier app version before publishing the current reverse proxy rule.
+  tailscale serve reset || true
   # Current Tailscale Serve selects the HTTPS listener automatically.
-  # Older flag forms are retained as fallbacks for previously built images.
   tailscale serve --bg http://127.0.0.1:8099 \
-    || tailscale serve --bg --https=443 http://127.0.0.1:8099 \
-    || tailscale serve --bg https / http://127.0.0.1:8099 \
     || echo "[eatme] tailscale serve failed; see 'tailscale serve --help' and adjust run.sh"
 
   echo "[eatme] app URL: https://${TS_HOSTNAME}.<your-tailnet>.ts.net"
