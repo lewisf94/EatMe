@@ -2,10 +2,10 @@ import type { FastifyInstance } from "fastify";
 import { IntakeInput, civilToday, byUrgency } from "@eatme/shared";
 import { listInventory } from "../repo/inventory.js";
 import { findOrCreateProduct } from "../repo/products.js";
-import { createLot } from "../repo/stockLots.js";
 import { createContainer } from "../repo/containers.js";
 import { timezone } from "../repo/settings.js";
 import { idempotent } from "../services/idempotency.js";
+import { createGuidedLot, resolveNewProduct } from "../services/foodGuidance.js";
 
 export async function registerInventory(app: FastifyInstance): Promise<void> {
   // The cupboard: one aggregated row per product.
@@ -43,18 +43,20 @@ export async function registerInventory(app: FastifyInstance): Promise<void> {
         .send({ error: { message: "invalid intake", issues: parsed.error.issues } });
     const d = parsed.data;
     const result = idempotent("intake", d.opId, () => {
-      const product = findOrCreateProduct({
+      const { productInput } = resolveNewProduct({
         name: d.name,
         brand: d.brand,
         barcode: d.barcode,
         categoryId: d.categoryId,
         defaultLocationId: d.locationId,
+        guidanceRuleId: d.guidanceRuleId,
+        categoryHints: d.categoryHints,
         packageQuantity: d.packageQuantity,
         packageUnit: d.packageUnit,
         imageUrl: d.imageUrl,
       });
-      const lot = createLot({
-        productId: product.id,
+      const product = findOrCreateProduct(productInput);
+      const lot = createGuidedLot(product, {
         locationId: d.locationId,
         count: d.count,
         fractionLeft: d.fractionLeft,
@@ -67,7 +69,7 @@ export async function registerInventory(app: FastifyInstance): Promise<void> {
       const container = createContainer({
         name: product.name,
         productId: product.id,
-        locationId: d.locationId,
+        locationId: lot.locationId,
         currentStockLotId: lot.id,
       });
       return { product, lot, container };

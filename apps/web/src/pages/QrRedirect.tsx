@@ -25,7 +25,7 @@ export default function QrRedirect() {
         <p className="mb-1 font-semibold">Couldn’t open that label.</p>
         <p className="text-sm text-slate-500">{error}</p>
         <Link to="/" className="mt-4 inline-block text-sm text-emerald-600">
-          ← Back to cupboard
+          ← Back to inventory
         </Link>
       </div>
     );

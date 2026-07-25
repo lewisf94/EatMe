@@ -82,7 +82,7 @@ An HA OS add-on is a Docker image plus a manifest. `config.yaml` (repo root) ske
 name: EatMe
 slug: eatme
 version: 0.1.0
-description: Food inventory for jars, spices, and the back of the cupboard
+description: Household food inventory with freshness guidance
 arch: [aarch64, amd64]        # Pi 4/5 and dev machines
 init: false
 ports:

@@ -31,6 +31,13 @@ export function getLocation(id: string): Location | undefined {
   return r ? toLoc(r) : undefined;
 }
 
+export function getLocationByGuidanceKey(key: string): Location | undefined {
+  const r = db
+    .prepare("SELECT id, name, sort_order FROM locations WHERE guidance_key = ?")
+    .get(key) as LocRow | undefined;
+  return r ? toLoc(r) : undefined;
+}
+
 export function updateLocation(id: string, patch: LocationPatch): Location | undefined {
   const cols: Record<string, string> = { name: "name", sortOrder: "sort_order" };
   const sets: string[] = [];

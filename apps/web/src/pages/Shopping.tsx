@@ -33,7 +33,7 @@ export default function Shopping() {
     try {
       const { lot } = await api.tickShopping(item.id);
       // A row that came from something you finished puts a fresh pack back.
-      setNote(lot ? `${item.name} is back in the cupboard` : null);
+      setNote(lot ? `${item.name} is back in the inventory` : null);
       await reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn’t tick that off");
@@ -92,7 +92,7 @@ export default function Shopping() {
                       />
                       <span className="grow">
                         {i.name}
-                        {i.productId && <span className="srow-sub"> · was in your cupboard</span>}
+                        {i.productId && <span className="srow-sub"> · was in your inventory</span>}
                       </span>
                       <button
                         className="mini"

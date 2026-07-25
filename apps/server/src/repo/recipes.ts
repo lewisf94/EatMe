@@ -1,5 +1,12 @@
 import { db } from "../db.js";
-import { newId, type Recipe, type RecipeInput, type RecipePatch } from "@eatme/shared";
+import {
+  DIETARY_REQUIREMENTS,
+  newId,
+  type DietaryRequirement,
+  type Recipe,
+  type RecipeInput,
+  type RecipePatch,
+} from "@eatme/shared";
 
 type RecipeRow = {
   id: string;
@@ -7,10 +14,13 @@ type RecipeRow = {
   url: string | null;
   notes: string | null;
   created_at: string;
+  dietary_tags: string;
+  starter_key: string | null;
 };
 
-const listStmt = db.prepare("SELECT id, name, url, notes, created_at FROM recipes ORDER BY name");
-const byIdStmt = db.prepare("SELECT id, name, url, notes, created_at FROM recipes WHERE id = ?");
+const RECIPE_COLS = "id, name, url, notes, created_at, dietary_tags, starter_key";
+const listStmt = db.prepare(`SELECT ${RECIPE_COLS} FROM recipes ORDER BY name`);
+const byIdStmt = db.prepare(`SELECT ${RECIPE_COLS} FROM recipes WHERE id = ?`);
 const ingStmt = db.prepare("SELECT recipe_id, match_text FROM recipe_ingredients ORDER BY rowid");
 
 function ingredientsByRecipe(): Map<string, string[]> {
@@ -30,7 +40,22 @@ const toRecipe = (r: RecipeRow, ingredients: string[]): Recipe => ({
   notes: r.notes,
   createdAt: r.created_at,
   ingredients,
+  dietaryTags: parseDietaryTags(r.dietary_tags),
+  starterKey: r.starter_key,
 });
+
+function parseDietaryTags(value: string): DietaryRequirement[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((tag): tag is DietaryRequirement =>
+          DIETARY_REQUIREMENTS.includes(tag as DietaryRequirement),
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 export function listRecipes(): Recipe[] {
   const ings = ingredientsByRecipe();
@@ -61,14 +86,18 @@ function replaceIngredients(recipeId: string, ingredients: string[]): void {
   }
 }
 
-export function createRecipe(input: RecipeInput): Recipe {
+export function createRecipe(input: RecipeInput, starterKey: string | null = null): Recipe {
   const id = newId();
-  db.prepare("INSERT INTO recipes (id, name, url, notes, created_at) VALUES (?, ?, ?, ?, ?)").run(
+  db.prepare(
+    "INSERT INTO recipes (id, name, url, notes, created_at, dietary_tags, starter_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  ).run(
     id,
     input.name,
     input.url ?? null,
     input.notes ?? null,
     new Date().toISOString(),
+    JSON.stringify(input.dietaryTags),
+    starterKey,
   );
   replaceIngredients(id, input.ingredients);
   return getRecipe(id) as Recipe;
@@ -81,10 +110,16 @@ export function updateRecipe(id: string, patch: RecipePatch): Recipe | undefined
   if (patch.name !== undefined) (sets.push("name = ?"), vals.push(patch.name));
   if (patch.url !== undefined) (sets.push("url = ?"), vals.push(patch.url ?? null));
   if (patch.notes !== undefined) (sets.push("notes = ?"), vals.push(patch.notes ?? null));
+  if (patch.dietaryTags !== undefined)
+    (sets.push("dietary_tags = ?"), vals.push(JSON.stringify(patch.dietaryTags)));
   if (sets.length)
     db.prepare(`UPDATE recipes SET ${sets.join(", ")} WHERE id = ?`).run(...vals, id);
   if (patch.ingredients !== undefined) replaceIngredients(id, patch.ingredients);
   return getRecipe(id);
+}
+
+export function hasStarterRecipe(key: string): boolean {
+  return Boolean(db.prepare("SELECT 1 FROM recipes WHERE starter_key = ?").get(key));
 }
 
 export function deleteRecipe(id: string): boolean {

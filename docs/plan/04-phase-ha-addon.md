@@ -34,7 +34,7 @@ apps/server/src/config.ts   # add AUTH_TOKEN; default DATA_DIR "/data" when pres
 name: EatMe
 slug: eatme
 version: "0.4.0"
-description: Food inventory for jars, spices and the back of the cupboard
+description: Household food inventory with freshness guidance
 arch: [aarch64, amd64]
 init: false
 startup: application

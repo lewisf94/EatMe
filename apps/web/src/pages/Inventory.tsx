@@ -98,7 +98,7 @@ export default function Inventory() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search the cupboard…"
+            placeholder="Search food…"
             aria-label="Search"
           />
         </div>

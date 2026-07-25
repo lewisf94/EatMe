@@ -1,9 +1,10 @@
 import type { FastifyInstance } from "fastify";
-import { StockLotInput, StockLotPatch, EventInput, ArchiveInput } from "@eatme/shared";
-import { createLot, updateLot, archiveLot, addEvent, getLot } from "../repo/stockLots.js";
+import { StockLotCreateInput, StockLotPatch, EventInput, ArchiveInput } from "@eatme/shared";
+import { updateLot, archiveLot, addEvent, getLot } from "../repo/stockLots.js";
 import { idempotent } from "../services/idempotency.js";
 import { getProduct } from "../repo/products.js";
 import { addShopping, hasOpenFor } from "../repo/shopping.js";
+import { createGuidedLot } from "../services/foodGuidance.js";
 
 /** Running a pack down to empty is the moment you know you need more, so it
  *  goes straight on the shopping list. Deduped, so finishing a second pack of
@@ -18,12 +19,14 @@ function offerToRebuy(lotId: string): void {
 
 export async function registerStockLots(app: FastifyInstance): Promise<void> {
   app.post("/stock-lots", async (req, reply) => {
-    const parsed = StockLotInput.safeParse(req.body);
+    const parsed = StockLotCreateInput.safeParse(req.body);
     if (!parsed.success)
       return reply
         .code(400)
         .send({ error: { message: "invalid stock lot", issues: parsed.error.issues } });
-    return { data: createLot(parsed.data) };
+    const product = getProduct(parsed.data.productId);
+    if (!product) return reply.code(404).send({ error: { message: "product not found" } });
+    return { data: createGuidedLot(product, parsed.data) };
   });
 
   app.patch("/stock-lots/:id", async (req, reply) => {

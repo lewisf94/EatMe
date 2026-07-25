@@ -15,7 +15,7 @@ export function SyncStatus({ syncedAt, offline }: { syncedAt: number | null; off
   const main = offline
     ? time
       ? `Offline · saved ${time}`
-      : "Offline · showing your saved cupboard"
+      : "Offline · showing your saved inventory"
     : time
       ? `Last synced ${time}`
       : "Synced";

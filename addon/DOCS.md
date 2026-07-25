@@ -48,6 +48,23 @@ single-add-on repository — `config.yaml` at the root *is* the add-on.
 | `receipt_provider` | `stub` (canned OCR, works out of the box) or `local` (the [eatme-ocr sidecar](ocr/README.md) on the Pi — real receipt scanning). |
 | `ocr_url` | Base URL of the OCR sidecar when `receipt_provider` is `local` (e.g. `http://homeassistant.local:8765`). |
 
+## Automatic food guidance
+
+When category, storage location or date are left on **Automatic**, EatMe uses
+its bundled local guidance table. This applies to manual additions, barcode
+scans, receipt imports, extra packs and shopping-list repurchases. The date
+added is treated as the purchase date unless a receipt supplied one.
+
+A printed date always overrides the estimate. Inferred dates are labelled as
+estimated best-quality reminders and are never treated as manufacturer use-by
+dates. Unknown products receive no estimated date. The methodology and
+authoritative references are documented in
+[Food guidance and sources](../docs/food-guidance.md).
+
+Dietary requirements can be selected in **EatMe > Settings**. They filter
+use-it-up suggestions and the repeat-safe starter-recipe import. Ingredient
+labels must still be checked for allergies and cross-contamination.
+
 ## Enabling HTTPS (for the phone app, camera, and Web Push)
 
 1. In the **Tailscale admin console**: enable **MagicDNS** and **HTTPS

@@ -66,7 +66,7 @@ export function buildDashboardSvg(d: DashboardData): string {
   if (d.urgent.length === 0) {
     parts.push(
       `<text x="${DISPLAY_W / 2}" y="150" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="26">Nothing to use up</text>`,
-      `<text x="${DISPLAY_W / 2}" y="180" text-anchor="middle" font-family="Archivo" font-size="15">The cupboard is in good shape.</text>`,
+      `<text x="${DISPLAY_W / 2}" y="180" text-anchor="middle" font-family="Archivo" font-size="15">Your food is in good shape.</text>`,
     );
   } else {
     d.urgent.slice(0, DISPLAY_ROWS).forEach((item, i) => {

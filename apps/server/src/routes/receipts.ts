@@ -7,8 +7,7 @@ import { parseReceipt } from "../services/receipt/parse.js";
 import { makeContext, matchLine, type MatchContext } from "../services/receipt/match.js";
 import * as receipts from "../repo/receipts.js";
 import { allProducts, createProduct, getProduct } from "../repo/products.js";
-import { createLot } from "../repo/stockLots.js";
-import { listLocations } from "../repo/locations.js";
+import { createGuidedLot, resolveNewProduct } from "../services/foodGuidance.js";
 
 const retailerOf = (p: { merchant: string | null }) => p.merchant ?? "";
 
@@ -113,7 +112,7 @@ export async function registerReceipts(app: FastifyInstance): Promise<void> {
         .send({ error: { message: "invalid confirmation", issues: parsed.error.issues } });
 
     const retailer = retailerOf(purchase);
-    const fallbackLocation = parsed.data.defaultLocationId ?? listLocations()[0]?.id;
+    const fallbackLocation = parsed.data.defaultLocationId;
 
     // Validate decisions up front: known ids, no duplicates, and (while still
     // pending) every pending line decided exactly once. Silently skipping these
@@ -168,32 +167,29 @@ export async function registerReceipts(app: FastifyInstance): Promise<void> {
           // existing product's saved default is preferred when none is given, so
           // fridge/cupboard placement starts to stick.
           let productId = d.productId ?? null;
-          const chosen = d.locationId ?? fallbackLocation;
           if (!productId && d.newProduct) {
-            productId = createProduct({
+            const { productInput } = resolveNewProduct({
               name: d.newProduct.name,
               brand: d.newProduct.brand,
               categoryId: d.newProduct.categoryId,
-              defaultLocationId: chosen,
-            }).id;
+              defaultLocationId: d.locationId ?? fallbackLocation,
+              categoryHints: [line.normalized_text, ...(d.newProduct.categoryHints ?? [])],
+            });
+            productId = createProduct(productInput).id;
             summary.newProducts++;
           }
           const product = productId ? getProduct(productId) : undefined;
           if (!product) throw new Error(`line ${line.line_no}: no product to add to`);
 
-          const locationId = d.locationId ?? product.defaultLocationId ?? fallbackLocation;
-          if (!locationId) throw new Error("no location available for the stock lot");
-
-          createLot({
-            productId: product.id,
-            locationId,
+          const lot = createGuidedLot(product, {
+            locationId: d.locationId ?? fallbackLocation,
             count: d.quantity,
             fractionLeft: 1,
             purchasedAt: fresh.purchased_at ?? undefined, // keep the purchase date on the lot
             source: "receipt",
           });
           receipts.learnAlias(retailer, line.normalized_text, product.id);
-          receipts.setLineOutcome(line.id, "added", product.id, locationId);
+          receipts.setLineOutcome(line.id, "added", product.id, lot.locationId);
           summary.added++;
         }
         receipts.setPurchaseStatus(id, "confirmed");

@@ -18,7 +18,7 @@ export default defineConfig({
       manifest: {
         name: "EatMe",
         short_name: "EatMe",
-        description: "Track the jars and spices at the back of the cupboard.",
+        description: "Track household food and see what needs using first.",
         theme_color: "#16130d",
         background_color: "#f4f1e8",
         display: "standalone",

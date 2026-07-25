@@ -8,8 +8,8 @@ import {
   getShopping,
 } from "../repo/shopping.js";
 import { getProduct } from "../repo/products.js";
-import { listLocations } from "../repo/locations.js";
-import { createLot, logEvent } from "../repo/stockLots.js";
+import { logEvent } from "../repo/stockLots.js";
+import { createGuidedLot } from "../services/foodGuidance.js";
 
 export async function registerShopping(app: FastifyInstance): Promise<void> {
   app.get("/shopping-list", async (req) => {
@@ -43,9 +43,8 @@ export async function registerShopping(app: FastifyInstance): Promise<void> {
     let lot = null;
     if (before.productId && !before.doneAt) {
       const product = getProduct(before.productId);
-      const locationId = product?.defaultLocationId ?? listLocations()[0]?.id;
-      if (product && locationId) {
-        lot = createLot({ productId: product.id, locationId, count: 1, fractionLeft: 1 });
+      if (product) {
+        lot = createGuidedLot(product, { count: 1, fractionLeft: 1, source: "shopping" });
         logEvent(lot.id, "repurchased");
       }
     }

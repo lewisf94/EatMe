@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import type { Category, Location } from "@eatme/shared";
+import {
+  DIETARY_REQUIREMENTS,
+  type Category,
+  type DietaryRequirement,
+  type Location,
+} from "@eatme/shared";
 import { api, TOKEN_KEY } from "../api";
 import { enablePush, disablePush, pushState, type PushState } from "../push";
 import { IconBack, IconQr } from "../ui/icons";
@@ -111,6 +116,16 @@ const COMMON_TZS = [
   "Australia/Sydney",
 ];
 
+const DIETARY_LABELS: Record<DietaryRequirement, string> = {
+  vegetarian: "Vegetarian",
+  vegan: "Vegan",
+  pescatarian: "Pescatarian",
+  gluten_free: "Gluten-free",
+  dairy_free: "Dairy-free",
+  egg_free: "Egg-free",
+  nut_free: "Nut-free",
+};
+
 export default function Settings() {
   const nav = useNavigate();
   const [cats, setCats] = useState<Category[]>([]);
@@ -119,6 +134,8 @@ export default function Settings() {
   const [newCat, setNewCat] = useState("");
   const [tz, setTz] = useState("");
   const [tzSaved, setTzSaved] = useState(false);
+  const [dietary, setDietary] = useState<DietaryRequirement[]>([]);
+  const [dietarySaved, setDietarySaved] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) ?? "");
@@ -137,7 +154,12 @@ export default function Settings() {
   const reload = () => {
     void guard(api.categories().then(setCats));
     void guard(api.locations().then(setLocs));
-    void guard(api.getSettings().then((s) => setTz(s.household_timezone)));
+    void guard(
+      api.getSettings().then((s) => {
+        setTz(s.household_timezone);
+        setDietary(s.dietary_requirements);
+      }),
+    );
   };
   useEffect(reload, []);
 
@@ -147,6 +169,20 @@ export default function Settings() {
     );
     setTzSaved(true);
     setTimeout(() => setTzSaved(false), 2000);
+  };
+
+  const toggleDietary = async (requirement: DietaryRequirement) => {
+    const next = dietary.includes(requirement)
+      ? dietary.filter((item) => item !== requirement)
+      : [...dietary, requirement];
+    setDietary(next);
+    await guard(
+      api
+        .putSettings({ dietary_requirements: next })
+        .then((settings) => setDietary(settings.dietary_requirements)),
+    );
+    setDietarySaved(true);
+    setTimeout(() => setDietarySaved(false), 2000);
   };
 
   const addLocation = async () => {
@@ -210,6 +246,29 @@ export default function Settings() {
               ))}
             </select>
             {tzSaved && <span className="saved">Saved</span>}
+          </div>
+        </section>
+
+        <section className="sec">
+          <div className="sec-head">
+            <span className="eyebrow">Dietary requirements</span>
+            {dietarySaved && <span className="saved">Saved</span>}
+          </div>
+          <p className="note left" style={{ marginBottom: 10 }}>
+            Use-it-up suggestions and starter-recipe imports will only include compatible recipes.
+            Always check ingredient labels for allergies and cross-contamination.
+          </p>
+          <div className="rgroup">
+            {DIETARY_REQUIREMENTS.map((requirement) => (
+              <label key={requirement} className="srow">
+                <input
+                  type="checkbox"
+                  checked={dietary.includes(requirement)}
+                  onChange={() => void toggleDietary(requirement)}
+                />
+                <span className="grow">{DIETARY_LABELS[requirement]}</span>
+              </label>
+            ))}
           </div>
         </section>
 

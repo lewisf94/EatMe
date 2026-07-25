@@ -1,7 +1,7 @@
 name: EatMe
 slug: eatme
-version: "0.6.5"
-description: Self-hosted food inventory for jars, spices and cupboard staples
+version: "0.7.0"
+description: Self-hosted household food inventory with freshness guidance
 url: https://github.com/lewisf94/EatMe
 arch:
   - aarch64

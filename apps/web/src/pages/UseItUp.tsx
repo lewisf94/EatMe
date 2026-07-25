@@ -69,6 +69,7 @@ export default function UseItUp() {
                           Open recipe →
                         </a>
                       )}
+                      {h.recipe.notes && <p className="cook-missing">{h.recipe.notes}</p>}
                     </article>
                   ))}
                 </div>

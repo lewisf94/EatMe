@@ -25,6 +25,7 @@ export const ProductInput = z.object({
   barcode: z.string().optional(),
   categoryId: z.string().min(1),
   defaultLocationId: z.string().optional(),
+  guidanceRuleId: z.string().optional(),
   packageQuantity: z.number().positive().optional(),
   packageUnit: z.string().optional(),
   imageUrl: z.string().optional(),
@@ -36,6 +37,7 @@ export const ProductPatch = ProductInput.partial().extend({
   brand: z.string().nullable().optional(),
   barcode: z.string().nullable().optional(),
   defaultLocationId: z.string().nullable().optional(),
+  guidanceRuleId: z.string().nullable().optional(),
   packageQuantity: z.number().positive().nullable().optional(),
   packageUnit: z.string().nullable().optional(),
   imageUrl: z.string().nullable().optional(),
@@ -49,6 +51,7 @@ export const Product = z.object({
   barcode: z.string().nullable(),
   categoryId: z.string(),
   defaultLocationId: z.string().nullable(),
+  guidanceRuleId: z.string().nullable(),
   packageQuantity: z.number().nullable(),
   packageUnit: z.string().nullable(),
   imageUrl: z.string().nullable(),
@@ -76,6 +79,10 @@ export const StockLotInput = z.object({
   source: z.string().optional(),
 });
 export type StockLotInput = z.infer<typeof StockLotInput>;
+export const StockLotCreateInput = StockLotInput.omit({ locationId: true }).extend({
+  locationId: z.string().min(1).optional(),
+});
+export type StockLotCreateInput = z.input<typeof StockLotCreateInput>;
 
 export const StockLotPatch = z.object({
   locationId: z.string().optional(),
@@ -98,6 +105,7 @@ export const StockLot = z.object({
   dateValue: z.string().nullable(),
   openedAt: z.string().nullable(),
   openLifeDaysOverride: z.number().nullable(),
+  dateEstimated: z.boolean(),
   purchasedAt: z.string().nullable(),
   archivedAt: z.string().nullable(),
   archiveReason: z.string().nullable(),
@@ -177,6 +185,23 @@ export type LocationInput = z.infer<typeof LocationInput>;
 
 export const LocationPatch = LocationInput.partial();
 export type LocationPatch = z.infer<typeof LocationPatch>;
+
+// --- automatic food guidance ------------------------------------------
+// Suggestions are generated entirely from the bundled local rules table. A
+// generated date is always a quality reminder, never a manufacturer use-by.
+export type FoodGuidanceSuggestion = {
+  ruleId: string;
+  categoryId: string;
+  categoryName: string;
+  locationId: string;
+  locationName: string;
+  estimatedDate: string | null;
+  estimatedDays: number | null;
+  openedDays: number | null;
+  confidence: "high" | "medium" | "low";
+  note: string;
+  sources: Array<{ id: string; name: string; url: string }>;
+};
 
 // --- freshness ---------------------------------------------------------
 // Safety (use-by) is distinct from quality (best-before / open-life). We never
@@ -285,6 +310,7 @@ export type InventoryRow = {
   status: Status;
   pressureDate: string | null;
   pressureKind: DateType | "open_life" | null; // which clock governs (for the timeline)
+  dateEstimated: boolean;
   daysLeft: number | null;
   // The governing clock's start, for a truthful freshness timeline: the opened
   // date for an open-life clock, else when the pack was bought/added. startKind
@@ -308,8 +334,10 @@ export function byUrgency(
 
 // --- intake ------------------------------------------------------------
 // Adding stock in one call: find-or-create the product identity, then a lot.
-export const IntakeInput = ProductInput.extend({
-  locationId: z.string().min(1),
+export const IntakeInput = ProductInput.omit({ categoryId: true, defaultLocationId: true }).extend({
+  categoryId: z.string().min(1).optional(),
+  locationId: z.string().min(1).optional(),
+  categoryHints: z.array(z.string()).optional(),
   count: z.number().int().positive().default(1),
   fractionLeft: z.number().min(0).max(1).default(1),
   dateType: DateType.optional(),
@@ -364,8 +392,9 @@ export const ReceiptLineDecision = z.object({
   newProduct: z
     .object({
       name: z.string().min(1),
-      categoryId: z.string().min(1),
+      categoryId: z.string().min(1).optional(),
       brand: z.string().optional(),
+      categoryHints: z.array(z.string()).optional(),
     })
     .optional(), // …or create this product
   quantity: z.number().int().positive().default(1),
@@ -383,6 +412,18 @@ export type ReceiptConfirmInput = z.infer<typeof ReceiptConfirmInput>;
 // --- recipes + shopping list -------------------------------------------
 // A recipe's ingredients are loose match text tested against product names, so
 // "chickpea" finds "Chickpeas 400g". Good enough to rank what to cook tonight.
+export const DIETARY_REQUIREMENTS = [
+  "vegetarian",
+  "vegan",
+  "pescatarian",
+  "gluten_free",
+  "dairy_free",
+  "egg_free",
+  "nut_free",
+] as const;
+export const DietaryRequirement = z.enum(DIETARY_REQUIREMENTS);
+export type DietaryRequirement = z.infer<typeof DietaryRequirement>;
+
 export type Recipe = {
   id: string;
   name: string;
@@ -390,6 +431,8 @@ export type Recipe = {
   notes: string | null;
   createdAt: string;
   ingredients: string[];
+  dietaryTags: DietaryRequirement[];
+  starterKey: string | null;
 };
 
 export const RecipeInput = z.object({
@@ -398,6 +441,7 @@ export const RecipeInput = z.object({
   notes: z.string().nullable().optional(),
   // The whole ingredient list is sent on every save (the UI edits them as chips).
   ingredients: z.array(z.string().min(1)).default([]),
+  dietaryTags: z.array(DietaryRequirement).default([]),
 });
 export type RecipeInput = z.infer<typeof RecipeInput>;
 export const RecipePatch = RecipeInput.partial();

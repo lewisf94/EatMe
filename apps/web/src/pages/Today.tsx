@@ -72,7 +72,7 @@ export default function Today() {
           <p className="empty">Loading…</p>
         ) : rows.length === 0 ? (
           <div className="empty">
-            <p>Your cupboard is empty.</p>
+            <p>Your food inventory is empty.</p>
             <Link to="/add" className="btn btn-line" style={{ marginTop: 16 }}>
               Add your first item
             </Link>

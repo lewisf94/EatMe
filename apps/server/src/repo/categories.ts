@@ -28,6 +28,13 @@ export function getCategory(id: string): Category | undefined {
   return r ? toCat(r) : undefined;
 }
 
+export function getCategoryByGuidanceKey(key: string): Category | undefined {
+  const r = db
+    .prepare("SELECT id, name, open_life_days, warn_days FROM categories WHERE guidance_key = ?")
+    .get(key) as CatRow | undefined;
+  return r ? toCat(r) : undefined;
+}
+
 export function createCategory(input: CategoryInput): Category {
   const id = newId();
   db.prepare(

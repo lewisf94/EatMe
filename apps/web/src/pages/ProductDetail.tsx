@@ -103,7 +103,7 @@ export default function ProductDetail() {
     guard(
       api.createLot({
         productId: product.id,
-        locationId: lots[0]?.locationId ?? product.defaultLocationId ?? locs[0]?.id ?? "",
+        locationId: lots[0]?.locationId ?? product.defaultLocationId ?? undefined,
       }),
     );
 
@@ -280,7 +280,9 @@ function LotCard({
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <label className="label">Date on the pack</label>
+        <label className="label">
+          {lot.dateEstimated ? "Estimated best-quality date" : "Date on the pack"}
+        </label>
         <div style={{ display: "flex", gap: 8 }}>
           <select
             className="field"
@@ -300,6 +302,12 @@ function LotCard({
             onChange={(e) => onPatch({ dateValue: e.target.value || null })}
           />
         </div>
+        {lot.dateEstimated && (
+          <p className="note left tiny" style={{ marginTop: 6 }}>
+            Estimated from the purchase date. Replace it with the date printed on the pack when
+            available; this estimate is not a manufacturer use-by date.
+          </p>
+        )}
       </div>
 
       {archiving ? (
