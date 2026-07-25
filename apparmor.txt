@@ -1,0 +1,49 @@
+#include <tunables/global>
+
+profile eatme flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+
+  # EatMe serves HTTP locally and Tailscale exposes it privately over HTTPS.
+  network,
+
+  # The entrypoint starts tailscaled in the background, then replaces itself
+  # with Node. Allow only normal process-control signals within the app.
+  signal (send) set=(kill,term,int,hup,cont),
+
+  # Tailscale Serve listens on HTTPS port 443 inside its userspace network.
+  capability net_bind_service,
+
+  # Runtime executables.
+  /run.sh rix,
+  /bin/** rix,
+  /usr/bin/** rix,
+  /usr/local/bin/docker-entrypoint.sh rix,
+  /usr/local/bin/node rix,
+  /usr/local/bin/tailscale rix,
+  /usr/local/bin/tailscaled rix,
+
+  # Runtime libraries and application code are immutable.
+  /lib/** mr,
+  /usr/lib/** mr,
+  /usr/local/lib/** mr,
+  /app/** r,
+
+  # Configuration, certificates, DNS and process information.
+  /etc/** r,
+  /proc/** r,
+  /sys/** r,
+
+  # Standard character devices used by Node and Tailscale.
+  /dev/null rw,
+  /dev/zero rw,
+  /dev/random r,
+  /dev/urandom r,
+  /dev/tty rw,
+
+  # Only persistent app data, runtime sockets and temporary files are writable.
+  /data/{,**} rwk,
+  /run/{,**} rwk,
+  /var/run/{,**} rwk,
+  /tmp/{,**} rwk,
+}

@@ -42,7 +42,7 @@ single-add-on repository — `config.yaml` at the root *is* the add-on.
 
 | Option | What it does |
 |---|---|
-| `tailscale_authkey` | Paste a Tailscale **auth key** to enable the private HTTPS URL. Leave blank for LAN-only. |
+| `tailscale_authkey` | Paste a Tailscale **auth key** for the first connection. Once the app has joined successfully, clear this field; EatMe reuses its saved Tailscale identity. |
 | `tailscale_hostname` | The device name on your tailnet (default `eatme`). |
 | `auth_token` | Optional. If set, the API requires this token; paste the same value into the app's **Settings → Access token** on each device. Leave blank on a trusted home network. |
 | `receipt_provider` | `stub` (canned OCR, works out of the box) or `local` (the [eatme-ocr sidecar](ocr/README.md) on the Pi — real receipt scanning). |
@@ -56,12 +56,27 @@ single-add-on repository — `config.yaml` at the root *is* the add-on.
 2. Paste the key into the add-on's `tailscale_authkey` option, set a
    `tailscale_hostname`, **Save**, and **Restart** the add-on. Check the add-on
    **Log** — it prints the URL once Tailscale is up.
-3. On your iPhone: install the **Tailscale** app and sign in to the same tailnet.
+3. Once the HTTPS URL works, clear `tailscale_authkey`, **Save**, and **Restart**.
+   The joined device identity is stored in `/data` and does not need the
+   enrolment key again.
+4. On your iPhone: install the **Tailscale** app and sign in to the same tailnet.
    Open `https://<hostname>.<your-tailnet>.ts.net` in Safari → **Share → Add to
    Home Screen**. The same URL works at home and away.
-4. **This is a hard requirement for Web Push (P8) and the camera scanner**: iOS
+5. **This is a hard requirement for Web Push (P8) and the camera scanner**: iOS
    only delivers push to an installed PWA served over HTTPS, and only allows
    camera access over a secure context. LAN-only HTTP won't do either.
+
+## Security
+
+- EatMe runs with Home Assistant protection enabled and requests no privileged
+  capabilities, host networking, Supervisor access or Docker access.
+- An enforced AppArmor profile limits executable files, writable paths and
+  Linux capabilities. Home Assistant applies the profile when the app is
+  installed.
+- Tailscale limits the HTTPS URL to signed-in devices on your tailnet. For
+  another layer of protection, set a long random `auth_token` and paste the same
+  value into **EatMe > Settings > Access token** on every device.
+- Do not share a Tailscale auth key or EatMe access token in logs or screenshots.
 
 ## Notes & troubleshooting
 
