@@ -1,8 +1,7 @@
 node_modules
 **/node_modules
 apps/*/dist
-data
-**/data
+/data
 *.db
 *.db-*
 .git
