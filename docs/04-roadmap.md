@@ -1,33 +1,16 @@
-# 04 · Roadmap
+# Roadmap
 
-Ordered so **every phase ends with something genuinely usable** — no long trench before the first jar gets tracked. **P1–P4, H, DM, RC (receipts), OFF (offline), P6 (display), P7 (recipes/shopping) and P8 (push) are built** — all green in CI. What's left needing hands: the receipt OCR sidecar on the Pi, flashing the e-ink panel, and Web Push delivery on the iPhone. A post-P4 review reshaped the order: harden and fix the data model first, then the priority feature (local receipt import) and real offline, then the rest.
+The core EatMe application is built and covered by automated checks. The remaining work is device-specific verification and optional extensions.
 
-> This is the human-readable overview. The **authoritative, executable breakdown** — with code skeletons, verified facts, and per-phase acceptance checklists — lives in [`docs/plan/`](plan/README.md). When the two disagree, `docs/plan/` wins. Build **one phase per session**, in order.
+| Phase | Scope | Status |
+|---|---|---|
+| P1-P4 | Server, web app, camera scanning and Home Assistant packaging | Built; Home Assistant hardware verification in progress |
+| H and DM | Reliability, tests and data model | Built |
+| RC and OFF | Local receipt import and offline access | Built; OCR sidecar verification required |
+| P5 | QR labels for containers | Built; print and scan verification required |
+| P6 | E-ink display | Built; hardware flashing required |
+| P7 | Recipes and shopping list | Built |
+| P8 | Web push notifications | Built; iPhone delivery verification required |
+| P9 | Home Assistant sensors, NFC and usage statistics | Future work; plan individually |
 
-| Phase | Spec | Delivers | Status |
-|---|---|---|---|
-| **P1** | [server core](plan/01-phase-server-core.md) | Monorepo, SQLite, CRUD API, Open Food Facts lookup | ✅ done |
-| **P2** | [web app](plan/02-phase-web-app.md) | Inventory list/search, item detail, quick-tap, add/edit, settings | ✅ done |
-| **P3** | [camera PWA](plan/03-phase-camera-pwa.md) | Camera barcode scanning, installable PWA | ✅ done |
-| **P4** | [HA add-on](plan/04-phase-ha-addon.md) | Home Assistant add-on + **bundled Tailscale HTTPS** | ✅ done (🖐 Pi install) |
-| **H** | [correctness & CI](plan/10-phase-correctness-hardening.md) | Fix the review's bugs, commit the e2e tests, add CI | ✅ done |
-| **DM** | [data model](plan/11-phase-data-model.md) | products / stock-lots / **containers**, use-by vs best-before, timezone | ✅ done |
-| **RC** ⭐ | [receipt import](plan/12-phase-receipt-import.md) | **Local** receipt OCR → review → stock lots (no cloud) — the primary intake | ✅ done (🖐 OCR sidecar) |
-| **OFF** | [offline](plan/13-phase-offline.md) | Offline inventory snapshot + queued edits ("do I have this?" in the shop) | ✅ done |
-| **P6** | [e-ink display](plan/06-phase-eink-display.md) | `/api/display.png` + ESPHome firmware (XIAO C3 + Waveshare 4.2″) | ✅ done (🖐 flash + battery) |
-| **P7** | [recipes & shopping](plan/07-phase-recipes-shopping.md) | Recipes, use-it-up ranking, shopping list | ✅ done |
-| **P8** | [push](plan/08-phase-push.md) | Web Push (Monday digest, day-before) | ✅ done (🖐 iPhone delivery) |
-| **P5** | [QR labels](plan/05-phase-qr-labels.md) | QR labels — now tied to reusable **containers** | **next** |
-| **P9** | [stretch](plan/09-phase-stretch.md) | HA sensors, LLM, NFC, stats — each re-planned first | later |
-
-## Sequencing notes
-
-- **P1–P4 (built) are the critical path** to "useful on the phone" — install on the Pi with Tailscale and the scan→add→track loop works on the iPhone.
-- **Harden before more features.** H fixes real bugs and adds CI so "green" is durable; DM corrects the data model while it's cheap (before receipts/recipes build on it).
-- **Receipts (RC) are a core phase, not an add-on** — the primary way stock gets in, because Lewis (and realistically anyone) won't add items one at a time. It runs **fully local, no cloud** — no hosted OCR fallback, ever; the receipt image never leaves the Pi. RC needs DM (stable product identity + aliases).
-- Hardware isn't needed until **P6** — the display stays swappable by design; the server renders the image, so a different board or panel is a firmware + two-constant change.
-- Each phase lands as its own commits with docs updated to match reality.
-
----
-
-Back to: [README](../README.md) · Execute from: [docs/plan/](plan/README.md)
+For the implementation history and verification notes, see [docs/plan](plan/README.md).

@@ -1,6 +1,6 @@
 # Research notes & verified facts
 
-Everything here was checked against live sources in **July 2026** by Claude Fable 5 before the phase files were written. When a phase says "verified", this is where. If you (the implementing agent) find any of it is now wrong, **add a dated entry under [Deviations](#deviations) and report — do not silently work around it.**
+Everything here was checked against live sources in July 2026 before the phase files were written. If any information is no longer correct, add a dated entry under [Deviations](#deviations) before changing direction.
 
 ## Verified library versions (npm `latest`, July 2026)
 

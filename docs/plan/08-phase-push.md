@@ -2,7 +2,7 @@
 
 **Goal:** the phone quietly nudges you — a Monday digest of what to use this week, and a day-before warning for things with a hard expiry. Deliberately sparse; nagging kills these apps.
 
-**Prerequisites:** P1–P4 green. **P4 matters**: iOS only delivers Web Push to an **installed** PWA over **HTTPS** — both come from P4. On-device verification is 🖐.
+**Prerequisites:** P1-P4 green. iOS delivers Web Push only to an installed web app over HTTPS. On-device verification is manual.
 
 ## iOS preconditions (verified — non-negotiable)
 
@@ -71,7 +71,7 @@ export async function sendTo(sub, payload) {
 - [ ] On **desktop Chrome** (secure context via P4 or `localhost`): enable notifications, `POST /api/push/test` → a notification appears; clicking it opens the app.
 - [ ] A subscription that returns `410` on send is pruned (simulate by deleting the sub client-side then sending).
 - [ ] The digest/day-before jobs select the right items (unit-test the selection functions with fixtures; don't wait for Monday).
-- [ ] 🖐 On the **installed iPhone PWA**: the notifications toggle prompts, a test push arrives, and tapping it deep-links.
+- [ ] Manual: on the installed iPhone web app, the notifications toggle prompts, a test push arrives and tapping it opens the relevant screen.
 
 ## Definition of done
 

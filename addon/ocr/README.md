@@ -14,10 +14,10 @@ GET  /health                          →  { "ok": true }
 
 That's the whole interface. All parsing, product matching and alias-learning
 happen in the EatMe Node server (and are unit-tested there); this service only
-does OCR, so you can swap the engine (PaddleOCR ↔ docTR ↔ Tesseract) by editing
+does OCR, so you can swap the engine (PaddleOCR, docTR or Tesseract) by editing
 `extract_lines` in `server.py` without touching EatMe.
 
-## Run it (🖐 on the Pi)
+## Run it on the Pi
 
 Build context is this directory:
 

@@ -72,7 +72,6 @@ export default function Today() {
           <p className="empty">Loading…</p>
         ) : rows.length === 0 ? (
           <div className="empty">
-            <p style={{ fontSize: 40, margin: "0 0 8px" }}>🫙</p>
             <p>Your cupboard is empty.</p>
             <Link to="/add" className="btn btn-line" style={{ marginTop: 16 }}>
               Add your first item

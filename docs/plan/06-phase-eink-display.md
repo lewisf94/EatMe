@@ -2,13 +2,13 @@
 
 **Goal:** a battery e-ink screen in the kitchen showing the top "eat me first" items (and, once P7 exists, a use-it-up recipe). The server renders the whole image; the device is dumb — it wakes a few times a day, downloads a PNG, draws it, and deep-sleeps.
 
-**Prerequisites:** P1 green (needs items + status). Nicer after P7 (recipe line). Hardware verification is 🖐.
+**Prerequisites:** P1 green (needs items + status). Nicer after P7 (recipe line). Hardware verification is manual.
 
 ## Hardware — chosen build (still swappable)
 
 **Chosen (Lewis): a DIY low-power build** — **Seeed XIAO ESP32-C3** + **Waveshare 4.2″ e-paper (400×300, B/W)**, powered by **solar + a LiPo backup + USB-C top-up**. The XIAO has USB-C and a TP4056 LiPo charger built in, so "backup battery + USB-C" needs no extra parts; its ~44–80 µA deep sleep suits the solar/never-recharge goal, and it's tiny and cheap. The mounting spot has **average room light**, so solar assists and stretches battery life but won't be infinite indoors — the LiPo + USB-C are the backstop (see [hardware doc → Powering it](../03-hardware.md)).
 
-**Still swappable.** The server/API/data model are display-agnostic; changing board or panel touches only this file's `firmware/*.yaml` and the `DISPLAY_W`/`DISPLAY_H` render constants (**400×300** for the 4.2″). A finished board (Inkplate 6, or the reTerminal E1001 whose config is kept below) is a drop-in swap. Hardware verification is 🖐.
+**Still swappable.** The server/API/data model are display-agnostic; changing board or panel touches only this file's `firmware/*.yaml` and the `DISPLAY_W`/`DISPLAY_H` render constants (**400×300** for the 4.2″). A finished board (Inkplate 6, or the reTerminal E1001 whose config is kept below) is a drop-in swap. Hardware verification is manual.
 
 ## Deliverables
 
@@ -122,7 +122,7 @@ deep_sleep:
   run_duration: 45s               # awake long enough to fetch + draw
   sleep_duration: 24h             # once/day (your call) — see Battery notes
 ```
-> ⚠️ Verify against **current ESPHome docs** at build time: the `online_image` trigger name (`on_download_finished`) and whether an explicit download action is needed; the exact XIAO-C3 `board:` id; and the `4.20in` model string (there's `4.20inV2` and a `4.20in-bV2` BWR variant — use the plain B/W one). The SPI/CS/DC/BUSY/RESET pins are **wiring choices**, not fixed — set them to your solder job. Record anything different in research-notes.
+> Note: verify the current ESPHome documentation at build time for the `online_image` trigger name, XIAO-C3 `board:` id and the exact display model string. The SPI/CS/DC/BUSY/RESET pins are wiring choices; record anything different in research notes.
 >
 > If `deep_sleep` + `online_image` timing is racy (screen draws before the download lands), switch to an explicit `on_boot` script: `online_image.update` → wait for `on_download_finished` → `component.update` → `deep_sleep.enter`. Note which pattern worked.
 
@@ -166,7 +166,7 @@ Battery life is set by the XIAO's deep sleep (~44–80 µA). On a ~1000–1500 m
 - [ ] With `DISPLAY_TOKEN` set, the endpoint 401s without `?token=` and serves with it.
 - [ ] Output renders with the **bundled font** (delete system fonts assumption: it works in the P4 container where no system fonts exist).
 - [ ] `?battery=42` persists and shows on the next render.
-- [ ] 🖐 Flash `firmware/eatme-display.yaml` to the XIAO ESP32-C3 (wired to the Waveshare 4.2″) via the HA ESPHome dashboard; it shows the dashboard, refreshes on its wake cycle, and reports LiPo % into HA.
+- [ ] Manual: flash `firmware/eatme-display.yaml` to the XIAO ESP32-C3 through the Home Assistant ESPHome dashboard and verify the display and battery reporting.
 
 ## Definition of done
 

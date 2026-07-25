@@ -93,12 +93,10 @@ options:
   auth_token: ""              # optional bearer token
   tailscale_authkey: ""       # enables the bundled HTTPS (P4)
   tailscale_hostname: "eatme"
-  anthropic_api_key: ""       # optional, for LLM suggestions (P9)
 schema:
   auth_token: str?
   tailscale_authkey: password?
   tailscale_hostname: str?
-  anthropic_api_key: str?
 ```
 
 - **Install path**: copy `addon/` to `/addons/eatme` on the Pi (via the Samba or SSH add-on) → it appears under *Settings → Add-ons → Local add-ons* and the Supervisor builds it on-device for the Pi's architecture. Later, the repo itself can be added as a custom add-on repository so updates are one click.
@@ -111,7 +109,7 @@ The one genuinely awkward constraint: **camera access, service workers and Web P
 
 **Recommended: the add-on bundles its own `tailscaled` and runs `tailscale serve` itself.**
 
-> ⚠️ Why not just point the existing HA Tailscale add-on at us? Because it **only serves Home Assistant itself** (ports 443/8443/10000) — verified July 2026. It can't reverse-proxy another add-on or share its cert. So we bundle Tailscale into our own container.
+> Note: the existing HA Tailscale add-on only serves Home Assistant itself (ports 443/8443/10000), so it cannot reverse-proxy another app or share its certificate. EatMe bundles Tailscale in its own container.
 
 - Our add-on ships the Tailscale binaries and joins the Pi to a private tailnet in userspace mode (auth key pasted into the add-on config; free tier: 100 devices, 3 users).
 - Inside the container, `tailscale serve --bg --https=443 http://127.0.0.1:8099` puts a real, auto-renewed certificate in front of the Node server at `https://<hostname>.<tailnet>.ts.net`. Nothing is exposed to the public internet (Serve, not Funnel).
