@@ -13,6 +13,7 @@ import { registerDisplay } from "./routes/display.js";
 import { registerRecipes } from "./routes/recipes.js";
 import { registerShopping } from "./routes/shopping.js";
 import { registerPush } from "./routes/push.js";
+import { registerLabels } from "./routes/labels.js";
 
 /** Build the Fastify app. Call migrate()/seedIfEmpty() before this so the
  *  repositories' prepared statements bind against existing tables. */
@@ -21,6 +22,9 @@ export function buildApp(): FastifyInstance {
   const app = Fastify({
     logger: { level: process.env.LOG_LEVEL ?? "info" },
     bodyLimit: 12_582_912,
+    // Home Assistant and reverse proxies provide the public scheme/host here.
+    // Printed QR codes must use that external HTTPS origin, not the container's.
+    trustProxy: true,
   });
 
   // Accept a raw image body for receipt upload (no multipart dependency needed).
@@ -58,6 +62,7 @@ export function buildApp(): FastifyInstance {
   app.register(registerRecipes, { prefix: "/api" });
   app.register(registerShopping, { prefix: "/api" });
   app.register(registerPush, { prefix: "/api" });
+  app.register(registerLabels);
 
   const webDist = process.env.WEB_DIST;
   if (webDist) {

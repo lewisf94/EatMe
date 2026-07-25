@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { Category, Location } from "@eatme/shared";
 import { api, TOKEN_KEY } from "../api";
 import { enablePush, disablePush, pushState, type PushState } from "../push";
-import { IconBack } from "../ui/icons";
+import { IconBack, IconQr } from "../ui/icons";
 
 /** Sparse by design: a Monday digest of what to use, and a day-before warning
  *  for anything with a use-by. */
@@ -287,6 +287,19 @@ export default function Settings() {
         </section>
 
         <NotificationsSection />
+
+        <section className="sec">
+          <div className="sec-head">
+            <span className="eyebrow">Container labels</span>
+          </div>
+          <Link className="settings-action" to="/labels">
+            <IconQr />
+            <span>
+              <strong>Choose and print labels</strong>
+              <small>Reusable QR labels for your jars, tubs, and packs</small>
+            </span>
+          </Link>
+        </section>
 
         <section className="sec">
           <div className="sec-head">

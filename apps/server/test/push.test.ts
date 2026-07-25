@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { InventoryRow, Status, DateType } from "@eatme/shared";
 import { mkdtempSync, existsSync, statSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { platform, tmpdir } from "node:os";
 import { join } from "node:path";
 import { weeklyDigest, useByTomorrow, jobsDue, isGone } from "../src/services/push-rules.js";
 import { loadOrCreateVapid } from "../src/services/vapid.js";
@@ -127,7 +127,7 @@ describe("VAPID keys", () => {
     expect(loadOrCreateVapid(dir)).toEqual(first);
   });
 
-  it("keeps the private key to itself", () => {
+  it.skipIf(platform() === "win32")("keeps the private key to itself", () => {
     loadOrCreateVapid(dir);
     expect(statSync(join(dir, "vapid.json")).mode & 0o077).toBe(0);
   });

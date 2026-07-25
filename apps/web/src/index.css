@@ -908,6 +908,105 @@
   font-weight: 600;
   font-size: 13px;
 }
+.settings-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  border: 1.5px solid var(--color-line-2);
+  border-radius: var(--radius-eat);
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.settings-action > svg {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+.settings-action span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.settings-action strong {
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+.settings-action small {
+  color: var(--color-none);
+  font-size: 12px;
+}
+
+/* --------------------------------------------------------------- labels --- */
+.labels-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--radius-eat-lg);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.labels-intro > svg {
+  width: 29px;
+  height: 29px;
+  flex: none;
+  color: var(--color-butter);
+}
+.labels-intro h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+}
+.labels-intro p {
+  margin: 5px 0 0;
+  color: rgba(244, 241, 232, 0.74);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.label-list {
+  border-block: 1.5px solid var(--color-line);
+}
+.label-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 10px 2px;
+  border-top: 1.5px solid var(--color-line);
+  cursor: pointer;
+}
+.label-choice:first-child {
+  border-top: 0;
+}
+.label-choice input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-ink);
+}
+.label-choice-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+.label-choice-copy strong {
+  overflow-wrap: anywhere;
+  font-size: 15px;
+}
+.label-choice-copy span {
+  color: var(--color-none);
+  font-size: 12px;
+}
+.label-print {
+  position: sticky;
+  bottom: 82px;
+  width: 100%;
+  margin-top: 20px;
+  box-shadow: 0 8px 24px rgba(22, 19, 13, 0.16);
+}
 
 /* ------------------------------------------------- recipes / use it up --- */
 .cook {
