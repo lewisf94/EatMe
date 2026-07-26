@@ -69,6 +69,13 @@ export const IconCamera = (p: SVGProps<SVGSVGElement>) =>
     <circle key="b" cx="12" cy="13" r="3.2" />,
   ]);
 
+export const IconImage = (p: SVGProps<SVGSVGElement>) =>
+  S(p, [
+    <rect key="a" x="3" y="4" width="18" height="16" rx="2" />,
+    <circle key="b" cx="9" cy="10" r="2" />,
+    <path key="c" d="m5 18 4.5-4.5 3 3 2-2L19 18" />,
+  ]);
+
 export const IconReceipt = (p: SVGProps<SVGSVGElement>) =>
   S(p, [
     <path key="a" d="M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5V3Z" />,

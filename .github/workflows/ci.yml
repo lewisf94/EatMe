@@ -135,12 +135,12 @@ jobs:
           # Generate a readable receipt without adding a binary test fixture,
           # then prove the actual OCR endpoint recognises its product line.
           docker exec "${ocr_container}" python -c \
-            "from PIL import Image,ImageDraw,ImageFont; im=Image.new('RGB',(900,500),'white'); d=ImageDraw.Draw(im); f=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',42); d.multiline_text((50,50),'TESCO\nMILK 1.50\nBREAD 1.20\nTOTAL 2.70',font=f,fill='black',spacing=24); im.save('/tmp/receipt.png')"
+            "from PIL import Image,ImageDraw,ImageFont; im=Image.new('RGB',(1100,700),(100,55,25)); receipt=Image.new('RGB',(900,600),'white'); d=ImageDraw.Draw(receipt); f=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',42); d.text((50,35),'TESCO',font=f,fill='black'); rows=[('MILK','1.50'),('BREAD','1.20'),('TOTAL','2.70')]; [(d.text((50,120+i*90),name,font=f,fill='black'),d.text((700,120+i*90),price,font=f,fill='black')) for i,(name,price) in enumerate(rows)]; im.paste(receipt,(100,50)); im.save('/tmp/receipt.png')"
           docker cp "${ocr_container}:/tmp/receipt.png" /tmp/eatme-ocr-receipt.png
           curl --fail --silent \
             --data-binary @/tmp/eatme-ocr-receipt.png \
             http://127.0.0.1:18765/ocr \
-            | grep -F "MILK"
+            | grep -E 'MILK[^"}]*1[.]50'
 
           docker run --detach \
             --name "${container}" \

@@ -29,13 +29,13 @@ const MERCHANTS: Array<[RegExp, string]> = [
 
 // Lines that are never products: totals, tender, loyalty, tax, store/legal noise.
 const SKIP =
-  /\b(sub-?total|total|balance|change|cash|card|visa|mastercard|amex|contactless|tendered?|amount due|to pay|vat(?:\s|$|-)|vat\s*reg|clubcard|nectar|points?|saving[s]?|multibuy|offer|voucher|receipt|thank\s*you|store\b|till\b|operator|cashier|www\.|http|reg(?:ister)?\b|tel[:\s]|phone|©|number of items|items? sold|order|barcode)\b/i;
+  /\b(sub-?total|total|balance|change|cash|card|visa|mastercard|amex|contactless|tendered?|amount due|to pay|vat(?:\s|$|-)|vat\s*reg|clubcard|nectar|points?|saving[s]?|multibuy|offer|voucher|discount|reduced\s*price|reduction|markdown|receipt|thank\s*you|store\b|till\b|operator|cashier|www\.|http|reg(?:ister)?\b|tel[:\s]|phone|©|number of items|items? sold|order|barcode)\b/i;
 
 // A carrier bag isn't food but does have a price — drop it explicitly.
 const BAG = /\b(carrier\s*bag|bag\s*for\s*life|\bbag\b(?!el))/i;
 
-// Trailing price like "£1.29", "1.29", "1.29 A" (VAT code), "-0.50" (discount).
-const PRICE = /(-?)\s*£?\s*(\d{1,3}\.\d{2})\s*[A-Za-z*]?\s*$/;
+// Trailing price like "£1.29", "1,29", "1 29 A" (OCR split), or "-0.50".
+const PRICE = /(-?)\s*£?\s*(\d{1,3})\s*(?:[.,]|\s)\s*(\d{2})\s*[A-Za-z*]?\s*$/;
 // Leading quantity: "2 x", "2 @", "2X", or a bare small integer + space.
 const QTY = /^\s*(\d{1,2})\s*(?:x|@)\s*/i;
 // A UK date on the receipt (dd/mm/yy or dd/mm/yyyy).
@@ -87,7 +87,7 @@ export function parseReceipt(ocr: OcrResult): ParsedReceipt {
 
     const priceM = PRICE.exec(raw);
     const negative = priceM?.[1] === "-";
-    const price = priceM ? Number(priceM[2]) : null;
+    const price = priceM ? Number(`${priceM[2]}.${priceM[3]}`) : null;
     // Drop discount lines (negative price) and lines with no price at all — the
     // latter are usually headers/addresses, not items.
     if (price == null || negative) continue;

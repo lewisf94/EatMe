@@ -62,6 +62,24 @@ export async function registerReceipts(app: FastifyInstance): Promise<void> {
         .send({ error: { message: err instanceof Error ? err.message : "OCR failed" } });
     }
     const parsed = parseReceipt(ocr);
+    const confidences = ocr.lines
+      .map((line) => line.confidence)
+      .filter((value): value is number => typeof value === "number");
+    req.log.info(
+      {
+        recognisedLines: ocr.lines.length,
+        candidateProducts: parsed.lines.length,
+        meanConfidence:
+          confidences.length > 0
+            ? Number(
+                (
+                  confidences.reduce((total, value) => total + value, 0) / confidences.length
+                ).toFixed(3),
+              )
+            : null,
+      },
+      "receipt recognition complete",
+    );
     const imageHash = createHash("sha256").update(image).digest("hex");
 
     const purchase = receipts.createPurchase({

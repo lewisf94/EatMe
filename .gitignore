@@ -7,6 +7,8 @@ dist/
 .env.*
 *.log
 .DS_Store
+__pycache__/
+*.py[cod]
 
 # Playwright e2e
 e2e/.e2e-tmp/
