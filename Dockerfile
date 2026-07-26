@@ -58,4 +58,6 @@ ENV NODE_ENV=production \
 EXPOSE 8099
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:8099/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
-CMD ["/run.sh"]
+# Start the POSIX script through Alpine's shell. This avoids depending on a
+# kernel shebang transition when Home Assistant's AppArmor profile is active.
+CMD ["/bin/sh", "/run.sh"]
