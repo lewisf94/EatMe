@@ -4,9 +4,9 @@ export const config = {
   offUserAgent: process.env.OFF_USER_AGENT ?? "EatMe/0.1 (github.com/lewisf94/EatMe)",
   /** When set, /api/* requires `Authorization: Bearer <token>` (wired up in P4). */
   authToken: process.env.AUTH_TOKEN ?? "",
-  /** Receipt OCR engine: "stub" (canned, for dev/CI) or "local" (Pi sidecar). */
+  /** Receipt OCR engine: "stub" (fixed, for dev/CI) or "local" (EatMe OCR app). */
   receiptProvider: process.env.RECEIPT_PROVIDER ?? "stub",
-  /** Base URL of the local OCR sidecar container (used when provider = local). */
+  /** Base URL of the private OCR service (used when provider = local). */
   ocrUrl: process.env.OCR_URL ?? "http://localhost:8765",
   /** When set, /api/display.png needs ?token= — the e-ink panel's own gate, so
    *  the display keeps working when AUTH_TOKEN locks down the rest of the API. */

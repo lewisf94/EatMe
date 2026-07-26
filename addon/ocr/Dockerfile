@@ -1,20 +1,34 @@
-# EatMe OCR sidecar (PaddleOCR). Runs on the Pi next to the EatMe add-on; the
-# EatMe server calls it over the local network only. No cloud.
-#
-# Note: validate PaddlePaddle wheels for aarch64 (Pi 5, 64-bit
-# HAOS) can lag. If `pip install paddlepaddle` fails on your Pi, either pin a
-# known aarch64 build or switch this image to docTR (`pip install python-doctr`)
-# and adjust extract_lines in server.py — the /ocr contract stays the same.
-FROM python:3.11-slim
+# Local receipt OCR for EatMe. Tesseract is available from Debian's ARM64 and
+# AMD64 repositories and does not download models while the app is running.
+FROM python:3.12-slim-bookworm
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
+    && apt-get install -y --no-install-recommends \
+      fonts-dejavu-core \
+      tesseract-ocr \
+      tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir paddlepaddle paddleocr pillow numpy
+RUN pip install --no-cache-dir Pillow==11.3.0
 
 COPY server.py /app/server.py
 WORKDIR /app
-ENV PORT=8765
+
+ARG BUILD_VERSION="dev"
+ARG BUILD_ARCH="amd64"
+LABEL io.hass.version="${BUILD_VERSION}" \
+      io.hass.type="app" \
+      io.hass.arch="${BUILD_ARCH}" \
+      org.opencontainers.image.title="EatMe OCR" \
+      org.opencontainers.image.description="Private local receipt text recognition for EatMe" \
+      org.opencontainers.image.source="https://github.com/lewisf94/EatMe" \
+      org.opencontainers.image.licenses="MIT"
+
+ENV PORT=8765 \
+    PYTHONUNBUFFERED=1
+
 EXPOSE 8765
-CMD ["python", "server.py"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=3)"]
+
+CMD ["python", "/app/server.py"]

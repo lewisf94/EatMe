@@ -1,6 +1,6 @@
 name: EatMe
 slug: eatme
-version: "0.7.6"
+version: "0.8.0"
 description: Self-hosted household food inventory with freshness guidance
 url: https://github.com/lewisf94/EatMe
 arch:
@@ -24,9 +24,9 @@ options:
   auth_token: ""
   tailscale_authkey: ""
   tailscale_hostname: eatme
-  # Receipt OCR: "stub" (canned, works out of the box) or "local" (the eatme-ocr
-  # sidecar). See addon/ocr/README.md.
-  receipt_provider: stub
+  # The separate EatMe OCR app performs real, private receipt recognition.
+  # "stub" is retained only for development and returns fixed demonstration data.
+  receipt_provider: local
   ocr_url: ""
 schema:
   auth_token: password?

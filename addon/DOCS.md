@@ -10,8 +10,8 @@ the camera scanner on iOS.
 `config.yaml`, `Dockerfile` and `repository.yaml` live at the **repo root** on
 purpose: the Supervisor uses the directory containing `config.yaml` as the
 Docker build context, and the Dockerfile needs the whole monorepo (`apps/`,
-`packages/`, `pnpm-*`) to build the web app. This repo is set up as a
-single-app repository — `config.yaml` at the root defines the app.
+`packages/`, `pnpm-*`) to build the web app. The repository also contains the
+separate **EatMe OCR** app under `addon/ocr`.
 
 1. In Home Assistant, open **Settings > Apps > App store**.
 2. Open the three-dots menu, select **Repositories**, add
@@ -26,6 +26,26 @@ single-app repository — `config.yaml` at the root defines the app.
 6. For future updates, return to **Settings > Apps > App store**, select
    **Check for updates**, then select **Update** on the EatMe card. The update
    can take a minute to appear after a new version is published.
+
+## Enable real receipt scanning
+
+The `stub` receipt provider returns fixed demonstration products for automated
+tests. It does not inspect the photograph.
+
+1. In **Settings > Apps > App store**, open the same EatMe repository and
+   install **EatMe OCR**.
+2. Enable **Start on boot** and **Watchdog**, then start EatMe OCR. Its current
+   log should end with `[eatme-ocr] listening on :8765`.
+3. Open the main EatMe app's **Configuration** tab.
+4. Set `receipt_provider` to `local` and leave `ocr_url` blank.
+5. Save and restart EatMe. Its log will print the automatically discovered
+   internal OCR address.
+
+Both apps run locally on the Home Assistant machine. Photographs are handled
+in memory and discarded after recognition; only parsed receipt lines are
+stored in EatMe. Clear, evenly lit photographs with the receipt filling the
+frame produce the best results, and the review screen remains the final check
+before stock is added.
 
 > LAN-only (`http://...:8099`) works for browsing, but **the camera scanner and
 > Web Push need HTTPS**. See below.
@@ -47,8 +67,8 @@ single-app repository — `config.yaml` at the root defines the app.
 | `tailscale_authkey` | Paste a Tailscale **auth key** for the first connection. Once the app has joined successfully, clear this field; EatMe reuses its saved Tailscale identity. |
 | `tailscale_hostname` | The device name on your tailnet (default `eatme`). |
 | `auth_token` | Optional. If set, the API requires this token; paste the same value into the app's **Settings > Access token** on each device. Leave blank on a trusted home network. |
-| `receipt_provider` | `stub` (canned OCR, works out of the box) or `local` (the [eatme-ocr sidecar](ocr/README.md) on the Pi for real receipt scanning). |
-| `ocr_url` | Base URL of the OCR sidecar when `receipt_provider` is `local` (e.g. `http://homeassistant.local:8765`). |
+| `receipt_provider` | `local` for the separate **EatMe OCR** app. `stub` returns fixed demonstration data and is only useful for development. |
+| `ocr_url` | Leave blank to discover EatMe OCR automatically. Set an explicit base URL only when the OCR service is hosted elsewhere. |
 
 ## Automatic food guidance
 

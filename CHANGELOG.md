@@ -2,6 +2,18 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.8.0
+
+- Package EatMe OCR as a second installable Home Assistant app for genuine
+  private receipt recognition instead of fixed demonstration results.
+- Use Tesseract with its local English model for reliable AMD64 and ARM64
+  installation without downloading models at runtime.
+- Discover the sibling OCR app automatically when `ocr_url` is left blank.
+- Make local OCR the default for new EatMe installations and clearly log when
+  the fixed development stub is selected.
+- Return actionable receipt errors when the OCR app is stopped, unreachable,
+  times out or cannot find readable text.
+
 ## 0.7.6
 
 - Correct the browser tests to recognise the intentional Automatic category

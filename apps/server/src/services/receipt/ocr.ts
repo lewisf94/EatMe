@@ -31,16 +31,31 @@ class StubProvider implements OcrProvider {
   }
 }
 
-/** Calls the Python OCR sidecar over localhost only (PaddleOCR/docTR on the Pi). */
+/** Calls the private EatMe OCR service on the Home Assistant app network. */
 class LocalSidecarProvider implements OcrProvider {
   async extract(image: Buffer): Promise<OcrResult> {
-    const res = await fetch(config.ocrUrl + "/ocr", {
-      method: "POST",
-      headers: { "content-type": "application/octet-stream" },
-      body: image,
-    });
-    if (!res.ok) throw new Error(`OCR sidecar returned HTTP ${res.status}`);
-    return (await res.json()) as OcrResult;
+    let res: Response;
+    try {
+      res = await fetch(config.ocrUrl + "/ocr", {
+        method: "POST",
+        headers: { "content-type": "application/octet-stream" },
+        body: image,
+        signal: AbortSignal.timeout(120_000),
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? `: ${error.message}` : "";
+      throw new Error(
+        `Local receipt OCR is unavailable at ${config.ocrUrl}. Install and start the EatMe OCR Home Assistant app${detail}`,
+      );
+    }
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(payload?.error ?? `Local receipt OCR returned HTTP ${res.status}`);
+    }
+    const result = (await res.json()) as OcrResult;
+    if (!Array.isArray(result.lines) || result.lines.length === 0)
+      throw new Error("Local receipt OCR found no readable text");
+    return result;
   }
 }
 
