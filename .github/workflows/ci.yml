@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, ha-canary]
   pull_request:
 
 jobs:
@@ -48,11 +48,83 @@ jobs:
           retention-days: 7
 
   docker:
-    name: add-on image builds
+    name: add-on image (${{ matrix.ha_arch }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            ha_arch: amd64
+          - platform: linux/arm64
+            ha_arch: aarch64
     steps:
       - uses: actions/checkout@v4
-      # Build context is the repo root (Dockerfile lives there so the Supervisor
-      # can use the whole monorepo as the add-on's build context). This is a
-      # smoke test that the Home Assistant add-on image still assembles.
-      - run: docker build -f Dockerfile -t eatme-addon:ci .
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the exact Home Assistant architecture image
+        run: |
+          version="$(awk -F'"' '/^version:/ { print $2 }' config.yaml)"
+          test -n "${version}"
+          docker buildx build \
+            --platform "${{ matrix.platform }}" \
+            --build-arg "BUILD_ARCH=${{ matrix.ha_arch }}" \
+            --build-arg "BUILD_VERSION=${version}" \
+            --load \
+            --tag "eatme-addon:ci-${{ matrix.ha_arch }}" \
+            .
+      - name: Load the enforced Home Assistant AppArmor profile
+        run: |
+          command -v apparmor_parser >/dev/null || {
+            sudo apt-get update
+            sudo apt-get install --yes apparmor-utils
+          }
+          sudo apparmor_parser -r -W apparmor.txt
+          sudo aa-status | grep -F "eatme"
+      - name: Start the image and exercise startup-only dependencies
+        env:
+          IMAGE: eatme-addon:ci-${{ matrix.ha_arch }}
+        run: |
+          set -Eeuo pipefail
+          container="eatme-ci-${{ matrix.ha_arch }}"
+          data_dir="$(mktemp -d)"
+          printf '{}\n' > "${data_dir}/options.json"
+
+          cleanup() {
+            docker logs "${container}" || true
+            docker rm --force "${container}" >/dev/null 2>&1 || true
+            sudo apparmor_parser -R apparmor.txt >/dev/null 2>&1 || true
+            rm -rf "${data_dir}"
+          }
+          trap cleanup EXIT
+
+          docker run --detach \
+            --name "${container}" \
+            --security-opt apparmor=eatme \
+            --publish 127.0.0.1:18099:8099 \
+            --volume "${data_dir}:/data" \
+            "${IMAGE}"
+
+          ready=false
+          for _ in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:18099/api/health >/dev/null; then
+              ready=true
+              break
+            fi
+            if ! docker inspect --format '{{.State.Running}}' "${container}" | grep -qx true; then
+              echo "EatMe exited before becoming healthy"
+              exit 1
+            fi
+            sleep 1
+          done
+          test "${ready}" = true
+
+          # Force-load the bundled food data and native resvg renderer.
+          curl --fail --silent \
+            "http://127.0.0.1:18099/api/guidance?name=milk" \
+            | grep -F '"data"'
+          curl --fail --silent \
+            --output /tmp/eatme-display.png \
+            "http://127.0.0.1:18099/api/display.png"
+          file /tmp/eatme-display.png | grep -F "PNG image data"
+          curl --fail --silent http://127.0.0.1:18099/ | grep -F "<div id=\"root\">"
