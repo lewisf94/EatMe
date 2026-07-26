@@ -9,7 +9,7 @@ async function addItem(page: Page, name: string, dateValue?: string): Promise<st
   await expect.poll(() => page.locator("#cat > option").count()).toBeGreaterThan(1);
   await page.locator("#name").fill(name);
   if (dateValue) await page.locator("#bb").fill(dateValue);
-  await page.getByRole("button", { name: "Add to cupboard" }).click();
+  await page.locator('form button[type="submit"]').click();
   await page.waitForURL("**/product/**");
   return page.url();
 }
