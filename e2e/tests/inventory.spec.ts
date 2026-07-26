@@ -3,11 +3,10 @@ import { test, expect, type Page } from "@playwright/test";
 /** Add a product through the real form and land on its product page. */
 async function addItem(page: Page, name: string, dateValue?: string): Promise<string> {
   await page.goto("/add");
-  // The category <select> only has a value once GET /api/categories resolves.
-  await page.waitForFunction(() => {
-    const s = document.querySelector("#cat") as HTMLSelectElement | null;
-    return !!(s && s.value);
-  });
+  // “Automatic” intentionally has an empty value. Wait for a real category
+  // option, which proves the categories request completed without requiring a
+  // manual category selection.
+  await page.locator("#cat option").nth(1).waitFor();
   await page.locator("#name").fill(name);
   if (dateValue) await page.locator("#bb").fill(dateValue);
   await page.getByRole("button", { name: "Add to cupboard" }).click();

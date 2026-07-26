@@ -101,7 +101,6 @@ jobs:
           docker run --detach \
             --name "${container}" \
             --platform "${{ matrix.platform }}" \
-            --security-opt apparmor=eatme \
             --publish 127.0.0.1:18099:8099 \
             --volume "${data_dir}:/data" \
             "${IMAGE}"
