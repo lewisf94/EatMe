@@ -31,7 +31,7 @@ config.yaml      Home Assistant app manifest
 apps/server/     Fastify API, migrations and scheduled jobs
 apps/web/        React progressive web app
 packages/shared/ Shared schemas and types
-addon/           App documentation and local OCR sidecar
+addon/           App documentation and installable local OCR service
 firmware/        ESPHome configuration for the e-ink display
 docs/            Product, architecture, hardware and implementation notes
 ```
@@ -45,7 +45,10 @@ pnpm dev
 
 Open `http://localhost:5173`. The API runs on port `8099`.
 
-For Home Assistant installation and configuration, see [addon/DOCS.md](addon/DOCS.md). Receipt import uses a local stub by default, so the complete workflow can be tested without cloud services.
+For Home Assistant installation and configuration, see [addon/DOCS.md](addon/DOCS.md).
+Install the **EatMe OCR** app from the same repository for real receipt
+recognition. The development server keeps a fixed stub provider for repeatable
+automated tests; it is not intended to recognise photographs.
 
 Automatic guidance works offline and is applied consistently to manual adds, barcode scans, receipt imports, extra packs and shopping-list rebuys. A date printed on the pack always takes priority. Generated dates are clearly marked as estimated best-quality reminders, never as manufacturer use-by dates. See [food guidance and sources](docs/food-guidance.md) for the method and references.
 

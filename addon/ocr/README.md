@@ -1,54 +1,34 @@
-# EatMe OCR sidecar (local, no cloud)
+# EatMe OCR
 
-Turns a receipt photo into text lines for the EatMe server to parse. It runs
-**on your Pi** and is only reachable over the local network — the receipt image
-never leaves the device. EatMe works without it (using a built-in stub); the
-sidecar is what makes real receipt scanning light up.
+EatMe OCR is the private receipt-recognition service used by EatMe. It is
+packaged as a second Home Assistant app in the same repository.
 
-## Contract
+The service accepts image bytes at `POST /ocr` and returns recognised text
+lines as JSON. Tesseract and its English model are installed in the image for
+both AMD64 and ARM64, so recognition does not depend on a cloud service or
+runtime model download. Images are processed in memory and discarded.
 
+## Home Assistant
+
+1. Add `https://github.com/lewisf94/EatMe` as an app repository.
+2. Install and start **EatMe OCR**.
+3. In the main EatMe app, set `receipt_provider` to `local`, leave `ocr_url`
+   blank, save and restart.
+
+Home Assistant gives sibling apps a shared internal network. EatMe derives the
+OCR hostname from its own repository-qualified hostname, so this works for
+GitHub and local `/addons` installations without exposing port 8765 to the LAN.
+
+## API
+
+```text
+GET  /health   -> {"ok":true,"engine":"tesseract"}
+POST /ocr      -> {"lines":[{"text":"MILK 1.50","confidence":0.96}]}
 ```
-POST /ocr    body: raw image bytes    →  { "lines": [ { "text": "...", "confidence": 0.98 }, ... ] }
-GET  /health                          →  { "ok": true }
-```
 
-That's the whole interface. All parsing, product matching and alias-learning
-happen in the EatMe Node server (and are unit-tested there); this service only
-does OCR, so you can swap the engine (PaddleOCR, docTR or Tesseract) by editing
-`extract_lines` in `server.py` without touching EatMe.
+The request body must be a PNG, JPEG or other Pillow-supported image and must
+not exceed 15 MiB. Recognition has a 90-second server-side limit.
 
-## Run it on the Pi
-
-Build context is this directory:
-
-```sh
-docker build -t eatme-ocr addon/ocr
-docker run -d --restart unless-stopped -p 8765:8765 --name eatme-ocr eatme-ocr
-```
-
-First request is slow (model load, tens of seconds); after that a receipt is a
-few seconds on a Pi 5 8 GB.
-
-## Point EatMe at it
-
-Set these on the EatMe add-on/server, then restart it:
-
-| var                | value                         |
-| ------------------ | ----------------------------- |
-| `RECEIPT_PROVIDER` | `local`                       |
-| `OCR_URL`          | `http://<pi-host-or-ip>:8765` |
-
-On Home Assistant OS the cleanest layout is to run this as a **second add-on** so
-both containers share the internal Docker network; then `OCR_URL` is
-`http://<ocr-addon-slug>:8765`. If you instead `docker run` it as above, use the
-Pi's LAN address.
-
-Leave `RECEIPT_PROVIDER` unset (defaults to `stub`) and EatMe still runs — the
-receipt screen just returns a canned example until the sidecar is wired up.
-
-## Route A vs Route B
-
-This ships **Route A** (OCR + EatMe's own parsing + alias learning), the right
-fit for a Pi 5 8 GB. A receipt-understanding model (Donut / PaddleOCR-VL, "Route
-B") is a drop-in replacement here if you ever move the server to a mini-PC — it
-would return the same `/ocr` shape. Either way it stays local.
+Clear, evenly lit photographs with the receipt filling the frame give the best
+results. EatMe deliberately keeps a review step because supermarket
+abbreviations and damaged receipts cannot be interpreted perfectly.

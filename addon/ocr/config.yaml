@@ -1,0 +1,19 @@
+name: EatMe OCR
+slug: eatme_ocr
+version: "0.1.0"
+description: Private local receipt text recognition for EatMe
+url: https://github.com/lewisf94/EatMe
+arch:
+  - aarch64
+  - amd64
+init: false
+startup: services
+boot: auto
+stage: experimental
+ports:
+  8765/tcp: null
+ports_description:
+  8765/tcp: Local OCR API (normally only used by EatMe)
+watchdog: "http://[HOST]:[PORT:8765]/health"
+options: {}
+schema: {}

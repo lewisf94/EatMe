@@ -10,6 +10,21 @@ opt() { jq -r ".$1 // empty" "$OPTIONS" 2>/dev/null; }
 export AUTH_TOKEN="$(opt auth_token)"
 export RECEIPT_PROVIDER="$(opt receipt_provider)"
 export OCR_URL="$(opt ocr_url)"
+
+[ -z "$RECEIPT_PROVIDER" ] && export RECEIPT_PROVIDER="local"
+
+if [ "$RECEIPT_PROVIDER" = "local" ] && [ -z "$OCR_URL" ]; then
+  # Home Assistant names repository apps <repo>-<slug>. Derive the sibling OCR
+  # hostname from this app's own hostname so this works for GitHub and /addons
+  # installations without hard-coding the repository hash.
+  APP_HOSTNAME="$(hostname)"
+  REPO_PREFIX="${APP_HOSTNAME%-eatme}"
+  export OCR_URL="http://${REPO_PREFIX}-eatme-ocr:8765"
+  echo "[eatme] local receipt OCR: ${OCR_URL}"
+elif [ "$RECEIPT_PROVIDER" = "stub" ]; then
+  echo "[eatme] receipt OCR is in demonstration mode; every photo returns fixed sample data"
+fi
+
 TS_AUTHKEY="$(opt tailscale_authkey)"
 TS_HOSTNAME="$(opt tailscale_hostname)"
 TS_STATE=/data/tailscale/tailscaled.state
