@@ -2,6 +2,19 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.8.1
+
+- Send a higher-detail receipt image from the browser to preserve small print.
+- Offer separate camera and existing-image controls on the receipt screen.
+- Reconstruct product names and right-aligned prices that OCR separates into
+  different layout blocks.
+- Crop dark worktops automatically, compare receipt-friendly page layouts and
+  test both standard and Sauvola thresholding before retaining the strongest
+  result.
+- Accept comma and OCR-spaced prices, and discard reduced-price messages.
+- Log privacy-safe recognition counts and mean confidence without logging
+  receipt contents.
+
 ## 0.8.0
 
 - Package EatMe OCR as a second installable Home Assistant app for genuine

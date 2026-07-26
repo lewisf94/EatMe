@@ -9,7 +9,15 @@ import type {
   ReceiptLineDecision,
 } from "@eatme/shared";
 import { api, type ReceiptSummary } from "../api";
-import { IconBack, IconCamera, IconCheck, IconReceipt, IconPlus, IconMinus } from "../ui/icons";
+import {
+  IconBack,
+  IconCamera,
+  IconCheck,
+  IconImage,
+  IconReceipt,
+  IconPlus,
+  IconMinus,
+} from "../ui/icons";
 
 type Decision = {
   value: string; // `p:<productId>` add existing · "new" · "ignore" · "not_tracked"
@@ -32,7 +40,7 @@ function chosenName(l: ReceiptDraftLine, value: string): string {
 
 /** Downscale + re-encode to JPEG. Drawing through a canvas also strips EXIF, so
  *  no location/time metadata leaves the device. */
-async function compressImage(file: File, maxDim = 1600, quality = 0.8): Promise<Blob> {
+async function compressImage(file: File, maxDim = 2600, quality = 0.9): Promise<Blob> {
   const bmp = await createImageBitmap(file);
   const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
   const w = Math.round(bmp.width * scale);
@@ -69,6 +77,7 @@ export default function ReceiptImport() {
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<ReceiptSummary | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void api.categories().then(setCats);
@@ -226,24 +235,53 @@ export default function ReceiptImport() {
             <h2>Snap the receipt</h2>
             <p className="note">Photograph it and confirm what to add — no typing each item.</p>
             <input
-              ref={fileRef}
+              ref={cameraRef}
               type="file"
               accept="image/*"
               capture="environment"
+              data-testid="receipt-camera"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void onFile(file);
+                e.target.value = "";
+              }}
+            />
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
               data-testid="receipt-file"
               hidden
-              onChange={(e) => e.target.files?.[0] && void onFile(e.target.files[0])}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void onFile(file);
+                e.target.value = "";
+              }}
             />
-            <button
-              className="btn btn-primary"
-              disabled={busy === "reading"}
-              onClick={() => fileRef.current?.click()}
-            >
-              <IconCamera />
-              {busy === "reading" ? "Reading…" : "Take a photo"}
-            </button>
+            <div className="capture-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={busy === "reading"}
+                onClick={() => cameraRef.current?.click()}
+              >
+                <IconCamera />
+                {busy === "reading" ? "Reading…" : "Take a photo"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-line"
+                disabled={busy === "reading"}
+                onClick={() => fileRef.current?.click()}
+              >
+                <IconImage />
+                Choose an image
+              </button>
+            </div>
             <p className="note tiny">
-              Read on your Pi and never stored — only the parsed lines are kept.
+              Flatten the receipt, fill the frame and avoid shadows. Read locally and never stored —
+              only the parsed lines are kept.
             </p>
           </div>
         </div>

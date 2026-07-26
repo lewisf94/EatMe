@@ -18,6 +18,10 @@ test("receipt import: photo → review → confirm creates stock, re-import auto
   await page.getByRole("link", { name: /Scan a receipt/i }).click();
   await page.waitForURL("**/receipt");
 
+  await expect(page.getByRole("button", { name: "Take a photo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Choose an image" })).toBeVisible();
+  await expect(page.getByTestId("receipt-camera")).toHaveAttribute("capture", "environment");
+  await expect(page.getByTestId("receipt-file")).not.toHaveAttribute("capture");
   await page.locator('[data-testid="receipt-file"]').setInputFiles(RECEIPT);
   await expect(page.getByTestId("receipt-review")).toBeVisible();
   // the parser kept 4 product lines (totals/bag/discount dropped)

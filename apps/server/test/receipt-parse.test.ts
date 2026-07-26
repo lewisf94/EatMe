@@ -36,6 +36,23 @@ describe("parseReceipt", () => {
     expect(normalize("2 x TINNED TOMATOES 0.90")).toBe("tinned tomatoes");
     expect(normalize("TESCO CHCKPEAS 400G £0.45 A")).toBe("tesco chckpeas 400g");
   });
+
+  it("accepts comma and OCR-spaced prices", () => {
+    const parsed = parseReceipt({
+      lines: [{ text: "WHOLE MILK 1,45" }, { text: "BROWN BREAD 1 20 A" }],
+    });
+    expect(parsed.lines.map((line) => [line.normalizedText, line.lineTotal])).toEqual([
+      ["whole milk", 1.45],
+      ["brown bread", 1.2],
+    ]);
+  });
+
+  it("drops reduced-price messages instead of creating products", () => {
+    const parsed = parseReceipt({
+      lines: [{ text: "00 REDUCED PRICE 0.50" }, { text: "WHEAT BISCUITS 1.25" }],
+    });
+    expect(parsed.lines.map((line) => line.normalizedText)).toEqual(["wheat biscuits"]);
+  });
 });
 
 describe("parseReceipt on an Aldi-style receipt", () => {
