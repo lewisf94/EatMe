@@ -2,6 +2,13 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.7.5
+
+- Start the app script through Alpine's POSIX shell so the same entrypoint is
+  valid when an AppArmor profile is enforced by Home Assistant or CI.
+- Run each CI container with its explicit target platform and print the stopped
+  container state and logs before a startup-check failure.
+
 ## 0.7.4
 
 - Allow the ARM64 and AMD64 native display renderer to be memory-mapped by the

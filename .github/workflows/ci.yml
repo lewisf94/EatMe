@@ -100,6 +100,7 @@ jobs:
 
           docker run --detach \
             --name "${container}" \
+            --platform "${{ matrix.platform }}" \
             --security-opt apparmor=eatme \
             --publish 127.0.0.1:18099:8099 \
             --volume "${data_dir}:/data" \
@@ -113,6 +114,8 @@ jobs:
             fi
             if ! docker inspect --format '{{.State.Running}}' "${container}" | grep -qx true; then
               echo "EatMe exited before becoming healthy"
+              docker inspect --format '{{json .State}}' "${container}"
+              docker logs "${container}" || true
               exit 1
             fi
             sleep 1
