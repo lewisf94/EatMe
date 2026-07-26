@@ -13,13 +13,17 @@ export OCR_URL="$(opt ocr_url)"
 TS_AUTHKEY="$(opt tailscale_authkey)"
 TS_HOSTNAME="$(opt tailscale_hostname)"
 TS_STATE=/data/tailscale/tailscaled.state
+TS_CACHE=/data/tailscale/cache
 TS_HAD_STATE=0
 [ -s "$TS_STATE" ] && TS_HAD_STATE=1
 [ -z "$TS_HOSTNAME" ] && TS_HOSTNAME="eatme"
 
 if [ -n "$TS_AUTHKEY" ] || [ -s "$TS_STATE" ]; then
   echo "[eatme] starting tailscaled in userspace mode"
-  mkdir -p /data/tailscale /var/run/tailscale
+  # Tailscale uses XDG_CACHE_HOME on Linux. Keeping its cache under /data avoids
+  # harmless AppArmor warnings about the read-only /root directory.
+  export XDG_CACHE_HOME="$TS_CACHE"
+  mkdir -p /data/tailscale "$TS_CACHE" /var/run/tailscale
   tailscaled \
     --tun=userspace-networking \
     --state="$TS_STATE" \
