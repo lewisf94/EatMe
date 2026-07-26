@@ -3,10 +3,7 @@ import { test, expect, type Page } from "@playwright/test";
 /** Add a product through the real form and land on its product page. */
 async function addItem(page: Page, name: string): Promise<string> {
   await page.goto("/add");
-  await page.waitForFunction(() => {
-    const s = document.querySelector("#cat") as HTMLSelectElement | null;
-    return !!(s && s.value);
-  });
+  await expect.poll(() => page.locator("#cat > option").count()).toBeGreaterThan(1);
   await page.locator("#name").fill(name);
   await page.getByRole("button", { name: "Add to cupboard" }).click();
   await page.waitForURL("**/product/**");

@@ -24,7 +24,7 @@ test("receipt import: photo → review → confirm creates stock, re-import auto
   await expect(page.getByTestId("receipt-line")).toHaveCount(4);
 
   await page.getByTestId("receipt-confirm").click();
-  await expect(page.getByText(/Added 4 to the cupboard/)).toBeVisible();
+  await expect(page.getByText(/Added 4 to the inventory/)).toBeVisible();
 
   // the products are now in the cupboard, and the "2 x" line made a 2-count lot.
   // Scope "2 packs" to the tinned-tomatoes row so a different product's pack

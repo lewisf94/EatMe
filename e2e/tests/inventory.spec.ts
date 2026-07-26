@@ -6,7 +6,7 @@ async function addItem(page: Page, name: string, dateValue?: string): Promise<st
   // “Automatic” intentionally has an empty value. Wait for a real category
   // option, which proves the categories request completed without requiring a
   // manual category selection.
-  await page.locator("#cat option").nth(1).waitFor();
+  await expect.poll(() => page.locator("#cat > option").count()).toBeGreaterThan(1);
   await page.locator("#name").fill(name);
   if (dateValue) await page.locator("#bb").fill(dateValue);
   await page.getByRole("button", { name: "Add to cupboard" }).click();
