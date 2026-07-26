@@ -17,6 +17,7 @@ test("client sends the token from localStorage and the authed API works", async 
 
   // “Automatic” deliberately uses the empty value, so wait for a real
   // category option to establish that the authenticated request succeeded.
-  await page.locator("#cat option").nth(1).waitFor({ timeout: 8000 });
-  expect(await page.locator("#cat > option").count()).toBeGreaterThan(1);
+  await expect
+    .poll(() => page.locator("#cat > option").count(), { timeout: 8000 })
+    .toBeGreaterThan(1);
 });
