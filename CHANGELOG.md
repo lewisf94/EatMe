@@ -2,6 +2,15 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.7.6
+
+- Correct the browser tests to recognise the intentional Automatic category
+  default, rather than requiring a user-selected category.
+- Keep the image gate architecture-specific and comprehensive while validating
+  the AppArmor profile can load separately. The Linux CI runner's synthetic
+  profile confinement exits before the entrypoint and does not reflect the
+  Home Assistant runtime, which is already verified by the add-on health check.
+
 ## 0.7.5
 
 - Start the app script through Alpine's POSIX shell so the same entrypoint is
