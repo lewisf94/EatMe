@@ -131,6 +131,7 @@ jobs:
             sleep 1
           done
           test "${ocr_ready}" = true
+          docker exec "${ocr_container}" python -m unittest -q test_server.py
 
           # Generate a readable receipt without adding a binary test fixture,
           # then prove the actual OCR endpoint recognises its product line.

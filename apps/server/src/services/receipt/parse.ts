@@ -38,6 +38,9 @@ const BAG = /\b(carrier\s*bag|bag\s*for\s*life|\bbag\b(?!el))/i;
 const PRICE = /(-?)\s*£?\s*(\d{1,3})\s*(?:[.,]|\s)\s*(\d{2})\s*[A-Za-z*]?\s*$/;
 // Leading quantity: "2 x", "2 @", "2X", or a bare small integer + space.
 const QTY = /^\s*(\d{1,2})\s*(?:x|@)\s*/i;
+// Some UK receipts print an isolated VAT marker between the product and price.
+// Tesseract commonly reads the asterisk as an X.
+const VAT_MARKER = /\s+(?:x|\*)\s*$/i;
 // A UK date on the receipt (dd/mm/yy or dd/mm/yyyy).
 const DATE = /\b([0-3]?\d)[/.-]([01]?\d)[/.-](\d{2}|\d{4})\b/;
 
@@ -46,6 +49,7 @@ export function normalize(text: string): string {
   return text
     .replace(PRICE, "")
     .replace(QTY, "")
+    .replace(VAT_MARKER, "")
     .replace(/[^a-z0-9]+/gi, " ")
     .trim()
     .toLowerCase();

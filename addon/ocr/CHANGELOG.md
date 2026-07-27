@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.2
+
+- Anchor reconstructed rows to their median text baseline so a tall symbol
+  cannot pull adjacent products into the same result.
+- Reject words that occupy an existing row's horizontal column, which keeps
+  closely spaced product lines separate.
+- Add a sparse-text recognition pass and regression tests for photographed
+  receipts with split name and price columns.
+
 ## 0.1.1
 
 - Preserve more thin print during image cleanup and add a clean segmentation

@@ -35,6 +35,8 @@ describe("parseReceipt", () => {
   it("normalize strips price, qty and punctuation to a stable alias key", () => {
     expect(normalize("2 x TINNED TOMATOES 0.90")).toBe("tinned tomatoes");
     expect(normalize("TESCO CHCKPEAS 400G £0.45 A")).toBe("tesco chckpeas 400g");
+    expect(normalize("CAT FOOD X 0.38")).toBe("cat food");
+    expect(normalize("TESCO CRISPS * 0.79")).toBe("tesco crisps");
   });
 
   it("accepts comma and OCR-spaced prices", () => {
