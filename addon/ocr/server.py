@@ -15,6 +15,7 @@ import re
 import subprocess
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from statistics import median
 
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
@@ -38,6 +39,10 @@ class Word:
         return self.top + self.height
 
     @property
+    def right(self) -> int:
+        return self.left + self.width
+
+    @property
     def centre(self) -> float:
         return self.top + self.height / 2
 
@@ -47,16 +52,18 @@ class TextLine:
     words: list[Word] = field(default_factory=list)
 
     @property
-    def top(self) -> int:
-        return min(word.top for word in self.words)
-
-    @property
-    def bottom(self) -> int:
-        return max(word.bottom for word in self.words)
-
-    @property
     def centre(self) -> float:
-        return (self.top + self.bottom) / 2
+        # A median baseline does not move far when Tesseract returns one tall
+        # symbol spanning two receipt rows.
+        return float(median(word.centre for word in self.words))
+
+    @property
+    def height(self) -> float:
+        return float(median(word.height for word in self.words))
+
+    @property
+    def top(self) -> float:
+        return self.centre - self.height / 2
 
 
 def crop_receipt(image: Image.Image) -> Image.Image:
@@ -177,10 +184,18 @@ def tesseract_words(image_bytes: bytes, psm: int, thresholding_method: int) -> l
 
 def same_physical_line(word: Word, line: TextLine) -> bool:
     """Match columns split into different OCR blocks back onto one row."""
-    overlap = max(0, min(word.bottom, line.bottom) - max(word.top, line.top))
-    shorter = min(word.height, line.bottom - line.top)
-    centres_close = abs(word.centre - line.centre) <= max(4, shorter * 0.45)
-    return overlap >= max(2, shorter * 0.35) or centres_close
+    centre_tolerance = max(4.0, min(word.height, line.height) * 0.5)
+    if abs(word.centre - line.centre) > centre_tolerance:
+        return False
+
+    # Words on separate receipt rows normally occupy the same horizontal
+    # columns. Rejecting substantial x overlap prevents them being joined even
+    # when glare gives one word an unusually tall bounding box.
+    for existing in line.words:
+        overlap = max(0, min(word.right, existing.right) - max(word.left, existing.left))
+        if overlap >= min(word.width, existing.width) * 0.35:
+            return False
+    return True
 
 
 def group_words(words: list[Word]) -> list[dict[str, object]]:
@@ -215,7 +230,9 @@ def candidate_score(lines: list[dict[str, object]]) -> float:
 def extract_lines(image_bytes: bytes) -> list[dict[str, object]]:
     """Try receipt-friendly layouts and keep the stronger complete reading."""
     prepared = prepare_image(image_bytes)
-    strategies = ((4, 0), (4, 2), (6, 0))
+    # PSM 11 independently finds sparse text and often recovers faint product
+    # rows missed by the column- and block-oriented modes.
+    strategies = ((4, 0), (4, 2), (6, 0), (11, 0))
     candidates = [
         (psm, threshold, group_words(tesseract_words(prepared, psm, threshold)))
         for psm, threshold in strategies

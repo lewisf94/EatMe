@@ -11,7 +11,7 @@ RUN apt-get update \
 
 RUN pip install --no-cache-dir Pillow==11.3.0
 
-COPY server.py /app/server.py
+COPY server.py test_server.py /app/
 WORKDIR /app
 
 ARG BUILD_VERSION="dev"

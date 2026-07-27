@@ -2,6 +2,15 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.8.2
+
+- Keep adjacent receipt rows separate when glare or punctuation produces a tall
+  OCR bounding box.
+- Remove isolated VAT markers that OCR reads as an `X` or asterisk at the end
+  of a product name.
+- Add a sparse-text recognition pass to recover faint product rows missed by
+  the column- and block-oriented passes.
+
 ## 0.8.1
 
 - Send a higher-detail receipt image from the browser to preserve small print.
