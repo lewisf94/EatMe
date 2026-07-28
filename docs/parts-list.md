@@ -112,6 +112,26 @@ these match the file as written:
 
 Plus the battery divider: battery **+** → 100 kΩ → **GPIO2** → 100 kΩ → GND.
 
+### "What about the Pico version of this panel?"
+
+Waveshare also sells a **Pico-ePaper-4.2** — the same 400×300 B/W panel, but with
+a female header a Raspberry Pi Pico plugs straight into ("no soldering
+required"). It's tempting, and the *panel* is exactly the one we want. **Buy it
+if the price is right, but pair it with the XIAO ESP32-C3, not a Pico** — it
+also exposes the standard 8-pin interface (VCC/GND/DIN/SCK/CS/DC/RST/BUSY) for
+other controller boards, which maps onto the wiring table above. You just leave
+the Pico header unused.
+
+Why not actually use a Pico with it:
+
+| Problem | Detail |
+|---|---|
+| **A plain Pico has no WiFi** | The device's whole job is to download a PNG from the server. A non-W Pico can't. You'd need a Pico W / Pico 2 W. |
+| **No working deep sleep on RP2040** | ESPHome's `deep_sleep` [does not work on RP2040](https://github.com/esphome/issues/issues/4124) — the board draws as much asleep as awake. That removes the battery/cable-free premise entirely; it would need mains power. |
+| **Firmware rewrite** | `firmware/eatme-display.yaml` targets the ESP32-C3. The RP2040 is a different ESPHome platform. |
+
+For the record, `online_image` *was* [enabled for RP2040](https://github.com/esphome/esphome/pull/7769), so fetching and drawing would work — it's specifically the sleep/battery side that fails. If you ever wanted a permanently mains-powered screen, a Pico W becomes viable; for the battery build it isn't.
+
 ### Optional: solar "never recharge" add-on
 
 | Item | Cost | Notes |
