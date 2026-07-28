@@ -27,12 +27,14 @@ This is the lowest-risk first build because:
 Do not buy a replacement controller until the Tenstar board's complete-system
 sleep current and Wi-Fi update time have been measured. If it sleeps above
 100 uA, is inconsistent between units, or struggles to join Wi-Fi promptly,
-replace it with the **Seeed XIAO ESP32-C6**.
+replace it with a measured branded board.
 
-For a refined second version, the preferred combination is the **Seeed XIAO
-ESP32-C6** and **Waveshare 3.97-inch black/white 800 x 480 display**. That is
-smaller, sharper and supported by ESPHome, but EatMe needs an 800 x 480 render
-profile before it can replace the 400 x 300 prototype.
+For a refined second version, the preferred display is the **Waveshare
+3.97-inch black/white 800 x 480 display**. The **Seeed XIAO ESP32-C6** remains
+the best compact controller, while the original **DFRobot FireBeetle ESP32
+DFR0478** is the most interesting battery-life alternative if its larger
+footprint and Micro-USB connector are acceptable. EatMe needs an 800 x 480
+render profile before this display can replace the 400 x 300 prototype.
 
 ## C3 versus C6 efficiency
 
@@ -61,6 +63,8 @@ Sources:
 |---|---:|---:|---|---|
 | **Seeed XIAO ESP32-C6** | 21 x 17.8 mm | **15 uA** | LiPo charging; solar needs a separate controller | Best compact final controller |
 | Seeed XIAO ESP32-C3 | 21 x 17.8 mm | 44 uA | LiPo charging; solar needs a separate controller | The C3 chip does not make this board more efficient |
+| **DFRobot FireBeetle ESP32 DFR0478** | 29 x 58 mm | Advertised 10 uA; one independent report measured 11 uA | LiPo and USB charging; no documented solar input | Best evidence for very low sleep, but older and larger |
+| **DFRobot FireBeetle 2 ESP32-E DFR0654** | 25.4 x 60 mm | Retailers claim 10 uA; historical documentation says 13 uA; current official page says 2 mA | LiPo and USB charging; no documented solar input | Better connector and I/O than DFR0478, but verify the delivered revision |
 | **DFRobot FireBeetle 2 ESP32-C6 v1.2** | 25.4 x 60 mm | 36 uA | LiPo charging, battery measurement and specified 5 V solar input | Simplest all-in-one solar board, but larger |
 | Waveshare ESP32-C6-Zero | Approximately 24 x 18 mm | Not published | No LiPo charger | Well documented, but no power-system advantage |
 | Tenstar Robot ESP32-C6 Super Mini | Approximately 26 x 18 mm | Not credibly published | Revision-dependent | Use for the prototype and measure it |
@@ -70,10 +74,58 @@ The XIAO C6 also provides 512 KB SRAM, 4 MB flash, an external-antenna option
 and LiPo charge management. Its battery connection uses solder pads, and its 5 V
 pin is not powered when running from its BAT input.
 
-The current FireBeetle v1.2 documentation specifies 36 uA sleep, compared with
-16 uA for the older v1.0. Its solar input is documented for a **5 V solar
-panel**. Do not assume that a panel with a 7.1 V open-circuit voltage is safe for
-that input without confirmation from DFRobot.
+### Original FireBeetle versus FireBeetle 2 ESP32-E
+
+At the Pi Hut price supplied during this research, both boards cost £9.50. They
+use closely related dual-core ESP32 modules with Wi-Fi 4 and Bluetooth 4.2, so
+their application performance and approximately 80 mA average operating-current
+figures are similar. Neither needs the newer C6 radio features for EatMe's
+current Wi-Fi-only display.
+
+| Detail | FireBeetle ESP32 DFR0478 | FireBeetle 2 ESP32-E DFR0654 |
+|---|---|---|
+| Connector | Micro-USB | USB-C |
+| Size | 29 x 58 mm | 25.4 x 60 mm |
+| Flash | 16 MB | 4 MB |
+| Exposed I/O | 10 digital and 5 analogue in the default map | 18 digital and 11 analogue |
+| Display connection | Normal SPI pins | Normal SPI plus DFRobot GDI |
+| Low-power preparation | Firmware and peripheral shutdown | Firmware shutdown plus cutting the documented low-power jumper |
+| Sleep-current evidence | Advertised 10 uA; an owner measured 11 uA | Retailers advertise 10 uA; older documentation says 13 uA; current official documentation says 2 mA |
+| Solar charging | No documented solar tracking or MPPT | No documented solar tracking or MPPT; DFRobot's FAQ says the battery charges through USB only |
+| Other caveat | Check the LiPo connector polarity on the delivered revision | FireBeetle 1 and 2 pins, dimensions and expansion boards are incompatible |
+
+The DFR0654 is the nicer development board: it has USB-C, more exposed pins and
+a display connector. Those conveniences do not prove lower energy use. Its
+headline 10 uA figure conflicts with current DFRobot documentation, and a user
+measured 468 uA before remembering to cut the low-power jumper. Historical
+documentation and a later independent report indicate low tens of microamps can
+be achieved after the modification, but every delivered revision should be
+measured.
+
+The DFR0478 has the stronger low-power evidence: an independent Nordic Power
+Profiler measurement reported 11 uA. It also has four times the flash, although
+EatMe does not need 16 MB. Its disadvantages are Micro-USB, fewer convenient
+pins and a slightly wider board.
+
+A difference between 10 uA and the XIAO C6's published 15 uA consumes only
+43.8 mAh per year, about 2.2% of a nominal 2,000 mAh battery. Wi-Fi association
+time, the regulator and boost converter, battery self-discharge, failed updates
+and solar conversion losses can each be more important. Therefore:
+
+1. Use the owned Tenstar C6 for the first prototype.
+2. Choose DFR0478 when measured battery life is the priority and the larger
+   board is acceptable.
+3. Choose XIAO ESP32-C6 when enclosure size, USB-C-era hardware and an external
+   antenna option matter more than the possible 5 uA saving.
+4. Choose DFR0654 only after measuring the exact unit; do not buy it solely for
+   the retailer's 10 uA claim.
+5. Choose FireBeetle 2 ESP32-C6 when an integrated, explicitly documented solar
+   input is more valuable than the lowest sleep current.
+
+The current FireBeetle 2 ESP32-C6 v1.2 documentation specifies 36 uA sleep,
+compared with 16 uA for the older v1.0. Its solar input is documented for a
+**5 V solar panel**. Do not assume that a panel with a 7.1 V open-circuit
+voltage is safe for that input without confirmation from DFRobot.
 
 The Waveshare C6-Zero has good schematics and documentation but no onboard
 battery charger or published complete-board sleep measurement. It is not a
@@ -88,6 +140,11 @@ RF performance must be measured rather than inferred from the ESP32 datasheet.
 Sources:
 
 - [Seeed XIAO ESP32-C3 documentation](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/)
+- [DFRobot FireBeetle ESP32 DFR0478 documentation](https://wiki.dfrobot.com/dfr0478/)
+- [DFRobot FireBeetle 2 ESP32-E DFR0654 documentation](https://wiki.dfrobot.com/dfr0654/)
+- [DFRobot DFR0654 charging FAQ](https://www.dfrobot.com/forum/topic/315558)
+- [Independent DFR0478 and FireBeetle 2 sleep-current measurements](https://www.dfrobot.com/forum/topic/344118)
+- [Independent DFR0654 low-power-jumper test](https://forum.arduino.cc/t/deep-sleep-current-for-firebeetle-2-esp32-e-too-high/1100878)
 - [DFRobot FireBeetle 2 ESP32-C6 documentation](https://wiki.dfrobot.com/dfr1075/)
 - [Waveshare ESP32-C6-Zero documentation](https://docs.waveshare.com/ESP32-C6-Zero)
 - [Raspberry Pi Pico 2 datasheet](https://datasheets.raspberrypi.com/pico/pico-2-datasheet.pdf)
@@ -240,10 +297,11 @@ Measure the completed system at the battery, not just the ESP32 chip:
 5. energy harvested per day in the intended mounting position.
 
 Keep the Tenstar board if sleep is below approximately 50 uA and a normal update
-finishes within 15 seconds. Replace it with the XIAO C6 if sleep exceeds 100 uA,
-Wi-Fi performance is inconsistent, or board revisions produce materially
-different results. Values between those thresholds should be decided using the
-measured daily energy budget rather than the chip name.
+finishes within 15 seconds. If sleep exceeds 100 uA, Wi-Fi performance is
+inconsistent, or board revisions produce materially different results, compare
+a DFR0478 and XIAO C6 using the same firmware and power path. Values between
+those thresholds should be decided using the measured daily energy budget
+rather than the chip name.
 
 Solar should be described as **solar-assisted** until a winter test at the real
 installation location demonstrates that harvested energy exceeds consumption.
