@@ -92,14 +92,12 @@ No purchase needed — the existing Raspberry Pi running Home Assistant OS hosts
 
 ## Shopping list (the hardware one)
 
-| Item | Cost | Needed for |
-|---|---|---|
-| Seeed reTerminal E1001 (or XIAO 7.5″ ~$50) | ~$79 | P6 (display) |
-| USB-C cable for flashing/charging | ~£0 (drawer) | P6 |
-| Niimbot D110 + labels *(optional)* | ~£20 | P5 nicety |
-| NTAG213 NFC stickers *(optional)* | ~£5 | P9 |
+**→ See [Hardware parts list](parts-list.md)** for the buy-this list: exact parts
+for the chosen XIAO ESP32-C3 + Waveshare 4.2″ display build (including which
+Waveshare variant to avoid), what QR labels actually need, and the wiring table.
 
-Nothing needs ordering until P6 — the display comes after the app is already useful on its own. The reTerminal is all-in-one, so it's the only display purchase (no separate battery/case).
+In short: nothing needs ordering to use EatMe. The display is a ~£45–60 build
+when you want it; QR labels only need a printer and adhesive paper.
 
 ---
 
