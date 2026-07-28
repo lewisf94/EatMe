@@ -57,7 +57,9 @@ Automatic guidance works offline and is applied consistently to manual adds, bar
 The core server, web app, camera scanning, Home Assistant packaging, offline support, receipt import, automatic food guidance, QR labels, recipes, shopping list, e-ink display support and push notifications are implemented. Hardware flashing and printer setup remain hands-on tasks.
 
 Detailed product, architecture and implementation notes are in [docs](docs).
-For the optional peripherals (e-ink display, QR label printing), see the
-[hardware parts list](docs/parts-list.md).
+For the optional peripherals (e-ink display and QR label printing), see the
+[hardware parts list](docs/parts-list.md). The controller, e-paper and solar
+comparisons behind the display recommendation are in the
+[e-paper hardware research](docs/05-hardware-research.md).
 
 MIT licensed.
