@@ -23,6 +23,11 @@ MAX_IMAGE_BYTES = 15 * 1024 * 1024
 MAX_IMAGE_PIXELS = 40_000_000
 OCR_TIMEOUT_SECONDS = 50
 PRICE_LIKE = re.compile(r"(?:£\s*)?\d{1,3}\s*(?:[.,]|\s)\s*\d{2}\s*[A-Za-z*]?\s*$")
+NON_PRODUCT_LIKE = re.compile(
+    r"\b(sub-?total|total|balance|change|cash|card|saving[s]?|multibuy|"
+    r"offer|voucher|discount|reduced\s*price|receipt|vat)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -219,15 +224,33 @@ def group_words(words: list[Word]) -> list[dict[str, object]]:
     return output
 
 
+def candidate_row_counts(lines: list[dict[str, object]]) -> tuple[int, int]:
+    """Count complete product rows separately from isolated price fragments."""
+    complete = 0
+    isolated_prices = 0
+    for line in lines:
+        text = str(line["text"])
+        price = PRICE_LIKE.search(text)
+        if not price:
+            continue
+        name = text[: price.start()]
+        has_name = len(re.sub(r"[^A-Za-z]", "", name)) >= 2
+        if has_name and not NON_PRODUCT_LIKE.search(name):
+            complete += 1
+        elif not has_name:
+            isolated_prices += 1
+    return complete, isolated_prices
+
+
 def candidate_score(lines: list[dict[str, object]]) -> float:
-    """Prefer passes that retain confident, priced receipt rows."""
-    priced = sum(1 for line in lines if PRICE_LIKE.search(str(line["text"])))
+    """Prefer usable name-and-price rows, not a pass full of price fragments."""
+    complete, isolated_prices = candidate_row_counts(lines)
     readable = sum(1 for line in lines if len(re.sub(r"[^A-Za-z]", "", str(line["text"]))) >= 2)
     confidence = sum(float(line["confidence"]) for line in lines)
-    return priced * 10 + readable + confidence
+    return complete * 20 - isolated_prices * 4 + readable * 0.25 + confidence * 0.1
 
 
-def extract_lines(image_bytes: bytes) -> list[dict[str, object]]:
+def extract_lines(image_bytes: bytes) -> tuple[list[dict[str, object]], dict[str, int]]:
     """Try receipt-friendly layouts and keep the stronger complete reading."""
     prepared = prepare_image(image_bytes)
     # PSM 11 independently finds sparse text and often recovers faint product
@@ -238,15 +261,22 @@ def extract_lines(image_bytes: bytes) -> list[dict[str, object]]:
         for psm, threshold in strategies
     ]
     psm, threshold, lines = max(candidates, key=lambda candidate: candidate_score(candidate[2]))
+    complete, isolated_prices = candidate_row_counts(lines)
     mean_confidence = (
         sum(float(line["confidence"]) for line in lines) / len(lines) if lines else 0
     )
     print(
         f"[eatme-ocr] recognised {len(lines)} lines with psm {psm}/threshold {threshold} "
-        f"(mean confidence {mean_confidence:.0%})",
+        f"({complete} complete product rows, {isolated_prices} isolated prices, "
+        f"mean confidence {mean_confidence:.0%})",
         flush=True,
     )
-    return lines
+    return lines, {
+        "pageSegmentationMode": psm,
+        "thresholdingMethod": threshold,
+        "completeProductRows": complete,
+        "isolatedPriceRows": isolated_prices,
+    }
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -284,7 +314,7 @@ class Handler(BaseHTTPRequestHandler):
 
         image = self.rfile.read(length)
         try:
-            lines = extract_lines(image)
+            lines, diagnostics = extract_lines(image)
         except subprocess.TimeoutExpired:
             self.send_json(504, {"error": "receipt recognition timed out"})
             return
@@ -295,7 +325,7 @@ class Handler(BaseHTTPRequestHandler):
         if not lines:
             self.send_json(422, {"error": "no readable text was found"})
             return
-        self.send_json(200, {"lines": lines})
+        self.send_json(200, {"lines": lines, "diagnostics": diagnostics})
 
     def log_message(self, format: str, *args: object) -> None:
         # Do not write recognised receipt text or request details to the log.

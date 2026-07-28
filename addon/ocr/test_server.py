@@ -1,6 +1,6 @@
 import unittest
 
-from server import Word, group_words
+from server import Word, candidate_row_counts, candidate_score, group_words
 
 
 def word(left: int, top: int, width: int, height: int, text: str) -> Word:
@@ -52,6 +52,34 @@ class ReceiptRowGroupingTests(unittest.TestCase):
             [line["text"] for line in lines],
             ["EGGS 0.84", "SQUARE MED 0.83"],
         )
+
+
+class CandidateSelectionTests(unittest.TestCase):
+    def test_complete_rows_beat_many_disconnected_price_fragments(self) -> None:
+        coherent = [
+            {"text": "CAT FOOD 0.38", "confidence": 0.82},
+            {"text": "ORANGE JUICE 2.34", "confidence": 0.79},
+            {"text": "INSTANT NOODLE 0.21", "confidence": 0.74},
+        ]
+        fragmented = [
+            {"text": "CAT FOOD", "confidence": 0.91},
+            {"text": "ORANGE JUICE", "confidence": 0.91},
+            {"text": "INSTANT NOODLE", "confidence": 0.91},
+            *[{"text": f"{number}.25", "confidence": 0.95} for number in range(10)],
+        ]
+
+        self.assertGreater(candidate_score(coherent), candidate_score(fragmented))
+        self.assertEqual(candidate_row_counts(coherent), (3, 0))
+        self.assertEqual(candidate_row_counts(fragmented), (0, 10))
+
+    def test_totals_do_not_count_as_complete_product_rows(self) -> None:
+        lines = [
+            {"text": "WHEAT BISCUITS 0.69", "confidence": 0.8},
+            {"text": "SUB-TOTAL 35.42", "confidence": 0.9},
+            {"text": "TOTAL SAVINGS 3.11", "confidence": 0.9},
+        ]
+
+        self.assertEqual(candidate_row_counts(lines), (1, 0))
 
 
 if __name__ == "__main__":

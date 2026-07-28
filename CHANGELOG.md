@@ -2,6 +2,13 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.8.3
+
+- Select OCR passes by complete product-and-price rows rather than isolated
+  price fragments.
+- Include the selected page layout, threshold method and safe row counts in the
+  main EatMe log for precise receipt diagnostics without logging receipt text.
+
 ## 0.8.2
 
 - Keep adjacent receipt rows separate when glare or punctuation produces a tall
