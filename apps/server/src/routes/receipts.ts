@@ -77,6 +77,10 @@ export async function registerReceipts(app: FastifyInstance): Promise<void> {
                 ).toFixed(3),
               )
             : null,
+        pageSegmentationMode: ocr.diagnostics?.pageSegmentationMode ?? null,
+        thresholdingMethod: ocr.diagnostics?.thresholdingMethod ?? null,
+        completeProductRows: ocr.diagnostics?.completeProductRows ?? null,
+        isolatedPriceRows: ocr.diagnostics?.isolatedPriceRows ?? null,
       },
       "receipt recognition complete",
     );

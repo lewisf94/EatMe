@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3
+
+- Prevent sparse-text recognition from winning merely because it returns many
+  disconnected price fragments.
+- Prefer complete name-and-price product rows and disregard totals when
+  comparing OCR strategies.
+- Return privacy-safe strategy and row-count diagnostics to the main app.
+
 ## 0.1.2
 
 - Anchor reconstructed rows to their median text baseline so a tall symbol

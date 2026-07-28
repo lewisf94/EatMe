@@ -351,7 +351,17 @@ export type IntakeInput = z.infer<typeof IntakeInput>;
 // --- receipts ----------------------------------------------------------
 // What a local OCR engine returns (docTR/PaddleOCR/Tesseract all fit this shape).
 export type OcrLine = { text: string; confidence?: number };
-export type OcrResult = { merchant?: string; purchasedAt?: string; lines: OcrLine[] };
+export type OcrResult = {
+  merchant?: string;
+  purchasedAt?: string;
+  lines: OcrLine[];
+  diagnostics?: {
+    pageSegmentationMode?: number;
+    thresholdingMethod?: number;
+    completeProductRows?: number;
+    isolatedPriceRows?: number;
+  };
+};
 
 export type ReceiptMatch = {
   productId: string;
