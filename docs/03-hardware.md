@@ -29,9 +29,16 @@ a **Waveshare Pico-ePaper-4.2 black/white 400 x 300 display**. The Pico header i
 optional because the module also exposes a standard SPI connector. This panel
 matches EatMe's current 400 x 300 server render without an application change.
 
-The preferred controller for a refined build is the **Seeed XIAO ESP32-C6**.
-Seeed specifies 15 uA complete-board deep sleep for its C6 board and 44 uA for
-its C3 board. This is why the board design, rather than the C3/C6 chip label,
+For a refined build, the **Seeed XIAO ESP32-C6** is the best compact controller.
+The original **DFRobot FireBeetle ESP32 DFR0478** is the strongest battery-life
+alternative: it is advertised at 10 uA and an independent test reported 11 uA,
+but it is much larger and uses Micro-USB. The **FireBeetle 2 ESP32-E DFR0654**
+adds USB-C, more I/O and a display connector, but its 10 uA retailer claim
+conflicts with current DFRobot documentation and it requires a low-power jumper
+to be cut. Measure the exact board revision before choosing it.
+
+Seeed specifies 15 uA complete-board deep sleep for its XIAO C6 and 44 uA for
+its XIAO C3. This is why the board design, rather than the C3/C6 chip label,
 drives the recommendation.
 
 The preferred refined display is the **Waveshare 3.97-inch black/white
