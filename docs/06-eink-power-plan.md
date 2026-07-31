@@ -8,24 +8,26 @@ planned second stage.
 
 ## Current decision
 
-Build and validate the e-paper display without solar hardware.
+Build and validate a battery-powered e-paper display without solar hardware.
 
 Use the parts already available:
 
 - Tenstar Robot ESP32-C6 Super Mini;
-- protected single-cell LiPo;
-- Adafruit PowerBoost 1000C;
-- Waveshare 4.2-inch black-and-white 400 x 300 e-paper display.
+- protected 2000 mAh single-cell LiPo;
+- Adafruit PowerBoost 1000C.
+
+The e-paper display is **not selected yet**. Select it after comparing the
+shortlist in this document.
 
 The first goal is functional validation:
 
 1. power the controller from the battery;
-2. connect and refresh the e-paper display;
+2. connect and refresh the selected e-paper display;
 3. download the EatMe dashboard image over Wi-Fi;
 4. enter deep sleep after each refresh;
 5. confirm reliable wake, update and sleep cycles.
 
-Do not use this stage to estimate final battery life.
+Do not use the PowerBoost stage to estimate final battery life.
 
 ## Temporary PowerBoost 1000C power path
 
@@ -59,8 +61,8 @@ been verified.
 ## Why the PowerBoost is temporary
 
 The PowerBoost 1000C consumes about 5 mA while its boost converter and output
-indicator are enabled. This is far above the intended deep-sleep current for the
-final EatMe display.
+indicator are enabled. This equals about 0.44 Wh each day from a 3.7 V battery,
+before controller sleep current and wake activity are included.
 
 Therefore, the PowerBoost can validate:
 
@@ -74,8 +76,46 @@ It cannot validate:
 
 - final standby current;
 - realistic battery endurance;
-- solar energy balance;
+- final solar panel size;
 - the final charger and regulator losses.
+
+A 2000 mAh, 3.7 V battery stores about 7.4 Wh nominally. After allowing for a
+reasonable discharge limit and conversion loss, the temporary system has about
+10 to 12 days of reserve if the PowerBoost dominates the load. Measure the real
+result.
+
+## E-paper display research decision
+
+Do not select a display mainly from refresh power. E-paper refresh energy is
+small compared with the PowerBoost standby load and the Wi-Fi wake period.
+
+Compare these factors:
+
+1. final dashboard layout and viewing distance;
+2. active display dimensions and aspect ratio;
+3. resolution and smallest readable text;
+4. current ESPHome `epaper_spi` support;
+5. full-refresh time and visible flashing;
+6. partial-refresh support and ghosting requirements;
+7. 3.3 V logic compatibility and driver-board level shifting;
+8. standard Serial Peripheral Interface access without requiring another MCU;
+9. module outline, cable position and enclosure depth;
+10. UK availability and exact panel revision.
+
+Keep the first display black-and-white. Multi-colour versions refresh more
+slowly and add no required EatMe function.
+
+### Shortlist
+
+| Display | Main advantage | Main concern |
+|---|---|---|
+| Waveshare 4.2-inch, 400 x 300, black/white | Larger portrait-like area and existing 400 x 300 server render | Lower pixel density and legacy ESPHome component |
+| Waveshare 3.97-inch HAT+, 800 x 480, black/white | Highest pixel density and current `epaper_spi` support | Smaller vertical active area and HAT-shaped board |
+| Waveshare 4.26-inch HAT, 800 x 480, black/white | Wide readable layout and current `epaper_spi` support | Long narrow panel shape |
+| Waveshare 5.83-inch, 648 x 480, black/white | Best viewing distance and largest active area | Larger enclosure and legacy ESPHome component |
+
+Before ordering, render the real EatMe dashboard at each candidate resolution.
+Print each render at actual size. View it from the intended distance.
 
 ## Planned solar upgrade
 
@@ -103,6 +143,44 @@ The solar system must remain described as solar-assisted until winter testing at
 the actual installation position proves that harvested energy exceeds daily
 consumption.
 
+## Rough solar sizing
+
+Use daily energy, not battery capacity, to size the panel.
+
+```text
+required panel power
+  = daily load in Wh
+  / effective winter sun-hours behind the window
+```
+
+For initial modelling, use an effective winter yield of 0.2 to 0.4 Wh each day
+for every rated watt of panel. This intentionally includes window, orientation,
+charger and weather losses. Replace this assumption with measurements at the
+actual window.
+
+The temporary PowerBoost setup should be budgeted at about 0.5 Wh each day.
+This gives a calculated minimum near 1.25 to 2.5 W. Add reserve for consecutive
+cloudy days and non-ideal positioning.
+
+Provisional panel guidance:
+
+- unobstructed south-facing window: 6 V monocrystalline panel, 3 to 5 W;
+- east-facing or west-facing window: 6 V monocrystalline panel, 5 to 10 W;
+- north-facing or heavily shaded window: do not assume solar-only operation;
+- four 5 V, 30 mA mini-panels provide only 0.6 W rated total and are too small
+  for a reliable PowerBoost-based system.
+
+The 2000 mAh battery provides weather buffering. It does not correct an annual
+or winter energy deficit.
+
+After replacing the PowerBoost, measure complete-system sleep current and update
+energy again. The final low-power system might need only a 1 to 3 W panel, but
+do not select that panel from estimates alone.
+
+Use PVGIS for the installation location, panel angle and window direction. PVGIS
+models an outdoor panel. Apply a separate window-loss factor and verify it with
+a current measurement at the actual window.
+
 ## How the later solar stage affects current hardware choices
 
 ### Controller
@@ -127,27 +205,19 @@ charger circuits and makes the power path easier to verify.
 
 ### Display
 
-Use the Waveshare 4.2-inch black-and-white 400 x 300 display for the first build.
-It matches the current server image and retains its image without continuous
-power.
+The solar plan does not force one display from the shortlist. All four retain
+their image without continuous power.
 
-The later solar stage favours a display that:
-
-- retains its image when the controller sleeps;
-- has negligible standby current;
-- can be fully powered down after refresh;
-- refreshes quickly enough to keep Wi-Fi wake time short;
-- does not require a continuously powered Raspberry Pi Pico.
-
-The 4.2-inch module meets these requirements for the prototype. A later
-800 x 480 display remains optional and requires a matching server render mode.
+Select the display from layout, readability, software support and enclosure
+requirements. Confirm that firmware can put the display into sleep or remove
+its power after each refresh.
 
 ### Enclosure and wiring
 
 Reserve space and access for:
 
 - the future ADA6106 board;
-- a solar-panel cable;
+- a 3 to 10 W panel cable and strain relief;
 - an external USB-C top-up port;
 - a power-isolation switch or removable link;
 - a shaded and mechanically protected LiPo position.
@@ -174,12 +244,12 @@ Tenstar pin map and update the ESP32-C6 board configuration first.
 
 ## Purchase plan
 
-Buy only the parts needed for the battery-powered display stage:
+Buy only the parts needed after the display comparison:
 
-- Waveshare 4.2-inch black-and-white 400 x 300 e-paper display;
+- one selected black-and-white e-paper display;
 - suitable Serial Peripheral Interface leads or headers;
 - removable power link or switch, if none is available;
-- required connectors and enclosure hardware.
+- required connectors and temporary enclosure hardware.
 
 Defer these purchases until the ADA6106 is available and the prototype works:
 
@@ -190,17 +260,21 @@ Defer these purchases until the ADA6106 is available and the prototype works:
 
 ## Validation sequence
 
-1. Run the display from bench USB power.
-2. Run the same hardware from the PowerBoost and LiPo.
-3. Verify at least 50 wake, download, refresh and sleep cycles.
-4. Measure wake duration and update reliability.
-5. Replace the PowerBoost with the ADA6106 when available.
-6. Measure complete-system sleep current at the battery.
-7. Add the solar panel only after the regulated battery system is stable.
-8. Measure harvested and consumed energy at the intended installation position.
+1. Render the EatMe screen for each shortlisted display.
+2. Print each render at actual size and select the display.
+3. Run the selected display from bench USB power.
+4. Run the same hardware from the PowerBoost and LiPo.
+5. Verify at least 50 wake, download, refresh and sleep cycles.
+6. Measure wake duration and update reliability.
+7. Replace the PowerBoost with the ADA6106 when available.
+8. Measure complete-system sleep current at the battery.
+9. Test candidate solar panels at the intended window during poor weather.
+10. Confirm energy neutrality through winter before removing USB top-up as a requirement.
 
 ## Primary hardware references
 
 - [Adafruit PowerBoost 1000C guide](https://learn.adafruit.com/adafruit-powerboost-1000c-load-share-usb-charge-boost)
 - [Adafruit BQ25185 charger with 5 V boost](https://www.adafruit.com/product/6106)
+- [ESPHome ePaper SPI display support](https://esphome.io/components/display/epaper_spi/)
+- [PVGIS](https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en)
 - [EatMe hardware research](05-hardware-research.md)
