@@ -11,6 +11,7 @@ import { getProduct } from "../repo/products.js";
 import { logEvent } from "../repo/stockLots.js";
 import { createGuidedLot } from "../services/foodGuidance.js";
 import { atomic } from "../db.js";
+import { mirrorShopping } from "../services/homeAssistant.js";
 
 export async function registerShopping(app: FastifyInstance): Promise<void> {
   app.get("/shopping-list", async (req) => {
@@ -30,7 +31,9 @@ export async function registerShopping(app: FastifyInstance): Promise<void> {
     const name = parsed.data.name ?? (productId ? getProduct(productId)?.name : undefined);
     if (!name)
       return reply.code(400).send({ error: { message: "a name or a known product is required" } });
-    return reply.code(201).send({ data: addShopping({ name, productId }) });
+    const item = addShopping({ name, productId });
+    void mirrorShopping("add_item", item.name);
+    return reply.code(201).send({ data: item });
   });
 
   // Ticking a row that came from a product puts a fresh pack back in the
@@ -42,6 +45,7 @@ export async function registerShopping(app: FastifyInstance): Promise<void> {
       if (!before) return null;
 
       const item = setDone(id, true);
+      if (!item) return null;
       let lot = null;
       if (before.productId && !before.doneAt) {
         const product = getProduct(before.productId);
@@ -53,6 +57,7 @@ export async function registerShopping(app: FastifyInstance): Promise<void> {
       return { item, lot };
     });
     if (!result) return reply.code(404).send({ error: { message: "not found" } });
+    void mirrorShopping("complete_item", result.item.name);
     return { data: result };
   });
 
@@ -60,12 +65,15 @@ export async function registerShopping(app: FastifyInstance): Promise<void> {
     const { id } = req.params as { id: string };
     const item = setDone(id, false);
     if (!item) return reply.code(404).send({ error: { message: "not found" } });
+    void mirrorShopping("incomplete_item", item.name);
     return { data: item };
   });
 
   app.delete("/shopping-list/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
+    const item = getShopping(id);
     if (!deleteShopping(id)) return reply.code(404).send({ error: { message: "not found" } });
+    if (item) void mirrorShopping("remove_item", item.name);
     return { data: { ok: true } };
   });
 }

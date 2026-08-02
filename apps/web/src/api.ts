@@ -22,6 +22,8 @@ import type {
   FoodGuidanceSuggestion,
   DietaryRequirement,
   StockLotCreateInput,
+  ActivityEntry,
+  UsageInsights,
 } from "@eatme/shared";
 
 export type ReceiptSummary = {
@@ -35,6 +37,39 @@ export type ReceiptSummary = {
 export type Settings = {
   household_timezone: string;
   dietary_requirements: DietaryRequirement[];
+  magtag_stale_hours: number;
+  magtag_low_battery: number;
+  ha_shopping_sync: boolean;
+};
+
+export type MagtagHealth = {
+  configured: boolean;
+  status: {
+    battery: number | null;
+    wakeReason: string | null;
+    firmware: string | null;
+    rssi: number | null;
+    reportedAt: string;
+  } | null;
+  lastButton: { button: string; at: string } | null;
+  staleHours: number;
+  lowBattery: number;
+  isStale: boolean;
+  isLowBattery: boolean;
+};
+
+export type HomeAssistantStatus = {
+  available: boolean;
+  shoppingSyncEnabled: boolean;
+  lastSync: string | null;
+  lastError: string | null;
+  synced?: boolean;
+};
+
+export type DatabaseIntegrity = {
+  ok: boolean;
+  quickCheck: string;
+  foreignKeyErrors: number;
 };
 
 export type StarterRecipe = RecipeInput & {
@@ -113,6 +148,24 @@ async function htmlReq(path: string): Promise<string> {
   return res.text();
 }
 
+async function downloadReq(path: string): Promise<void> {
+  const res = await fetch("/api" + path, {
+    headers: {
+      ...(authToken() ? { authorization: `Bearer ${authToken()}` } : {}),
+    },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const disposition = res.headers.get("content-disposition") ?? "";
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? "eatme-export";
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1_000);
+}
+
 export const api = {
   // cupboard: aggregated product rows
   inventory: (query = "", signal?: AbortSignal) =>
@@ -137,6 +190,7 @@ export const api = {
       method: "POST",
       ...(reason ? { body: JSON.stringify({ reason }) } : {}),
     }),
+  restoreLot: (id: string) => req<StockLot>(`/stock-lots/${id}/restore`, { method: "POST" }),
   postLotEvent: (id: string, event: EventInput) =>
     req<StockLot>(`/stock-lots/${id}/events`, { method: "POST", body: JSON.stringify(event) }),
 
@@ -203,6 +257,9 @@ export const api = {
       alreadyImported: number;
       requirements: DietaryRequirement[];
     }>("/recipes/starter-pack/import", { method: "POST" }),
+  shopMissing: (id: string) =>
+    req<{ added: string[]; skipped: number }>(`/recipes/${id}/shop-missing`, { method: "POST" }),
+  markCooked: (id: string) => req<{ used: string[] }>(`/recipes/${id}/cooked`, { method: "POST" }),
 
   // shopping list: what's finished and needs buying again
   shopping: (includeDone = false) =>
@@ -232,6 +289,21 @@ export const api = {
   getSettings: () => req<Settings>("/settings"),
   putSettings: (patch: Partial<Settings>) =>
     req<Settings>("/settings", { method: "PUT", body: JSON.stringify(patch) }),
+
+  // history, insights, device health, backups, and Home Assistant
+  activity: (limit = 50) => req<ActivityEntry[]>(`/activity?limit=${limit}`),
+  insights: (days = 90) => req<UsageInsights>(`/insights?days=${days}`),
+  magtagHealth: () => req<MagtagHealth>("/magtag/health"),
+  databaseIntegrity: () => req<DatabaseIntegrity>("/maintenance/integrity"),
+  downloadBackup: () => downloadReq("/maintenance/backup"),
+  downloadInventoryCsv: () => downloadReq("/maintenance/inventory.csv"),
+  restoreBackup: (backup: unknown) =>
+    req<{ rows: number }>("/maintenance/restore", {
+      method: "POST",
+      body: JSON.stringify(backup),
+    }),
+  homeAssistantStatus: () => req<HomeAssistantStatus>("/home-assistant"),
+  syncHomeAssistant: () => req<HomeAssistantStatus>("/home-assistant/sync", { method: "POST" }),
 };
 
 /** True for a fetch aborted by an AbortController (a superseded request) — the

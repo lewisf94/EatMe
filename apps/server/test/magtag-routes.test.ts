@@ -90,6 +90,24 @@ describe("MagTag routes", () => {
     expect(adminOnly.statusCode).toBe(401);
   });
 
+  it("keeps the household health view behind the admin token", async () => {
+    const deviceOnly = await app.inject({
+      method: "GET",
+      url: `/api/magtag/health?token=${DEVICE_TOKEN}`,
+    });
+    expect(deviceOnly.statusCode).toBe(401);
+
+    const admin = await app.inject({
+      method: "GET",
+      url: "/api/magtag/health",
+      headers: { authorization: "Bearer admin-route-test-token" },
+    });
+    expect(admin.statusCode).toBe(200);
+    expect(admin.json().data).toEqual(
+      expect.objectContaining({ configured: true, isStale: expect.any(Boolean) }),
+    );
+  });
+
   it("serves every supported 296x128 four-colour page and records battery", async () => {
     const paths = [
       "/api/magtag/display.bmp?battery=73",

@@ -13,6 +13,23 @@ import { dietaryRequirements, timezone } from "../repo/settings.js";
 import { rankUseItUp } from "../services/recipes.js";
 import { recipeMeetsRequirements, STARTER_RECIPES } from "../data/starterRecipes.js";
 import { atomic } from "../db.js";
+import { addShopping, hasOpenName } from "../repo/shopping.js";
+import { lotsForProduct, logEvent } from "../repo/stockLots.js";
+import { mirrorShopping } from "../services/homeAssistant.js";
+
+function currentHit(id: string) {
+  const recipe = getRecipe(id);
+  if (!recipe) return null;
+  const rows = listInventory({}, civilToday(timezone())).sort(byUrgency);
+  return (
+    rankUseItUp([recipe], rows)[0] ?? {
+      recipe,
+      matchedUrgentCount: 0,
+      matchedItems: [],
+      missing: [],
+    }
+  );
+}
 
 export async function registerRecipes(app: FastifyInstance): Promise<void> {
   app.get("/recipes", async () => ({ data: listRecipes() }));
@@ -76,6 +93,42 @@ export async function registerRecipes(app: FastifyInstance): Promise<void> {
     const recipe = getRecipe(id);
     if (!recipe) return reply.code(404).send({ error: { message: "not found" } });
     return { data: recipe };
+  });
+
+  app.post("/recipes/:id/shop-missing", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const hit = currentHit(id);
+    if (!hit) return reply.code(404).send({ error: { message: "not found" } });
+    const added = atomic(() => {
+      const names: string[] = [];
+      for (const name of new Set(hit.missing.map((item) => item.trim()).filter(Boolean))) {
+        if (hasOpenName(name)) continue;
+        addShopping({ name });
+        names.push(name);
+      }
+      return names;
+    });
+    for (const name of added) void mirrorShopping("add_item", name);
+    return { data: { added, skipped: hit.missing.length - added.length } };
+  });
+
+  // Cooking is an audit event, not a guessed quantity change. The user can
+  // still set the exact amount left with the existing fraction controls.
+  app.post("/recipes/:id/cooked", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const hit = currentHit(id);
+    if (!hit) return reply.code(404).send({ error: { message: "not found" } });
+    const used = atomic(() => {
+      const names: string[] = [];
+      for (const match of hit.matchedItems) {
+        const lot = lotsForProduct(match.productId).find((candidate) => !candidate.archivedAt);
+        if (!lot) continue;
+        logEvent(lot.id, "cooked");
+        names.push(match.name);
+      }
+      return names;
+    });
+    return { data: { used } };
   });
 
   app.post("/recipes", async (req, reply) => {

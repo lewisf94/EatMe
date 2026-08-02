@@ -10,6 +10,7 @@ seedIfEmpty();
 const { buildApp } = await import("./app.js");
 const app = buildApp();
 let pushTimer: NodeJS.Timeout | undefined;
+let homeAssistantTimer: NodeJS.Timeout | undefined;
 let shuttingDown = false;
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
@@ -17,6 +18,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
   shuttingDown = true;
   app.log.info({ signal }, "shutting down");
   if (pushTimer) clearInterval(pushTimer);
+  if (homeAssistantTimer) clearInterval(homeAssistantTimer);
   let exitCode = 0;
   const forceCloseTimer = setTimeout(() => {
     app.log.warn("shutdown grace period expired; closing remaining connections");
@@ -58,6 +60,12 @@ try {
   const { startPushSchedule, runDueJobs } = await import("./services/push.js");
   pushTimer = startPushSchedule();
   void runDueJobs().catch((err) => app.log.warn({ err }, "push jobs failed"));
+  const { syncHomeAssistant } = await import("./services/homeAssistant.js");
+  const publishHomeAssistant = () =>
+    void syncHomeAssistant().catch((err) => app.log.warn({ err }, "Home Assistant sync failed"));
+  publishHomeAssistant();
+  homeAssistantTimer = setInterval(publishHomeAssistant, 15 * 60_000);
+  homeAssistantTimer.unref();
 } catch (err) {
   console.error(err);
   try {

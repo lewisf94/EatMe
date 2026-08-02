@@ -11,6 +11,7 @@ The core EatMe application is built and covered by automated checks. The remaini
 | P6 | E-ink display | Built; hardware flashing required |
 | P7 | Recipes and shopping list | Built |
 | P8 | Web push notifications | Built; iPhone delivery verification required |
-| P9 | Home Assistant sensors, NFC and usage statistics | Future work; plan individually |
+| P9a and P9c | Home Assistant sensors/shopping mirror and usage statistics | Built |
+| P9b, P9d, P9e | NFC, multiple displays and cupboard sensors | Future work; plan individually |
 
 For the implementation history and verification notes, see [docs/plan](plan/README.md).

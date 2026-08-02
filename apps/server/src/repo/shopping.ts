@@ -41,6 +41,16 @@ export function hasOpenFor(productId: string): boolean {
   );
 }
 
+export function hasOpenName(name: string): boolean {
+  return Boolean(
+    db
+      .prepare(
+        "SELECT 1 FROM shopping_list WHERE done_at IS NULL AND lower(name) = lower(?) LIMIT 1",
+      )
+      .get(name.trim()),
+  );
+}
+
 export function addShopping(input: { name: string; productId?: string | null }): ShoppingItem {
   const id = newId();
   db.prepare(

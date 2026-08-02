@@ -1,17 +1,19 @@
 import { NavLink, Routes, Route } from "react-router";
-import type { ReactNode } from "react";
-import Today from "./pages/Today";
-import Inventory from "./pages/Inventory";
-import AddItem from "./pages/AddItem";
-import ReceiptImport from "./pages/ReceiptImport";
-import ProductDetail from "./pages/ProductDetail";
-import QrRedirect from "./pages/QrRedirect";
-import Settings from "./pages/Settings";
-import UseItUp from "./pages/UseItUp";
-import Recipes from "./pages/Recipes";
-import Shopping from "./pages/Shopping";
-import Labels from "./pages/Labels";
+import { lazy, Suspense, type ReactNode } from "react";
 import { IconHome, IconList, IconPlus, IconLeaf, IconCart } from "./ui/icons";
+
+const Today = lazy(() => import("./pages/Today"));
+const Inventory = lazy(() => import("./pages/Inventory"));
+const AddItem = lazy(() => import("./pages/AddItem"));
+const ReceiptImport = lazy(() => import("./pages/ReceiptImport"));
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const QrRedirect = lazy(() => import("./pages/QrRedirect"));
+const Settings = lazy(() => import("./pages/Settings"));
+const UseItUp = lazy(() => import("./pages/UseItUp"));
+const Recipes = lazy(() => import("./pages/Recipes"));
+const Shopping = lazy(() => import("./pages/Shopping"));
+const Labels = lazy(() => import("./pages/Labels"));
+const History = lazy(() => import("./pages/History"));
 
 function BottomNav() {
   const on = ({ isActive }: { isActive: boolean }) => (isActive ? "on" : undefined);
@@ -46,19 +48,28 @@ const wrap = (el: ReactNode) => <div className="screen">{el}</div>;
 export default function App() {
   return (
     <div className="eatme">
-      <Routes>
-        <Route path="/" element={<Today />} />
-        <Route path="/food" element={<Inventory />} />
-        <Route path="/use-it-up" element={<UseItUp />} />
-        <Route path="/recipes" element={<Recipes />} />
-        <Route path="/shopping" element={<Shopping />} />
-        <Route path="/add" element={<AddItem />} />
-        <Route path="/receipt" element={<ReceiptImport />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
-        <Route path="/i/:qrUid" element={wrap(<QrRedirect />)} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/labels" element={<Labels />} />
-      </Routes>
+      <Suspense
+        fallback={
+          <div className="screen">
+            <p className="empty">Loading…</p>
+          </div>
+        }
+      >
+        <Routes>
+          <Route path="/" element={<Today />} />
+          <Route path="/food" element={<Inventory />} />
+          <Route path="/use-it-up" element={<UseItUp />} />
+          <Route path="/recipes" element={<Recipes />} />
+          <Route path="/shopping" element={<Shopping />} />
+          <Route path="/add" element={<AddItem />} />
+          <Route path="/receipt" element={<ReceiptImport />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/i/:qrUid" element={wrap(<QrRedirect />)} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/labels" element={<Labels />} />
+          <Route path="/history" element={<History />} />
+        </Routes>
+      </Suspense>
       <BottomNav />
     </div>
   );

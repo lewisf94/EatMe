@@ -39,6 +39,15 @@ const MagtagStatus = z.object({
 });
 const MagtagButton = z.object({ button: z.enum(BUTTONS) });
 
+function jsonSetting<T>(key: string): T | null {
+  try {
+    const value = getSetting(key, "");
+    return value ? (JSON.parse(value) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
 function currentBattery(): number | undefined {
   const stored = getSetting("display_battery", "");
   return stored === "" ? undefined : Number(stored);
@@ -97,6 +106,33 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   function unauthorized(q: Record<string, string | undefined>): boolean {
     return Boolean(config.magtagToken) && !secretMatches(q.token, config.magtagToken);
   }
+
+  // Household/admin view. This route is intentionally outside the device-token
+  // checks and is protected by the normal API bearer gate when configured.
+  app.get("/magtag/health", async () => {
+    const status = jsonSetting<{
+      battery: number | null;
+      wakeReason: string | null;
+      firmware: string | null;
+      rssi: number | null;
+      reportedAt: string;
+    }>("magtag_status");
+    const lastButton = jsonSetting<{ button: string; at: string }>("magtag_last_button");
+    const staleHours = Number(getSetting("magtag_stale_hours", "30"));
+    const lowBattery = Number(getSetting("magtag_low_battery", "20"));
+    const ageMs = status ? Date.now() - Date.parse(status.reportedAt) : Infinity;
+    return {
+      data: {
+        configured: Boolean(config.magtagToken),
+        status,
+        lastButton,
+        staleHours,
+        lowBattery,
+        isStale: ageMs > staleHours * 3_600_000,
+        isLowBattery: status?.battery != null && status.battery <= lowBattery,
+      },
+    };
+  });
 
   // Button 1 / the default wake screen: the same urgency list as the classic
   // panel, one image request per wake. BMP, not PNG: CircuitPython decodes the

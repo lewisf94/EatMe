@@ -155,6 +155,21 @@ export function archiveLot(id: string, reason: string): StockLot | undefined {
   return getLot(id);
 }
 
+/** Restore an archived pack without losing the original archive event. The
+ * matching `restored` event keeps the audit trail honest and makes repeated
+ * restore requests harmless. */
+export function restoreLot(id: string): StockLot | undefined {
+  const current = getLot(id);
+  if (!current) return undefined;
+  if (!current.archivedAt) return current;
+  const now = new Date().toISOString();
+  db.prepare(
+    "UPDATE stock_lots SET archived_at = NULL, archive_reason = NULL, updated_at = ? WHERE id = ?",
+  ).run(now, id);
+  logEvent(id, "restored");
+  return getLot(id);
+}
+
 export function addEvent(
   id: string,
   event: string,

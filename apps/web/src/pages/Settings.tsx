@@ -9,6 +9,7 @@ import {
 import { api, TOKEN_KEY } from "../api";
 import { enablePush, disablePush, pushState, type PushState } from "../push";
 import { IconBack, IconQr } from "../ui/icons";
+import SystemSettings from "./SystemSettings";
 
 /** Sparse by design: a Monday digest of what to use, and a day-before warning
  *  for anything with a use-by. */
@@ -346,6 +347,8 @@ export default function Settings() {
         </section>
 
         <NotificationsSection />
+
+        <SystemSettings />
 
         <section className="sec">
           <div className="sec-head">

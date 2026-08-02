@@ -2,6 +2,23 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.9.0
+
+- Add a recent-activity screen with one-tap restore for accidentally removed
+  packs, plus 30/90/365-day finished, binned and cooking insights.
+- Estimate used and wasted value only when matched receipt prices are available;
+  never invent a price for unpriced food.
+- Add recipe actions to put missing ingredients on Shopping and record which
+  expiring ingredients were used without guessing a remaining quantity.
+- Add MagTag last-seen, battery, Wi-Fi, firmware and configurable stale/low
+  battery health reporting to Settings.
+- Add versioned full JSON backup/restore, inventory CSV export and transactional
+  SQLite integrity/foreign-key checks.
+- Publish expiring-soon and low-stock sensor states through Home Assistant's app
+  API, with optional one-way mirroring to its built-in shopping list.
+- Lazy-load phone screens and scanner code, reducing initial JavaScript from
+  about 412 KB to 228 KB while retaining offline precaching.
+
 ## 0.8.5
 
 - Upgrade the web and server runtimes to patched React Router, Fastify and
