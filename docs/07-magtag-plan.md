@@ -70,10 +70,17 @@ Use one image request per wake, and enter deep sleep after success or a
 bounded failure — the same firmware discipline as the modular plan.
 
 An initial build following this cycle is in `firmware/magtag/` (`code.py`,
-`boot.py`, `settings.toml.example`). **It has not been run on real
+`settings.toml.example`). It decodes the HTTP response in RAM and uses sleep
+memory for the selected page, so routine wakes do not write flash. **It has not been run on real
 hardware** — see `firmware/magtag/README.md` for the setup steps and a
-verification checklist (button-to-pin mapping, the battery-monitor pin name,
+verification checklist (button-to-pin mapping, battery reading,
 an actual end-to-end wake cycle) to work through once a MagTag is in hand.
+
+Button wake is configurable. On ESP32-S2, CircuitPython publishes about 230 µA
+for time-alarm deep sleep and about 1.65 mA for pin-alarm deep sleep. Leave
+`EATME_BUTTON_WAKE` enabled for the four-button interface, or disable it for
+timer-only updates and substantially lower sleep current. Measure the complete
+delivered board in both modes before estimating battery life.
 
 ## Server changes
 
@@ -86,10 +93,9 @@ depth. Implemented in:
 - `apps/server/src/routes/magtag.ts` — the HTTP endpoints, registered at the
   `/api/magtag/*` prefix.
 
-The image is served as a **BMP**, not a PNG: CircuitPython's
-`displayio.OnDiskBitmap` — the standard way a MagTag streams a fetched image
-straight to the panel without decoding it fully into RAM — reads BMP only.
-The render profile quantizes to a 4-color grayscale palette and encodes a
+The image is served as a **BMP**, not a PNG. `adafruit_imageload` can decode an
+indexed BMP directly from the HTTP response in memory, avoiding a temporary
+file and filesystem remount. The render profile quantizes to a 4-color grayscale palette and encodes a
 4-bit indexed BMP (~19 KB), a twelfth the size of an equivalent 24-bit BMP,
 which matters for wake time and therefore battery life.
 
@@ -102,8 +108,9 @@ Endpoints:
 | `POST /api/magtag/status` | Device status reporting (battery, wake reason, firmware, Wi-Fi signal) |
 | `POST /api/magtag/button` | Optional button-press telemetry |
 
-All four endpoints accept `?token=` and are gated by a separate `MAGTAG_TOKEN`
-environment variable (see `apps/server/src/config.ts`) — **do not store a
+All four endpoints accept `?token=` and are gated by the Home Assistant app's
+`magtag_token` option, exported as `MAGTAG_TOKEN` (see
+`apps/server/src/config.ts`) — **do not store a
 Home Assistant administrator token on the MagTag.** This mirrors the existing
 `DISPLAY_TOKEN` pattern for the classic panel, but uses its own value so the
 two devices carry independent, revocable credentials.

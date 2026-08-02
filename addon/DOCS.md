@@ -67,6 +67,8 @@ before stock is added.
 | `tailscale_authkey` | Paste a Tailscale **auth key** for the first connection. Once the app has joined successfully, clear this field; EatMe reuses its saved Tailscale identity. |
 | `tailscale_hostname` | The device name on your tailnet (default `eatme`). |
 | `auth_token` | Optional. If set, the API requires this token; paste the same value into the app's **Settings > Access token** on each device. Leave blank on a trusted home network. |
+| `display_token` | Optional URL-safe query token for the fallback ESPHome display endpoint. |
+| `magtag_token` | Optional URL-safe device token for `/api/magtag/*`. Put the same value in `EATME_TOKEN` on the MagTag; do not reuse the household admin token. |
 | `receipt_provider` | `local` for the separate **EatMe OCR** app. `stub` returns fixed demonstration data and is only useful for development. |
 | `ocr_url` | Leave blank to discover EatMe OCR automatically. Set an explicit base URL only when the OCR service is hosted elsewhere. |
 
@@ -133,12 +135,12 @@ labels must still be checked for allergies and cross-contamination.
   Home Assistant log after an update and do not mean the current version is
   still failing.
 - **e-ink display (P6)**: it talks to this app over plain LAN HTTP on
-  `8099`, so it needs no Tailscale. Set `DISPLAY_TOKEN` (an env var, not an
-  app option today; see `apps/server/src/config.ts`) if you want the
-  display endpoint gated even with `auth_token` off.
+  `8099`, so it needs no Tailscale. Set the `display_token` app option if you
+  want the fallback display endpoint gated even with `auth_token` off.
 - **MagTag display**: the Adafruit MagTag talks to `/api/magtag/*` over the
-  same plain LAN HTTP port. Set `MAGTAG_TOKEN` (also an env var) to gate it —
-  use a separate value from `DISPLAY_TOKEN`/`auth_token` so the device never
-  carries the household's admin credential.
+  same plain LAN HTTP port. Set the `magtag_token` app option to gate it, then
+  put the same value in `EATME_TOKEN` on the device. Use a separate, URL-safe
+  value from `auth_token` so the MagTag never carries the household's admin
+  credential.
 - This app **bundles its own Tailscale** because the official Home Assistant
   Tailscale app serves Home Assistant itself, not other apps.

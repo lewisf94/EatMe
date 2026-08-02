@@ -28,7 +28,8 @@ flowchart TB
 - `apps/web` — React + Vite + `vite-plugin-pwa`, Tailwind. Barcode scanning with the [`barcode-detector`](https://www.npmjs.com/package/barcode-detector) ponyfill (zxing-wasm) over a `getUserMedia` camera stream — iOS Safari has no native `BarcodeDetector`, so the ponyfill is load-bearing.
 - `packages/shared` — zod schemas for every API payload; server validates with them, web infers types from them.
 - `addon/` — HA packaging (below).
-- `firmware/` — ESPHome YAML (see [hardware](03-hardware.md)).
+- `firmware/` — CircuitPython for MagTag plus ESPHome YAML for the fallback
+  modular display (see [hardware](03-hardware.md)).
 
 ## API sketch
 
@@ -71,8 +72,12 @@ sequenceDiagram
 All layout happens server-side so the firmware stays dumb (and never needs reflashing to change the design):
 
 1. A TS function builds an SVG string — "eat me first" top five, a use-it-up recipe, low-stock count, battery %, rendered date.
-2. `@resvg/resvg-js` rasterises it to a greyscale PNG at exactly the panel's resolution (currently 400×300 for the prototype Waveshare 4.2″ display; an 800×480 profile is planned for the preferred 3.97″ final display), using a bundled font so output is identical on the fontless Pi.
-3. The ESP32-S3 wakes on a timer, `GET /api/display.png` over plain LAN HTTP, draws it, reports battery, and deep-sleeps (~6h). Stale-by-hours is fine for a cupboard.
+2. `@resvg/resvg-js` rasterises the selected layout using bundled fonts. The
+   MagTag path quantizes this to a 296 × 128 four-gray indexed BMP; the fallback
+   Waveshare endpoint remains a 400 × 300 PNG.
+3. The display wakes on a timer or optional button alarm, fetches one image over
+   plain LAN HTTP, draws it, reports status and deep-sleeps. Stale-by-hours is
+   fine for a cupboard.
 
 A `?panel=` parameter (a P9 extension) lets a second/different display request its own resolution and layout.
 
@@ -93,10 +98,14 @@ webui: http://[HOST]:[PORT:8099]
 watchdog: http://[HOST]:[PORT:8099]/api/health
 options:
   auth_token: ""              # optional bearer token
+  display_token: ""           # optional fallback display query token
+  magtag_token: ""            # optional device-scoped query token
   tailscale_authkey: ""       # enables the bundled HTTPS (P4)
   tailscale_hostname: "eatme"
 schema:
-  auth_token: str?
+  auth_token: password?
+  display_token: password?
+  magtag_token: password?
   tailscale_authkey: password?
   tailscale_hostname: str?
 ```

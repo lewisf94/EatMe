@@ -63,12 +63,12 @@ Fallback (modular ESP32-C6) route only:
 ## Firmware status
 
 The MagTag route uses **CircuitPython 10 or later**, not ESPHome. An initial
-build is in `firmware/magtag/` (`code.py`, `boot.py`,
-`settings.toml.example`), following the wake cycle in `docs/07-magtag-plan.md`
+build is in `firmware/magtag/` (`code.py`, `settings.toml.example`), following
+the wake cycle in `docs/07-magtag-plan.md`
 (wake, connect Wi-Fi, download one BMP image, refresh, report optional
 status, deep sleep). **It has not been run on real hardware** — work through
 `firmware/magtag/README.md`'s verification checklist (button-to-pin mapping,
-battery-monitor pin name, an actual end-to-end wake cycle) before trusting it
+battery reading, an actual end-to-end wake cycle) before trusting it
 unattended on battery.
 
 `firmware/eatme-display.yaml` is an ESPHome reference build for the XIAO
@@ -93,7 +93,7 @@ separate `MAGTAG_TOKEN` (never the Home Assistant admin token):
 - `apps/server/src/routes/magtag.ts` — `GET /api/magtag/display.bmp`,
   `GET /api/magtag/page/:page`, `POST /api/magtag/status`,
   `POST /api/magtag/button`. Serves BMP, not PNG — CircuitPython's
-  `displayio.OnDiskBitmap` (what the firmware uses) only reads BMP.
+  `adafruit_imageload` decodes the indexed BMP from RAM without a flash write.
 
 ## Sources of truth
 

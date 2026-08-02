@@ -89,9 +89,8 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   }
 
   // Button 1 / the default wake screen: the same urgency list as the classic
-  // panel, one image request per wake. BMP, not PNG: CircuitPython's
-  // displayio.OnDiskBitmap (what the MagTag firmware uses to stream the image
-  // straight to the panel) only reads BMP.
+  // panel, one image request per wake. BMP, not PNG: CircuitPython decodes the
+  // compact indexed response in RAM without writing its flash filesystem.
   app.get("/magtag/display.bmp", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
     if (unauthorized(q)) return reply.code(401).send({ error: { message: "unauthorized" } });
