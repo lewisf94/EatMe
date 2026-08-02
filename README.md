@@ -15,6 +15,10 @@ EatMe is a self-hosted household food inventory. Add food manually, scan a barco
 - Optional e-ink kitchen display
 - Optional web-push reminders for items to use soon
 - Dietary-filtered starter recipes with repeat-safe one-click import
+- Undoable stock removals with recent activity and waste/usage insights
+- Full JSON backup/restore and a portable inventory CSV export
+- MagTag battery, signal and last-seen health reporting
+- Home Assistant expiring/low-stock sensors and optional shopping-list mirroring
 
 ## Components
 

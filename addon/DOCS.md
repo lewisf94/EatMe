@@ -89,6 +89,20 @@ Dietary requirements can be selected in **EatMe > Settings**. They filter
 use-it-up suggestions and the repeat-safe starter-recipe import. Ingredient
 labels must still be checked for allergies and cross-contamination.
 
+## History, backups and Home Assistant
+
+EatMe **Settings** now includes:
+
+- **History & insights** for recent changes, undoing an accidental removal and
+  reviewing finished/binned patterns.
+- **MagTag health** for last check-in, battery, Wi-Fi signal and firmware.
+- **Data & backups** for a versioned full JSON export/restore, inventory CSV and
+  an on-demand database integrity check. Export a current backup before using
+  restore; restore replaces EatMe's food, recipes, shopping list and history.
+- **Home Assistant** status. EatMe publishes `sensor.eatme_expiring_soon` and
+  `sensor.eatme_low_stock` every 15 minutes. Optional shopping mirroring sends
+  new EatMe list actions one-way to Home Assistant's built-in shopping list.
+
 ## Enabling HTTPS (for the phone app, camera, and Web Push)
 
 1. In the **Tailscale admin console**: enable **MagicDNS** and **HTTPS
@@ -109,8 +123,10 @@ labels must still be checked for allergies and cross-contamination.
 
 ## Security
 
-- EatMe runs with Home Assistant protection enabled and requests no privileged
-  capabilities, host networking, Supervisor access or Docker access.
+- EatMe runs with Home Assistant protection enabled and requests only the Home
+  Assistant Core API used for its two sensors and optional shopping mirror. It
+  requests no privileged capabilities, host networking, Supervisor management
+  API or Docker access.
 - An enforced AppArmor profile limits executable files, writable paths and
   Linux capabilities. Home Assistant applies the profile when the app is
   installed.

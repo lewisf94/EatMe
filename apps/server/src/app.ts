@@ -16,6 +16,9 @@ import { registerShopping } from "./routes/shopping.js";
 import { registerPush } from "./routes/push.js";
 import { registerLabels } from "./routes/labels.js";
 import { registerGuidance } from "./routes/guidance.js";
+import { registerActivity } from "./routes/activity.js";
+import { registerMaintenance } from "./routes/maintenance.js";
+import { registerHomeAssistant } from "./routes/homeAssistant.js";
 import { redactRequestUrl } from "./services/logging.js";
 import { bearerCredential, secretMatches } from "./services/security.js";
 
@@ -83,7 +86,8 @@ export function buildApp(): FastifyInstance {
       if (path === "/api/display.png" && config.displayToken) return;
       // Same reasoning for the MagTag, plus it must never carry the household
       // admin token — MAGTAG_TOKEN is its own device-scoped credential.
-      if (path.startsWith("/api/magtag/") && config.magtagToken) return;
+      if (path.startsWith("/api/magtag/") && path !== "/api/magtag/health" && config.magtagToken)
+        return;
       if (!secretMatches(bearerCredential(req.headers.authorization), config.authToken)) {
         return reply.code(401).send({ error: { message: "unauthorized" } });
       }
@@ -99,6 +103,9 @@ export function buildApp(): FastifyInstance {
   app.register(registerTaxonomy, { prefix: "/api" });
   app.register(registerLookup, { prefix: "/api" });
   app.register(registerGuidance, { prefix: "/api" });
+  app.register(registerActivity, { prefix: "/api" });
+  app.register(registerMaintenance, { prefix: "/api" });
+  app.register(registerHomeAssistant, { prefix: "/api" });
   app.register(registerSettings, { prefix: "/api" });
   app.register(registerDisplay, { prefix: "/api" });
   app.register(registerMagtag, { prefix: "/api" });
