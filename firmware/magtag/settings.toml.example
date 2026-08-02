@@ -1,0 +1,16 @@
+# Copy to settings.toml on the CIRCUITPY drive (git-ignored; never commit the
+# real file — it holds your Wi-Fi password and device token).
+
+CIRCUITPY_WIFI_SSID = "your-wifi-name"
+CIRCUITPY_WIFI_PASSWORD = "your-wifi-password"
+
+# Base URL of the EatMe server, no trailing slash.
+EATME_SERVER = "http://homeassistant.local:8099"
+
+# Only required if the server has MAGTAG_TOKEN set (see apps/server/src/config.ts).
+EATME_TOKEN = ""
+
+# Hours between scheduled wakes. Food expiry moves slowly; twice a day is
+# already generous for a cupboard, and halving the wake count roughly halves
+# radio energy versus a more frequent schedule.
+EATME_SLEEP_HOURS = "12"

@@ -32,7 +32,7 @@ apps/server/     Fastify API, migrations and scheduled jobs
 apps/web/        React progressive web app
 packages/shared/ Shared schemas and types
 addon/           App documentation and installable local OCR service
-firmware/        ESPHome configuration for the fallback e-ink build (see docs/07-magtag-plan.md for the preferred MagTag route)
+firmware/        MagTag CircuitPython firmware (firmware/magtag/, preferred) and ESPHome config for the fallback e-ink build
 docs/            Product, architecture, hardware and implementation notes
 ```
 

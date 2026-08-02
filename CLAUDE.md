@@ -62,10 +62,14 @@ Fallback (modular ESP32-C6) route only:
 
 ## Firmware status
 
-The MagTag route uses **CircuitPython 10 or later**, not ESPHome. Its firmware
-is not yet written; follow the wake cycle in `docs/07-magtag-plan.md` (wake,
-connect Wi-Fi, download one 296 x 128 image, refresh, report optional status,
-deep sleep).
+The MagTag route uses **CircuitPython 10 or later**, not ESPHome. An initial
+build is in `firmware/magtag/` (`code.py`, `boot.py`,
+`settings.toml.example`), following the wake cycle in `docs/07-magtag-plan.md`
+(wake, connect Wi-Fi, download one BMP image, refresh, report optional
+status, deep sleep). **It has not been run on real hardware** — work through
+`firmware/magtag/README.md`'s verification checklist (button-to-pin mapping,
+battery-monitor pin name, an actual end-to-end wake cycle) before trusting it
+unattended on battery.
 
 `firmware/eatme-display.yaml` is an ESPHome reference build for the XIAO
 ESP32-C3, kept only for the modular ESP32-C6 fallback route. Do not flash it
@@ -86,9 +90,10 @@ separate `MAGTAG_TOKEN` (never the Home Assistant admin token):
 
 - `apps/server/src/services/magtagDisplay.ts` — 296 x 128 four-gray render
   profile (urgent items, recipe suggestion, shopping summary).
-- `apps/server/src/routes/magtag.ts` — `GET /api/magtag/display.png`,
+- `apps/server/src/routes/magtag.ts` — `GET /api/magtag/display.bmp`,
   `GET /api/magtag/page/:page`, `POST /api/magtag/status`,
-  `POST /api/magtag/button`.
+  `POST /api/magtag/button`. Serves BMP, not PNG — CircuitPython's
+  `displayio.OnDiskBitmap` (what the firmware uses) only reads BMP.
 
 ## Sources of truth
 
@@ -96,6 +101,7 @@ separate `MAGTAG_TOKEN` (never the Home Assistant admin token):
 - Fallback implementation plan: `docs/06-eink-power-plan.md`
 - Active buying list: `docs/parts-list.md`
 - Broader research and alternatives: `docs/05-hardware-research.md`
+- MagTag firmware (unverified on hardware): `firmware/magtag/`
 - Firmware reference (fallback route only): `firmware/eatme-display.yaml`
 
 Do not treat the older solar-first recommendation, or the modular ESP32-C6

@@ -41,7 +41,7 @@ flowchart TB
 | `GET /i/:qrUid` | QR-label target → redirects into the PWA at that item's quick-update screen |
 | `GET /api/labels?ids=…` | Printable QR label sheet (HTML; print from the browser) |
 | `GET /api/display.png` | Rendered e-ink dashboard PNG (800×480; optional `?panel=` for a second display) |
-| `GET /api/magtag/display.png` · `GET /api/magtag/page/:page` | MagTag dashboard / selected-page PNG (296×128, four-gray) |
+| `GET /api/magtag/display.bmp` · `GET /api/magtag/page/:page` | MagTag dashboard / selected-page BMP (296×128, four-gray) |
 | `POST /api/magtag/status` · `POST /api/magtag/button` | MagTag device status reporting and button telemetry |
 | `POST /api/push/subscribe` | Register a Web Push subscription |
 | `GET /api/health` | For HA's watchdog |

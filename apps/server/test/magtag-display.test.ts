@@ -3,7 +3,7 @@ import {
   buildMagtagUrgentSvg,
   buildMagtagRecipeSvg,
   buildMagtagShoppingSvg,
-  renderMagtagPng,
+  renderMagtagBmp,
   MAGTAG_W,
   MAGTAG_H,
   MAGTAG_ROWS,
@@ -14,11 +14,12 @@ import {
 
 const chrome = { rendered: "Fri 24 Jul, 08:00" };
 
-/** PNG header: 8-byte signature, then IHDR carries width/height as big-endian. */
-function pngSize(buf: Buffer): { w: number; h: number } {
-  expect(buf.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-  expect(buf.subarray(12, 16).toString("ascii")).toBe("IHDR");
-  return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+/** BMP header: "BM" signature, then the BITMAPINFOHEADER carries width/height
+ *  (little-endian) and bit depth right after it. */
+function bmpInfo(buf: Buffer): { w: number; h: number; bpp: number } {
+  expect(buf.subarray(0, 2).toString("ascii")).toBe("BM");
+  expect(buf.readUInt32LE(2)).toBe(buf.length); // file-size field matches the actual buffer
+  return { w: buf.readInt32LE(18), h: buf.readInt32LE(22), bpp: buf.readUInt16LE(28) };
 }
 
 describe("magtag urgent page", () => {
@@ -82,9 +83,28 @@ describe("magtag shopping page", () => {
   });
 });
 
-describe("magtag png render", () => {
-  it("renders a valid PNG at exactly the MagTag panel size", () => {
-    const png = renderMagtagPng(buildMagtagUrgentSvg({ ...chrome, urgent: [], battery: 64 }));
-    expect(pngSize(png)).toEqual({ w: MAGTAG_W, h: MAGTAG_H });
+describe("magtag bmp render", () => {
+  it("renders a valid 4-bit indexed BMP at exactly the MagTag panel size", () => {
+    const bmp = renderMagtagBmp(buildMagtagUrgentSvg({ ...chrome, urgent: [], battery: 64 }));
+    expect(bmpInfo(bmp)).toEqual({ w: MAGTAG_W, h: MAGTAG_H, bpp: 4 });
+  });
+
+  it("packs two pixels per byte, well under the equivalent PNG's uncompressed size", () => {
+    const bmp = renderMagtagBmp(buildMagtagShoppingSvg({ ...chrome, items: [], total: 0 }));
+    // header (14) + BITMAPINFOHEADER (40) + 4-entry palette (16) + 296x128 at 2px/byte
+    expect(bmp.length).toBe(14 + 40 + 16 + (MAGTAG_W / 2) * MAGTAG_H);
+  });
+
+  it("quantizes every pixel to one of exactly four gray levels", () => {
+    const bmp = renderMagtagBmp(
+      buildMagtagUrgentSvg({
+        ...chrome,
+        urgent: [{ name: "Something with soft anti-aliased edges", sub: "Use by today" }],
+      }),
+    );
+    const palette = new Set<number>();
+    for (let i = 0; i < 4; i++) palette.add(bmp.readUInt8(14 + 40 + i * 4));
+    expect(palette.size).toBe(4);
+    expect([...palette].sort((a, b) => a - b)).toEqual([0x00, 0x55, 0xaa, 0xff]);
   });
 });

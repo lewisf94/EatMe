@@ -69,6 +69,12 @@ Wake cycle:
 Use one image request per wake, and enter deep sleep after success or a
 bounded failure — the same firmware discipline as the modular plan.
 
+An initial build following this cycle is in `firmware/magtag/` (`code.py`,
+`boot.py`, `settings.toml.example`). **It has not been run on real
+hardware** — see `firmware/magtag/README.md` for the setup steps and a
+verification checklist (button-to-pin mapping, the battery-monitor pin name,
+an actual end-to-end wake cycle) to work through once a MagTag is in hand.
+
 ## Server changes
 
 Add a dedicated MagTag render profile that generates a four-level grayscale
@@ -80,11 +86,18 @@ depth. Implemented in:
 - `apps/server/src/routes/magtag.ts` — the HTTP endpoints, registered at the
   `/api/magtag/*` prefix.
 
+The image is served as a **BMP**, not a PNG: CircuitPython's
+`displayio.OnDiskBitmap` — the standard way a MagTag streams a fetched image
+straight to the panel without decoding it fully into RAM — reads BMP only.
+The render profile quantizes to a 4-color grayscale palette and encodes a
+4-bit indexed BMP (~19 KB), a twelfth the size of an equivalent 24-bit BMP,
+which matters for wake time and therefore battery life.
+
 Endpoints:
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/magtag/display.png` | Dashboard image download (the default wake screen — urgent items) |
+| `GET /api/magtag/display.bmp` | Dashboard image download (the default wake screen — urgent items) |
 | `GET /api/magtag/page/:page` | Selected page download (`urgent`, `recipe` or `shopping`) |
 | `POST /api/magtag/status` | Device status reporting (battery, wake reason, firmware, Wi-Fi signal) |
 | `POST /api/magtag/button` | Optional button-press telemetry |

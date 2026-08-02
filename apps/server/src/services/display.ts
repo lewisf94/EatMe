@@ -114,20 +114,36 @@ export function buildDashboardSvg(d: DashboardData): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${DISPLAY_W}" height="${DISPLAY_H}" viewBox="0 0 ${DISPLAY_W} ${DISPLAY_H}">${parts.join("")}</svg>`;
 }
 
-/** Render with the bundled font only — the add-on container has no system fonts,
- *  so loading them would make output differ between dev and the Pi. `width` must
- *  match the target SVG's own width so the aspect ratio (and therefore height)
- *  comes out exact — other panel profiles (e.g. the MagTag) pass their own. */
-export function renderPng(svg: string, width = DISPLAY_W): Buffer {
-  const r = new Resvg(svg, {
-    fitTo: { mode: "width", value: width },
+function resvgOptions(width: number) {
+  return {
+    fitTo: { mode: "width" as const, value: width },
     font: {
       loadSystemFonts: false,
       fontFiles: [join(assetsDir, "archivo-regular.ttf"), join(assetsDir, "archivo-bold.ttf")],
       defaultFontFamily: "Archivo",
     },
-  });
+  };
+}
+
+/** Render with the bundled font only — the add-on container has no system fonts,
+ *  so loading them would make output differ between dev and the Pi. `width` must
+ *  match the target SVG's own width so the aspect ratio (and therefore height)
+ *  comes out exact — other panel profiles (e.g. the MagTag) pass their own. */
+export function renderPng(svg: string, width = DISPLAY_W): Buffer {
+  const r = new Resvg(svg, resvgOptions(width));
   return Buffer.from(r.render().asPng());
+}
+
+/** Raw RGBA pixels rather than an encoded PNG, for a caller that needs to
+ *  re-encode into a different format itself (the MagTag wants a BMP — see
+ *  services/magtagDisplay.ts for why). */
+export function renderPixels(
+  svg: string,
+  width: number,
+): { width: number; height: number; data: Buffer } {
+  const r = new Resvg(svg, resvgOptions(width));
+  const img = r.render();
+  return { width: img.width, height: img.height, data: img.pixels };
 }
 
 /** Fail fast if the bundled fonts didn't make it into the image. */
