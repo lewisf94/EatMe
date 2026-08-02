@@ -136,5 +136,9 @@ labels must still be checked for allergies and cross-contamination.
   `8099`, so it needs no Tailscale. Set `DISPLAY_TOKEN` (an env var, not an
   app option today; see `apps/server/src/config.ts`) if you want the
   display endpoint gated even with `auth_token` off.
+- **MagTag display**: the Adafruit MagTag talks to `/api/magtag/*` over the
+  same plain LAN HTTP port. Set `MAGTAG_TOKEN` (also an env var) to gate it —
+  use a separate value from `DISPLAY_TOKEN`/`auth_token` so the device never
+  carries the household's admin credential.
 - This app **bundles its own Tailscale** because the official Home Assistant
   Tailscale app serves Home Assistant itself, not other apps.

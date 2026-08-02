@@ -32,12 +32,25 @@ export type DashboardData = {
   rendered: string;
 };
 
-const esc = (s: string) =>
+export const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /** Archivo is fairly narrow; these caps keep a line inside the panel width. */
-function clip(s: string, max: number): string {
+export function clip(s: string, max: number): string {
   return s.length <= max ? s : s.slice(0, max - 1).trimEnd() + "…";
+}
+
+/** The short "as of" timestamp shown in a panel header/footer, shared by every
+ *  render profile so the wording stays identical across panels. */
+export function formatRendered(tz: string, now = new Date()): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: tz,
+  }).format(now);
 }
 
 /** A short, plain-English reason this item is on the list. Safety and quality
@@ -102,10 +115,12 @@ export function buildDashboardSvg(d: DashboardData): string {
 }
 
 /** Render with the bundled font only — the add-on container has no system fonts,
- *  so loading them would make output differ between dev and the Pi. */
-export function renderPng(svg: string): Buffer {
+ *  so loading them would make output differ between dev and the Pi. `width` must
+ *  match the target SVG's own width so the aspect ratio (and therefore height)
+ *  comes out exact — other panel profiles (e.g. the MagTag) pass their own. */
+export function renderPng(svg: string, width = DISPLAY_W): Buffer {
   const r = new Resvg(svg, {
-    fitTo: { mode: "width", value: DISPLAY_W },
+    fitTo: { mode: "width", value: width },
     font: {
       loadSystemFonts: false,
       fontFiles: [join(assetsDir, "archivo-regular.ttf"), join(assetsDir, "archivo-bold.ttf")],

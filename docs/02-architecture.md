@@ -41,6 +41,8 @@ flowchart TB
 | `GET /i/:qrUid` | QR-label target → redirects into the PWA at that item's quick-update screen |
 | `GET /api/labels?ids=…` | Printable QR label sheet (HTML; print from the browser) |
 | `GET /api/display.png` | Rendered e-ink dashboard PNG (800×480; optional `?panel=` for a second display) |
+| `GET /api/magtag/display.png` · `GET /api/magtag/page/:page` | MagTag dashboard / selected-page PNG (296×128, four-gray) |
+| `POST /api/magtag/status` · `POST /api/magtag/button` | MagTag device status reporting and button telemetry |
 | `POST /api/push/subscribe` | Register a Web Push subscription |
 | `GET /api/health` | For HA's watchdog |
 
@@ -114,7 +116,7 @@ The one genuinely awkward constraint: **camera access, service workers and Web P
 - Our add-on ships the Tailscale binaries and joins the Pi to a private tailnet in userspace mode (auth key pasted into the add-on config; free tier: 100 devices, 3 users).
 - Inside the container, `tailscale serve --bg --https=443 http://127.0.0.1:8099` puts a real, auto-renewed certificate in front of the Node server at `https://<hostname>.<tailnet>.ts.net`. Nothing is exposed to the public internet (Serve, not Funnel).
 - The iPhone runs the Tailscale app, so **the same URL works at home and in the supermarket** — which the "do I already have this?" story needs anyway. One URL, installable PWA, camera and push all happy.
-- The e-ink display keeps using plain LAN HTTP (ESPHome has no secure-context rules), so it needs no Tailscale.
+- The e-ink display keeps using plain LAN HTTP (CircuitPython on the MagTag, or ESPHome on the fallback build, neither has a secure-context rule), so it needs no Tailscale.
 - Requires MagicDNS + HTTPS certificates enabled on the tailnet. Exact `tailscale serve` flags vary by version — [P4](plan/04-phase-ha-addon.md) confirms them with `tailscale serve --help`.
 
 Alternatives, for the record:

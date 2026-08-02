@@ -20,6 +20,15 @@ export function timezone(): string {
   return getSetting("household_timezone", "Europe/London");
 }
 
+/** Stores a panel's self-reported LiPo percentage. Shared by every display
+ *  route (the classic panel and the MagTag both report on their image fetch),
+ *  since there's only one battery worth tracking per household. */
+export function recordDisplayBattery(raw: string | undefined): void {
+  const battery = Number(raw);
+  if (raw != null && raw !== "" && Number.isFinite(battery))
+    setSetting("display_battery", String(Math.max(0, Math.min(100, Math.round(battery)))));
+}
+
 export function dietaryRequirements(): DietaryRequirement[] {
   try {
     const values = JSON.parse(getSetting("dietary_requirements", "[]")) as unknown;

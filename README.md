@@ -22,7 +22,7 @@ EatMe is a self-hosted household food inventory. Add food manually, scan a barco
 |---|---|
 | Server | Fastify API and SQLite database, packaged as a Home Assistant app. Data is stored in `/data` and included in Home Assistant backups. |
 | Phone app | Installable web app with barcode scanning, offline access and notifications. |
-| Display | Optional ESPHome e-ink display that fetches a small dashboard image from the server. |
+| Display | Optional e-ink kitchen display (Adafruit MagTag, CircuitPython) that fetches a small dashboard image from the server. A modular ESPHome build is documented as a fallback. |
 
 ## Repository layout
 
@@ -32,7 +32,7 @@ apps/server/     Fastify API, migrations and scheduled jobs
 apps/web/        React progressive web app
 packages/shared/ Shared schemas and types
 addon/           App documentation and installable local OCR service
-firmware/        ESPHome configuration for the e-ink display
+firmware/        ESPHome configuration for the fallback e-ink build (see docs/07-magtag-plan.md for the preferred MagTag route)
 docs/            Product, architecture, hardware and implementation notes
 ```
 
@@ -58,8 +58,10 @@ The core server, web app, camera scanning, Home Assistant packaging, offline sup
 
 Detailed product, architecture and implementation notes are in [docs](docs).
 For the optional peripherals, see the [hardware parts list](docs/parts-list.md).
-The current battery-first e-paper build and later solar upgrade are documented in
-the [e-paper power plan](docs/06-eink-power-plan.md). Supporting controller,
+The current e-paper display plan is the Adafruit MagTag, documented in
+[docs/07-magtag-plan.md](docs/07-magtag-plan.md). A modular ESP32-C6 build with
+a later solar upgrade is documented as the fallback in the
+[e-paper power plan](docs/06-eink-power-plan.md). Supporting controller,
 display and solar research remains in the
 [e-paper hardware research](docs/05-hardware-research.md).
 
