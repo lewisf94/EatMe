@@ -1,6 +1,6 @@
 # Local receipt OCR for EatMe. Tesseract is available from Debian's ARM64 and
 # AMD64 repositories and does not download models while the app is running.
-FROM python:3.12-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
