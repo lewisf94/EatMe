@@ -2,7 +2,7 @@
 // than the classic 4.2" panel, so it gets its own compact layouts rather than
 // a scaled-down copy of services/display.ts. Kept free of database imports so
 // the layout can be unit-tested on its own, same as the classic panel.
-import { esc, clip, renderPng } from "./display.js";
+import { esc, clip, renderPixels } from "./display.js";
 
 /** Panel size. The MagTag's built-in 2.9" module is fixed at this resolution. */
 export const MAGTAG_W = 296;
@@ -104,7 +104,79 @@ export function buildMagtagShoppingSvg(d: MagtagShoppingData): string {
   return wrap(parts);
 }
 
+/** The panel's native gray depth — matches the "four-level grayscale" render
+ *  profile called for by the hardware plan. */
+const GRAY_LEVELS = [0x00, 0x55, 0xaa, 0xff] as const;
+
+function nearestGrayIndex(v: number): number {
+  let best = 0;
+  let bestDiff = Math.abs(v - GRAY_LEVELS[0]);
+  for (let i = 1; i < GRAY_LEVELS.length; i++) {
+    const diff = Math.abs(v - GRAY_LEVELS[i]);
+    if (diff < bestDiff) {
+      best = i;
+      bestDiff = diff;
+    }
+  }
+  return best;
+}
+
+/** Minimal 4-bit indexed BMP encoder (4 of the format's 16 possible palette
+ *  slots used, one per gray level). CircuitPython's `displayio.OnDiskBitmap`
+ *  streams a BMP straight to the panel without decoding a whole image into
+ *  RAM first — it does not read PNG at all, so the MagTag firmware fetches
+ *  this instead of the PNG the classic ESPHome panel uses. Indexed rather
+ *  than 24-bit truecolor because it's a twelfth of the size to download on
+ *  every wake, which matters far more for battery life than the encoder's
+ *  extra few lines. */
+function encodeGrayBmp(width: number, height: number, rgba: Buffer): Buffer {
+  const rowSize = Math.ceil(width / 2 / 4) * 4; // 2px/byte at 4bpp, rows padded to 4 bytes
+  const paletteBytes = GRAY_LEVELS.length * 4; // BGR0 quads
+  const dataOffset = 14 + 40 + paletteBytes;
+  const pixelDataSize = rowSize * height;
+  const buf = Buffer.alloc(dataOffset + pixelDataSize);
+
+  buf.write("BM", 0, "ascii");
+  buf.writeUInt32LE(buf.length, 2); // file size
+  buf.writeUInt32LE(0, 6); // reserved
+  buf.writeUInt32LE(dataOffset, 10);
+
+  buf.writeUInt32LE(40, 14); // BITMAPINFOHEADER size
+  buf.writeInt32LE(width, 18);
+  buf.writeInt32LE(height, 22); // positive height = bottom-up row order
+  buf.writeUInt16LE(1, 26); // colour planes
+  buf.writeUInt16LE(4, 28); // bits per pixel
+  buf.writeUInt32LE(0, 30); // BI_RGB — no compression
+  buf.writeUInt32LE(pixelDataSize, 34);
+  buf.writeInt32LE(2835, 38); // ~72 DPI, cosmetic only
+  buf.writeInt32LE(2835, 42);
+  buf.writeUInt32LE(GRAY_LEVELS.length, 46); // colours used
+  buf.writeUInt32LE(GRAY_LEVELS.length, 50); // colours "important"
+
+  GRAY_LEVELS.forEach((gray, i) => {
+    const o = 14 + 40 + i * 4;
+    buf[o] = gray; // B
+    buf[o + 1] = gray; // G
+    buf[o + 2] = gray; // R
+    buf[o + 3] = 0; // reserved
+  });
+
+  for (let y = 0; y < height; y++) {
+    const srcY = height - 1 - y; // BMP rows are bottom-up
+    const rowStart = dataOffset + y * rowSize;
+    for (let x = 0; x < width; x += 2) {
+      // Every source channel is equal — the SVG palette above is grayscale
+      // only — so reading the red channel alone is enough.
+      const hi = nearestGrayIndex(rgba[(srcY * width + x) * 4]);
+      const lo = x + 1 < width ? nearestGrayIndex(rgba[(srcY * width + x + 1) * 4]) : 0;
+      buf[rowStart + x / 2] = (hi << 4) | lo;
+    }
+  }
+  return buf;
+}
+
 /** Same bundled-font pipeline as the classic panel, fitted to the MagTag width. */
-export function renderMagtagPng(svg: string): Buffer {
-  return renderPng(svg, MAGTAG_W);
+export function renderMagtagBmp(svg: string): Buffer {
+  const { width, height, data } = renderPixels(svg, MAGTAG_W);
+  return encodeGrayBmp(width, height, data);
 }

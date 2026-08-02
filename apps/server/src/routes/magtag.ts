@@ -18,7 +18,7 @@ import {
   buildMagtagUrgentSvg,
   buildMagtagRecipeSvg,
   buildMagtagShoppingSvg,
-  renderMagtagPng,
+  renderMagtagBmp,
   MAGTAG_ROWS,
   type MagtagUrgentData,
   type MagtagRecipeData,
@@ -75,9 +75,9 @@ function gatherShopping(now = new Date()): MagtagShoppingData {
 }
 
 function renderPage(page: Page): Buffer {
-  if (page === "recipe") return renderMagtagPng(buildMagtagRecipeSvg(gatherRecipe()));
-  if (page === "shopping") return renderMagtagPng(buildMagtagShoppingSvg(gatherShopping()));
-  return renderMagtagPng(buildMagtagUrgentSvg(gatherUrgent()));
+  if (page === "recipe") return renderMagtagBmp(buildMagtagRecipeSvg(gatherRecipe()));
+  if (page === "shopping") return renderMagtagBmp(buildMagtagShoppingSvg(gatherShopping()));
+  return renderMagtagBmp(buildMagtagUrgentSvg(gatherUrgent()));
 }
 
 export async function registerMagtag(app: FastifyInstance): Promise<void> {
@@ -89,12 +89,14 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   }
 
   // Button 1 / the default wake screen: the same urgency list as the classic
-  // panel, one image request per wake.
-  app.get("/magtag/display.png", async (req, reply) => {
+  // panel, one image request per wake. BMP, not PNG: CircuitPython's
+  // displayio.OnDiskBitmap (what the MagTag firmware uses to stream the image
+  // straight to the panel) only reads BMP.
+  app.get("/magtag/display.bmp", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
     if (unauthorized(q)) return reply.code(401).send({ error: { message: "unauthorized" } });
     recordDisplayBattery(q.battery);
-    return reply.type("image/png").header("Cache-Control", "no-store").send(renderPage("urgent"));
+    return reply.type("image/bmp").header("Cache-Control", "no-store").send(renderPage("urgent"));
   });
 
   // Buttons 2-3: the recipe suggestion or shopping summary, fetched only when
@@ -105,7 +107,7 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
     const { page } = req.params as { page: string };
     if (!isPage(page)) return reply.code(404).send({ error: { message: "unknown page" } });
     recordDisplayBattery(q.battery);
-    return reply.type("image/png").header("Cache-Control", "no-store").send(renderPage(page));
+    return reply.type("image/bmp").header("Cache-Control", "no-store").send(renderPage(page));
   });
 
   // Read-only device status (battery, wake reason, firmware, Wi-Fi signal).
