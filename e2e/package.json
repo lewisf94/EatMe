@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "e2e": "pnpm --filter @eatme/web build && playwright test"
+    "e2e": "node prepare.mjs && pnpm --filter @eatme/web build && playwright test"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",

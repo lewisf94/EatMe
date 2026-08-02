@@ -8,9 +8,20 @@ import {
 import { publicKey, sendToAll, runDueJobs } from "../services/push.js";
 
 // The shape the browser's PushSubscription serialises to.
+const PushEndpoint = z
+  .string()
+  .url()
+  .max(4096)
+  .refine(
+    (value) => URL.canParse(value) && new URL(value).protocol === "https:",
+    "endpoint must use HTTPS",
+  );
 const SubscriptionInput = z.object({
-  endpoint: z.string().min(1),
-  keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
+  endpoint: PushEndpoint,
+  keys: z.object({
+    p256dh: z.string().min(1).max(4096),
+    auth: z.string().min(1).max(4096),
+  }),
 });
 
 export async function registerPush(app: FastifyInstance): Promise<void> {
@@ -29,7 +40,7 @@ export async function registerPush(app: FastifyInstance): Promise<void> {
   });
 
   app.post("/push/unsubscribe", async (req, reply) => {
-    const parsed = z.object({ endpoint: z.string().min(1) }).safeParse(req.body);
+    const parsed = z.object({ endpoint: PushEndpoint }).safeParse(req.body);
     if (!parsed.success)
       return reply.code(400).send({ error: { message: "an endpoint is required" } });
     return { data: { removed: deleteSubscriptionByEndpoint(parsed.data.endpoint) } };

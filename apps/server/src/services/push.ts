@@ -104,8 +104,10 @@ export async function runDueJobs(now = new Date()): Promise<JobName[]> {
 export function startPushSchedule(): NodeJS.Timeout {
   const timer = setInterval(
     () => {
-      void runDueJobs().catch(() => {
-        /* a push failure must never take the server down */
+      void runDueJobs().catch((error) => {
+        // A push failure must never take the server down, but it must remain
+        // visible enough to diagnose an expired key or unreachable service.
+        console.warn("scheduled push jobs failed:", (error as Error)?.message ?? error);
       });
     },
     15 * 60 * 1000,

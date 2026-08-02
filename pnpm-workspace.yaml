@@ -2,3 +2,19 @@ packages:
   - "apps/*"
   - "packages/*"
   - "e2e"
+overrides:
+  # Pin patched releases for the exact vulnerable transitive edges.
+  "fastify@5.11.0>find-my-way": 9.7.0
+  "minimatch@10.2.5>brace-expansion": 5.0.8
+allowBuilds:
+  # Vite/tsx require esbuild's platform-binary setup script. Keep the build
+  # allow-list explicit so no other transitive package can run install code.
+  esbuild: true
+# Refuse surprise install scripts and give newly published dependencies a day
+# to receive ecosystem scrutiny before routine upgrades can select them.
+strictDepBuilds: true
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  # Security patches may bypass the normal one-day observation window.
+  - find-my-way@9.7.0
+  - brace-expansion@5.0.8

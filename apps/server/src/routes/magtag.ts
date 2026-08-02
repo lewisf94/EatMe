@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { byUrgency, civilToday } from "@eatme/shared";
+import { z } from "zod";
 import { config } from "../config.js";
 import { listInventory } from "../repo/inventory.js";
 import { listRecipes } from "../repo/recipes.js";
@@ -13,6 +14,7 @@ import {
   timezone,
 } from "../repo/settings.js";
 import { recipeMeetsRequirements } from "../data/starterRecipes.js";
+import { secretMatches } from "../services/security.js";
 import { urgencyPhrase, formatRendered } from "../services/display.js";
 import {
   buildMagtagUrgentSvg,
@@ -28,6 +30,14 @@ import {
 const PAGES = ["urgent", "recipe", "shopping"] as const;
 type Page = (typeof PAGES)[number];
 const isPage = (v: string): v is Page => (PAGES as readonly string[]).includes(v);
+const BUTTONS = [...PAGES, "refresh"] as const;
+const MagtagStatus = z.object({
+  battery: z.number().min(0).max(100).nullable().optional(),
+  wakeReason: z.string().max(100).nullable().optional(),
+  firmware: z.string().max(100).nullable().optional(),
+  rssi: z.number().min(-200).max(0).nullable().optional(),
+});
+const MagtagButton = z.object({ button: z.enum(BUTTONS) });
 
 function currentBattery(): number | undefined {
   const stored = getSetting("display_battery", "");
@@ -85,7 +95,7 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   // token — set MAGTAG_TOKEN to require it (app.ts exempts this prefix from
   // the bearer gate in that case, same pattern as the classic display).
   function unauthorized(q: Record<string, string | undefined>): boolean {
-    return Boolean(config.magtagToken) && q.token !== config.magtagToken;
+    return Boolean(config.magtagToken) && !secretMatches(q.token, config.magtagToken);
   }
 
   // Button 1 / the default wake screen: the same urgency list as the classic
@@ -114,7 +124,10 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   app.post("/magtag/status", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
     if (unauthorized(q)) return reply.code(401).send({ error: { message: "unauthorized" } });
-    const body = (req.body ?? {}) as Record<string, unknown>;
+    const parsed = MagtagStatus.safeParse(req.body ?? {});
+    if (!parsed.success)
+      return reply.code(400).send({ error: { message: "invalid status report" } });
+    const body = parsed.data;
     if (typeof body.battery === "number") recordDisplayBattery(String(body.battery));
     setSetting(
       "magtag_status",
@@ -134,10 +147,9 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   app.post("/magtag/button", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
     if (unauthorized(q)) return reply.code(401).send({ error: { message: "unauthorized" } });
-    const body = (req.body ?? {}) as Record<string, unknown>;
-    const button = typeof body.button === "string" ? body.button : "";
-    if (!isPage(button) && button !== "refresh")
-      return reply.code(400).send({ error: { message: "unknown button" } });
+    const parsed = MagtagButton.safeParse(req.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: { message: "unknown button" } });
+    const { button } = parsed.data;
     setSetting("magtag_last_button", JSON.stringify({ button, at: new Date().toISOString() }));
     return { data: { ok: true } };
   });

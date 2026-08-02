@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { computeStatus, type Status, type DateType, type StockLot } from "@eatme/shared";
 import { IconLock, IconLeaf, IconDrop, IconClock } from "./icons";
 

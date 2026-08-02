@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router";
 import type { Category, FoodGuidanceSuggestion, Location } from "@eatme/shared";
 import { api } from "../api";
 import { BarcodeScanner } from "../scanner/BarcodeScanner";

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import type { InventoryRow, UseItUpHit } from "@eatme/shared";
 import { api } from "../api";
 import { today } from "../ui";

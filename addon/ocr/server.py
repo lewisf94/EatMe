@@ -13,6 +13,8 @@ import json
 import os
 import re
 import subprocess
+import threading
+from math import sqrt
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from statistics import median
@@ -21,7 +23,10 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 MAX_IMAGE_BYTES = 15 * 1024 * 1024
 MAX_IMAGE_PIXELS = 40_000_000
-OCR_TIMEOUT_SECONDS = 50
+MAX_PREPARED_PIXELS = 20_000_000
+OCR_TIMEOUT_SECONDS = 25
+REQUEST_READ_TIMEOUT_SECONDS = 20
+OCR_SLOTS = threading.BoundedSemaphore(1)
 PRICE_LIKE = re.compile(r"(?:£\s*)?\d{1,3}\s*(?:[.,]|\s)\s*\d{2}\s*[A-Za-z*]?\s*$")
 NON_PRODUCT_LIKE = re.compile(
     r"\b(sub-?total|total|balance|change|cash|card|saving[s]?|multibuy|"
@@ -109,19 +114,26 @@ def crop_receipt(image: Image.Image) -> Image.Image:
     return image.crop(box)
 
 
+def prepared_dimensions(width: int, height: int) -> tuple[int, int]:
+    """Upscale useful text, but cap the decoded working image's total memory."""
+    desired_scale = max(1.0, 1800 / width)
+    pixel_limited_scale = sqrt(MAX_PREPARED_PIXELS / (width * height))
+    scale = min(desired_scale, pixel_limited_scale)
+    return max(1, round(width * scale)), max(1, round(height * scale))
+
+
 def prepare_image(image_bytes: bytes) -> bytes:
     """Correct orientation and improve contrast without destroying thin text."""
     with Image.open(io.BytesIO(image_bytes)) as source:
         if source.width * source.height > MAX_IMAGE_PIXELS:
             raise ValueError("receipt image has too many pixels")
+        if source.width < 32 or source.height < 32:
+            raise ValueError("receipt image dimensions are too small")
         image = ImageOps.exif_transpose(source).convert("L")
         image = crop_receipt(image)
-        if image.width < 1800:
-            scale = 1800 / image.width
-            image = image.resize(
-                (1800, max(1, round(image.height * scale))),
-                Image.Resampling.LANCZOS,
-            )
+        prepared_size = prepared_dimensions(image.width, image.height)
+        if prepared_size != image.size:
+            image = image.resize(prepared_size, Image.Resampling.LANCZOS)
         image = ImageOps.autocontrast(image, cutoff=1)
         image = ImageEnhance.Contrast(image).enhance(1.3)
         image = image.filter(ImageFilter.UnsharpMask(radius=1.2, percent=140, threshold=3))
@@ -312,7 +324,18 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(413, {"error": "receipt image is too large"})
             return
 
-        image = self.rfile.read(length)
+        self.connection.settimeout(REQUEST_READ_TIMEOUT_SECONDS)
+        try:
+            image = self.rfile.read(length)
+        except (TimeoutError, OSError):
+            self.send_json(408, {"error": "timed out reading image body"})
+            return
+        if len(image) != length:
+            self.send_json(400, {"error": "incomplete image body"})
+            return
+        if not OCR_SLOTS.acquire(blocking=False):
+            self.send_json(503, {"error": "receipt recognition is busy; retry shortly"})
+            return
         try:
             lines, diagnostics = extract_lines(image)
         except subprocess.TimeoutExpired:
@@ -321,6 +344,8 @@ class Handler(BaseHTTPRequestHandler):
         except (subprocess.CalledProcessError, OSError, ValueError) as error:
             self.send_json(400, {"error": f"could not read image: {error}"})
             return
+        finally:
+            OCR_SLOTS.release()
 
         if not lines:
             self.send_json(422, {"error": "no readable text was found"})

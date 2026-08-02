@@ -1,17 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
-import { rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..");
-
-// Wipe the per-run SQLite data here, in the config, rather than in globalSetup:
-// Playwright launches `webServer` *before* globalSetup runs, so wiping there
-// deleted the directory out from under a server that had already opened it —
-// leaving it writing to a deleted-but-open database and unable to create any
-// new file in DATA_DIR. This module is evaluated before anything starts.
-rmSync(path.join(here, ".e2e-tmp"), { recursive: true, force: true });
 
 // Two independent servers off one web build: a normal one, and one with the
 // optional bearer-token gate on (so the auth spec can prove the client sends it).
@@ -26,10 +18,11 @@ const Y4M = path.join(here, "fixtures/barcode.y4m");
 const executablePath = process.env.PW_CHROMIUM_PATH || undefined;
 
 const server = (port: number, dataSub: string, extra: Record<string, string> = {}) => ({
-  // Run from the server package so tsx + the default migrations path resolve.
-  command: "pnpm --filter @eatme/server exec tsx src/index.ts",
-  cwd: repoRoot,
-  port,
+  // Launch Node directly so Playwright owns the server process rather than a
+  // package-manager wrapper that can retain child handles during teardown.
+  command: "node --import tsx src/index.ts",
+  cwd: path.join(repoRoot, "apps/server"),
+  url: `http://127.0.0.1:${port}/api/health`,
   reuseExistingServer: !process.env.CI,
   timeout: 120_000,
   env: {
@@ -78,5 +71,10 @@ export default defineConfig({
       },
     },
   ],
-  webServer: [server(NOAUTH_PORT, "noauth"), server(AUTH_PORT, "auth", { AUTH_TOKEN })],
+  // Playwright cannot signal managed web servers reliably on Windows. The
+  // global setup owns direct child processes there and tears them down itself.
+  webServer:
+    process.platform === "win32"
+      ? undefined
+      : [server(NOAUTH_PORT, "noauth"), server(AUTH_PORT, "auth", { AUTH_TOKEN })],
 });

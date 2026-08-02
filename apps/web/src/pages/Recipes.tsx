@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { DIETARY_REQUIREMENTS, type DietaryRequirement, type Recipe } from "@eatme/shared";
 import { api, type StarterRecipe } from "../api";
 import { IconBack, IconPlus } from "../ui/icons";

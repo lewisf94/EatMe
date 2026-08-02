@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4
+
+- Bound source and prepared-image dimensions to prevent excessive memory use.
+- Add request-read and per-pass OCR timeouts, and return a busy response when
+  the single recognition worker is already occupied.
+- Add regression tests for normal upscaling and extreme image aspect ratios.
+
 ## 0.1.3
 
 - Prevent sparse-text recognition from winning merely because it returns many

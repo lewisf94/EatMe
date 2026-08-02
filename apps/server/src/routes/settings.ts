@@ -2,9 +2,15 @@ import type { FastifyInstance } from "fastify";
 import { DietaryRequirement } from "@eatme/shared";
 import { z } from "zod";
 import { dietaryRequirements, setSetting, timezone } from "../repo/settings.js";
+import { isValidTimezone } from "../services/timezone.js";
 
 const SettingsPatch = z.object({
-  household_timezone: z.string().min(1).optional(),
+  household_timezone: z
+    .string()
+    .min(1)
+    .max(100)
+    .refine(isValidTimezone, "must be a valid IANA timezone")
+    .optional(),
   dietary_requirements: z.array(DietaryRequirement).optional(),
 });
 

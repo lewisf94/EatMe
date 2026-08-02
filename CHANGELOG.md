@@ -2,6 +2,21 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.8.5
+
+- Upgrade the web and server runtimes to patched React Router, Fastify and
+  static-file dependencies, and audit production packages in CI.
+- Make shopping, receipt, recipe and idempotency writes atomic, add a SQLite
+  lock timeout, verify the database in health checks and shut down cleanly.
+- Bound request bodies and external lookups, validate device telemetry and
+  settings, compare credentials safely and avoid exposing internal errors.
+- Coalesce simultaneous barcode lookups, restrict Web Push targets to the
+  current origin and add explicit browser security headers.
+- Bound OCR memory, request and processing time, serialize expensive OCR work,
+  and harden MagTag configuration, downloads and token handling.
+- Add weekly dependency monitoring and reject unapproved package install
+  scripts.
+
 ## 0.8.4
 
 - Add the Adafruit MagTag's 296 × 128 four-gray dashboards and CircuitPython

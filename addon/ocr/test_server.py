@@ -1,6 +1,13 @@
 import unittest
 
-from server import Word, candidate_row_counts, candidate_score, group_words
+from server import (
+    MAX_PREPARED_PIXELS,
+    Word,
+    candidate_row_counts,
+    candidate_score,
+    group_words,
+    prepared_dimensions,
+)
 
 
 def word(left: int, top: int, width: int, height: int, text: str) -> Word:
@@ -80,6 +87,15 @@ class CandidateSelectionTests(unittest.TestCase):
         ]
 
         self.assertEqual(candidate_row_counts(lines), (1, 0))
+
+
+class ImageSizingTests(unittest.TestCase):
+    def test_normal_receipt_is_upscaled_to_the_target_width(self) -> None:
+        self.assertEqual(prepared_dimensions(900, 1400), (1800, 2800))
+
+    def test_extreme_aspect_ratio_cannot_create_an_unbounded_working_image(self) -> None:
+        width, height = prepared_dimensions(100, 4000)
+        self.assertLessEqual(width * height, MAX_PREPARED_PIXELS)
 
 
 if __name__ == "__main__":

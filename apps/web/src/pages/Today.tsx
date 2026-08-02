@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import type { InventoryRow, Location } from "@eatme/shared";
 import { api, isAbort } from "../api";
 import { loadInventory } from "../offline";

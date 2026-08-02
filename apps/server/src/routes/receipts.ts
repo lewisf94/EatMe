@@ -8,8 +8,11 @@ import { makeContext, matchLine, type MatchContext } from "../services/receipt/m
 import * as receipts from "../repo/receipts.js";
 import { allProducts, createProduct, getProduct } from "../repo/products.js";
 import { createGuidedLot, resolveNewProduct } from "../services/foodGuidance.js";
+import { atomic } from "../db.js";
 
 const retailerOf = (p: { merchant: string | null }) => p.merchant ?? "";
+
+class ReceiptConfirmationError extends Error {}
 
 function contextFor(retailer: string): MatchContext {
   return makeContext(allProducts(), receipts.aliasesFor(retailer));
@@ -48,7 +51,7 @@ function draftFor(purchase: receipts.PurchaseRow): ReceiptDraft {
 export async function registerReceipts(app: FastifyInstance): Promise<void> {
   // Upload a receipt image (raw bytes) → OCR (local) → parse → match → draft.
   // We keep only the parsed lines + an image hash; the image itself is discarded.
-  app.post("/receipts", async (req, reply) => {
+  app.post("/receipts", { bodyLimit: 12_582_912 }, async (req, reply) => {
     const image = req.body as Buffer | undefined;
     if (!Buffer.isBuffer(image) || image.length === 0)
       return reply.code(400).send({ error: { message: "expected a receipt image body" } });
@@ -86,30 +89,33 @@ export async function registerReceipts(app: FastifyInstance): Promise<void> {
     );
     const imageHash = createHash("sha256").update(image).digest("hex");
 
-    const purchase = receipts.createPurchase({
-      merchant: parsed.merchant,
-      purchasedAt: parsed.purchasedAt,
-      source: "receipt",
-      imageHash,
-    });
-
-    const ctx = contextFor(retailerOf(purchase));
-    parsed.lines.forEach((l, i) => {
-      const m = matchLine(l.normalizedText, ctx);
-      receipts.addLine({
-        purchaseId: purchase.id,
-        lineNo: i,
-        rawText: l.rawText,
-        normalizedText: l.normalizedText,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-        lineTotal: l.lineTotal,
-        confidence: l.confidence,
-        matchedProductId: m.match?.productId ?? null,
+    const draft = atomic(() => {
+      const purchase = receipts.createPurchase({
+        merchant: parsed.merchant,
+        purchasedAt: parsed.purchasedAt,
+        source: "receipt",
+        imageHash,
       });
+
+      const ctx = contextFor(retailerOf(purchase));
+      parsed.lines.forEach((l, i) => {
+        const m = matchLine(l.normalizedText, ctx);
+        receipts.addLine({
+          purchaseId: purchase.id,
+          lineNo: i,
+          rawText: l.rawText,
+          normalizedText: l.normalizedText,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+          lineTotal: l.lineTotal,
+          confidence: l.confidence,
+          matchedProductId: m.match?.productId ?? null,
+        });
+      });
+      return draftFor(purchase);
     });
 
-    return { data: draftFor(purchase) };
+    return { data: draft };
   });
 
   app.get("/receipts/:id", async (req, reply) => {
@@ -201,7 +207,8 @@ export async function registerReceipts(app: FastifyInstance): Promise<void> {
             summary.newProducts++;
           }
           const product = productId ? getProduct(productId) : undefined;
-          if (!product) throw new Error(`line ${line.line_no}: no product to add to`);
+          if (!product)
+            throw new ReceiptConfirmationError(`line ${line.line_no}: no product to add to`);
 
           const lot = createGuidedLot(product, {
             locationId: d.locationId ?? fallbackLocation,
@@ -219,9 +226,9 @@ export async function registerReceipts(app: FastifyInstance): Promise<void> {
       });
       return { data: result };
     } catch (err) {
-      return reply
-        .code(400)
-        .send({ error: { message: err instanceof Error ? err.message : "confirmation failed" } });
+      if (err instanceof ReceiptConfirmationError)
+        return reply.code(400).send({ error: { message: err.message } });
+      throw err;
     }
   });
 }

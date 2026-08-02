@@ -1,5 +1,6 @@
 import { DIETARY_REQUIREMENTS, type DietaryRequirement } from "@eatme/shared";
 import { db } from "../db.js";
+import { DEFAULT_TIMEZONE, isValidTimezone } from "../services/timezone.js";
 
 const getStmt = db.prepare("SELECT value FROM settings WHERE key = ?");
 const setStmt = db.prepare(
@@ -17,7 +18,8 @@ export function setSetting(key: string, value: string): void {
 
 /** The household's IANA timezone — used for all civil-date calculations. */
 export function timezone(): string {
-  return getSetting("household_timezone", "Europe/London");
+  const stored = getSetting("household_timezone", DEFAULT_TIMEZONE);
+  return isValidTimezone(stored) ? stored : DEFAULT_TIMEZONE;
 }
 
 /** Stores a panel's self-reported LiPo percentage. Shared by every display

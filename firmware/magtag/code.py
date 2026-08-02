@@ -23,11 +23,24 @@ import adafruit_imageload
 import adafruit_requests
 
 
-SERVER = os.getenv("EATME_SERVER", "http://homeassistant.local:8099")
+SERVER = os.getenv("EATME_SERVER", "http://homeassistant.local:8099").rstrip("/")
 TOKEN = os.getenv("EATME_TOKEN", "")
-SLEEP_HOURS = float(os.getenv("EATME_SLEEP_HOURS", "12"))
-FAILURE_SLEEP_MINUTES = float(os.getenv("EATME_FAILURE_SLEEP_MINUTES", "30"))
 REQUEST_TIMEOUT = 15
+
+
+def _bounded_number(name, default, minimum, maximum):
+    try:
+        value = float(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        print(name, "is invalid; using", default)
+        value = default
+    return max(minimum, min(maximum, value))
+
+
+SLEEP_HOURS = _bounded_number("EATME_SLEEP_HOURS", 12, 0.25, 168)
+FAILURE_SLEEP_MINUTES = _bounded_number(
+    "EATME_FAILURE_SLEEP_MINUTES", 30, 1, 1440
+)
 
 
 def _setting_enabled(name, default):
@@ -73,13 +86,32 @@ _hold_output("SPEAKER_ENABLE", False)
 _hold_output("NEOPIXEL_POWER", True)
 
 
+def quote_query(value):
+    encoded = []
+    safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+    for byte in str(value).encode("utf-8"):
+        char = chr(byte)
+        encoded.append(char if char in safe else "%{:02X}".format(byte))
+    return "".join(encoded)
+
+
 def add_query(url, name, value):
     separator = "&" if "?" in url else "?"
-    return "{}{}{}={}".format(url, separator, name, value)
+    return "{}{}{}={}".format(
+        url, separator, quote_query(name), quote_query(value)
+    )
 
 
 def with_token(url):
     return add_query(url, "token", TOKEN) if TOKEN else url
+
+
+def safe_error(error):
+    text = str(error)
+    if TOKEN:
+        text = text.replace(TOKEN, "[REDACTED]")
+        text = text.replace(quote_query(TOKEN), "[REDACTED]")
+    return text
 
 
 def wake_action():
@@ -143,7 +175,10 @@ def fetch_dashboard(requests, page, battery):
     try:
         if response.status_code != 200:
             raise RuntimeError("EatMe returned HTTP {}".format(response.status_code))
-        image_bytes = BytesIO(response.content)
+        payload = response.content
+        if len(payload) < 54 or len(payload) > 65536:
+            raise RuntimeError("EatMe returned an invalid MagTag image size")
+        image_bytes = BytesIO(payload)
     finally:
         response.close()
 
@@ -198,7 +233,10 @@ def report_status(requests, action, battery):
             headers={"Content-Type": "application/json"},
             timeout=REQUEST_TIMEOUT,
         )
+        status = response.status_code
         response.close()
+        if status < 200 or status >= 300:
+            raise RuntimeError("status endpoint returned HTTP {}".format(status))
         if action:
             response = requests.post(
                 with_token(SERVER + BUTTON_PATH),
@@ -206,9 +244,12 @@ def report_status(requests, action, battery):
                 headers={"Content-Type": "application/json"},
                 timeout=REQUEST_TIMEOUT,
             )
+            status = response.status_code
             response.close()
+            if status < 200 or status >= 300:
+                raise RuntimeError("button endpoint returned HTTP {}".format(status))
     except Exception as error:
-        print("Status report failed:", error)
+        print("Status report failed:", safe_error(error))
 
 
 def deep_sleep(seconds):
@@ -241,7 +282,7 @@ def main():
         report_status(requests, action, battery)
         success = True
     except Exception as error:
-        print("Wake cycle failed:", error)
+        print("Wake cycle failed:", safe_error(error))
 
     sleep_seconds = SLEEP_HOURS * 3600 if success else FAILURE_SLEEP_MINUTES * 60
     deep_sleep(sleep_seconds)
