@@ -36,6 +36,19 @@ unattended on battery power.
 5. Reset the board and watch the serial console. Confirm it receives HTTP 200,
    refreshes once and schedules deep sleep.
 
+Before the board arrives, run the server preflight from the repository root. It
+checks all three display pages and their BMP headers without changing food data:
+
+```powershell
+$env:EATME_MAGTAG_TOKEN="replace-with-the-device-token"
+pnpm magtag:preflight http://homeassistant.local:8099 --full
+```
+
+Full mode also checks rejected tokens, battery/status telemetry, and valid or
+invalid button events. It only updates the MagTag diagnostic settings
+(`display_battery`, `magtag_status`, and `magtag_last_button`). Omit `--full`
+for a read-only image check.
+
 If `circup` is installed, the libraries can instead be added while the board is
 mounted with:
 

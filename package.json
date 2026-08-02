@@ -7,7 +7,8 @@
     "check": "pnpm -r --if-present run check && prettier --check \"{apps,packages}/**/*.{ts,tsx}\"",
     "format": "prettier --write \"{apps,packages}/**/*.{ts,tsx}\"",
     "test": "pnpm -r --if-present run test",
-    "dev": "concurrently -n server,web -c blue,green \"pnpm --filter @eatme/server dev\" \"pnpm --filter @eatme/web dev\""
+    "dev": "concurrently -n server,web -c blue,green \"pnpm --filter @eatme/server dev\" \"pnpm --filter @eatme/web dev\"",
+    "magtag:preflight": "node scripts/magtag-preflight.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.0.0",
