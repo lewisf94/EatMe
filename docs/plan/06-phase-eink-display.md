@@ -1,5 +1,10 @@
 # P6 · E-ink kitchen display
 
+> **Hardware update (2 August 2026):** the render pipeline and `/api/display.png`
+> below shipped and remain accurate. The recommended *hardware* has since moved
+> to the Adafruit MagTag — see [docs/07-magtag-plan.md](../07-magtag-plan.md).
+> The XIAO ESP32-C3 build described here is kept as the documented fallback.
+
 **Goal:** a battery e-ink screen in the kitchen showing the top "eat me first" items (and, once P7 exists, a use-it-up recipe). The server renders the whole image; the device is dumb — it wakes a few times a day, downloads a PNG, draws it, and deep-sleeps.
 
 **Prerequisites:** P1 green (needs items + status). Nicer after P7 (recipe line). Hardware verification is manual.

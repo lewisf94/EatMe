@@ -10,6 +10,7 @@ import { registerTaxonomy } from "./routes/taxonomy.js";
 import { registerLookup } from "./routes/lookup.js";
 import { registerSettings } from "./routes/settings.js";
 import { registerDisplay } from "./routes/display.js";
+import { registerMagtag } from "./routes/magtag.js";
 import { registerRecipes } from "./routes/recipes.js";
 import { registerShopping } from "./routes/shopping.js";
 import { registerPush } from "./routes/push.js";
@@ -44,6 +45,9 @@ export function buildApp(): FastifyInstance {
       // The e-ink panel can't send an Authorization header, so display.png
       // carries its own ?token= gate (checked in the route) when one is set.
       if (path === "/api/display.png" && config.displayToken) return;
+      // Same reasoning for the MagTag, plus it must never carry the household
+      // admin token — MAGTAG_TOKEN is its own device-scoped credential.
+      if (path.startsWith("/api/magtag/") && config.magtagToken) return;
       if (req.headers.authorization !== `Bearer ${config.authToken}`) {
         return reply.code(401).send({ error: { message: "unauthorized" } });
       }
@@ -61,6 +65,7 @@ export function buildApp(): FastifyInstance {
   app.register(registerGuidance, { prefix: "/api" });
   app.register(registerSettings, { prefix: "/api" });
   app.register(registerDisplay, { prefix: "/api" });
+  app.register(registerMagtag, { prefix: "/api" });
   app.register(registerRecipes, { prefix: "/api" });
   app.register(registerShopping, { prefix: "/api" });
   app.register(registerPush, { prefix: "/api" });

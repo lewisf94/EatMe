@@ -1,10 +1,17 @@
-# EatMe e-paper power plan
+# EatMe e-paper power plan (fallback: modular ESP32-C6 build)
 
-Last reviewed: 31 July 2026
+Last reviewed: 2 August 2026
 
-This document is the current implementation plan. It supersedes the immediate
-solar purchasing recommendation in `05-hardware-research.md`. Solar remains a
-planned second stage.
+**This document is no longer the primary implementation plan.** The Adafruit
+MagTag is now the preferred hardware — see
+[07-magtag-plan.md](07-magtag-plan.md). This document is kept as the fallback
+plan for the modular controller-plus-display build, in case the MagTag proves
+unsuitable. Do not buy the parts below (a replacement controller, the ADA6106,
+a separate display) until that happens.
+
+This document also supersedes the immediate solar purchasing recommendation in
+`05-hardware-research.md`. Solar remains a planned second stage on either
+route.
 
 ## Current decision
 

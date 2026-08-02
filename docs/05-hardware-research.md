@@ -7,6 +7,13 @@ battery recommendations for EatMe's optional kitchen display. Product prices and
 availability change; the electrical specifications and physical dimensions
 should be checked again before ordering.
 
+**This document predates the MagTag decision and does not describe the
+current purchase plan.** The Adafruit MagTag is now preferred — see
+[07-magtag-plan.md](07-magtag-plan.md). The modular controller/display/solar
+research below remains relevant as the documented fallback plan (see
+[06-eink-power-plan.md](06-eink-power-plan.md)), and as background if the
+MagTag needs replacing later.
+
 ## Recommendation
 
 Build the first prototype with the **Tenstar Robot ESP32-C6 Super Mini already

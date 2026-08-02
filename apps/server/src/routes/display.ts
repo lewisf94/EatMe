@@ -4,12 +4,18 @@ import { config } from "../config.js";
 import { listInventory } from "../repo/inventory.js";
 import { listRecipes } from "../repo/recipes.js";
 import { rankUseItUp } from "../services/recipes.js";
-import { dietaryRequirements, getSetting, setSetting, timezone } from "../repo/settings.js";
+import {
+  dietaryRequirements,
+  getSetting,
+  recordDisplayBattery,
+  timezone,
+} from "../repo/settings.js";
 import { recipeMeetsRequirements } from "../data/starterRecipes.js";
 import {
   buildDashboardSvg,
   renderPng,
   urgencyPhrase,
+  formatRendered,
   DISPLAY_ROWS,
   type DashboardData,
 } from "../services/display.js";
@@ -35,14 +41,7 @@ function gatherDashboardData(now = new Date()): DashboardData {
     )[0]?.recipe.name,
     lowStock: rows.filter((r) => r.fractionLeft != null && r.fractionLeft <= 0.25).length,
     battery: stored === "" ? undefined : Number(stored),
-    rendered: new Intl.DateTimeFormat("en-GB", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: tz,
-    }).format(now),
+    rendered: formatRendered(tz, now),
   };
 }
 
@@ -56,9 +55,7 @@ export async function registerDisplay(app: FastifyInstance): Promise<void> {
       return reply.code(401).send({ error: { message: "unauthorized" } });
 
     // The device reports its LiPo level on the same call that fetches the image.
-    const battery = Number(q.battery);
-    if (q.battery != null && q.battery !== "" && Number.isFinite(battery))
-      setSetting("display_battery", String(Math.max(0, Math.min(100, Math.round(battery)))));
+    recordDisplayBattery(q.battery);
 
     const png = renderPng(buildDashboardSvg(gatherDashboardData()));
     return reply.type("image/png").header("Cache-Control", "no-store").send(png);

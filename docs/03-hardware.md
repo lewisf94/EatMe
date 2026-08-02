@@ -24,18 +24,30 @@ and purchasing recommendation are in the
 
 ### Current component recommendation
 
-The first prototype uses the existing **Tenstar Robot ESP32-C6 Super Mini** and
-a **Waveshare Pico-ePaper-4.2 black/white 400 x 300 display**. The Pico header is
-optional because the module also exposes a standard SPI connector. This panel
-matches EatMe's current 400 x 300 server render without an application change.
+The preferred build is the **Adafruit MagTag**: a finished ESP32-S2 board with
+an integrated 2.9-inch, 296 x 128 black/white e-paper display, four buttons and
+a LiPo charge circuit. It replaces the controller, display, PowerBoost and
+display wiring from the earlier modular plan with one owned battery connected
+straight to the MagTag's own socket and charged over its USB-C port. See the
+[MagTag plan](07-magtag-plan.md) for the full power path, firmware loop and
+server render profile.
 
-For a refined build, the **Seeed XIAO ESP32-C6** is the best compact controller.
-The original **DFRobot FireBeetle ESP32 DFR0478** is the strongest battery-life
-alternative: it is advertised at 10 uA and an independent test reported 11 uA,
-but it is much larger and uses Micro-USB. The **FireBeetle 2 ESP32-E DFR0654**
-adds USB-C, more I/O and a display connector, but its 10 uA retailer claim
-conflicts with current DFRobot documentation and it requires a low-power jumper
-to be cut. Measure the exact board revision before choosing it.
+#### Fallback: modular ESP32-C6 build
+
+If the MagTag proves unsuitable, fall back to the modular build: the existing
+**Tenstar Robot ESP32-C6 Super Mini** and a **Waveshare Pico-ePaper-4.2
+black/white 400 x 300 display**. The Pico header is optional because the
+module also exposes a standard SPI connector. This panel matches EatMe's
+current 400 x 300 server render without an application change.
+
+For a refined fallback build, the **Seeed XIAO ESP32-C6** is the best compact
+controller. The original **DFRobot FireBeetle ESP32 DFR0478** is the strongest
+battery-life alternative: it is advertised at 10 uA and an independent test
+reported 11 uA, but it is much larger and uses Micro-USB. The **FireBeetle 2
+ESP32-E DFR0654** adds USB-C, more I/O and a display connector, but its 10 uA
+retailer claim conflicts with current DFRobot documentation and it requires a
+low-power jumper to be cut. Measure the exact board revision before choosing
+it.
 
 Seeed specifies 15 uA complete-board deep sleep for its XIAO C6 and 44 uA for
 its XIAO C3. This is why the board design, rather than the C3/C6 chip label,
@@ -46,9 +58,9 @@ The preferred refined display is the **Waveshare 3.97-inch black/white
 800 x 480 EatMe render profile. The 4.26-inch 800 x 480 Waveshare panel is the
 larger alternative.
 
-### Powering the display
+#### Powering the fallback build
 
-The prototype power path is:
+The fallback prototype power path is:
 
 ```text
 Voltaic P123 6 V panel
@@ -73,7 +85,8 @@ the complete system has been measured through a winter at the real mounting
 position.
 
 See the [e-paper hardware research](05-hardware-research.md) for the component
-matrices, primary sources, safe wiring and validation thresholds.
+matrices, primary sources, safe wiring and validation thresholds — and the
+[MagTag plan](07-magtag-plan.md) for the current (non-fallback) route.
 
 ## QR labels for decanted jars
 

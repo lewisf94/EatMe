@@ -1,17 +1,47 @@
 # Hardware parts list
 
-Last reviewed: 31 July 2026
+Last reviewed: 2 August 2026
 
 This is the active buying list for the optional EatMe e-paper display. The
-current staged power plan is in [06-eink-power-plan.md](06-eink-power-plan.md).
-The broader research remains in [05-hardware-research.md](05-hardware-research.md).
+current plan is the Adafruit MagTag — see
+[07-magtag-plan.md](07-magtag-plan.md). The modular ESP32-C6 build below is
+kept as the documented fallback; do not buy those parts unless the MagTag
+proves unsuitable. The broader research remains in
+[05-hardware-research.md](05-hardware-research.md).
 
 ## No new server hardware
 
 EatMe already runs on the Raspberry Pi hosting Home Assistant. No second server
 is required.
 
-## Stage 1: battery-powered prototype
+## Current order: MagTag
+
+| Qty | Part | Selection |
+|---:|---|---|
+| 1 | Controller + display | Adafruit MagTag (ESP32-S2, integrated 2.9" 296 x 128 B/W e-paper, 4 buttons) |
+| 1 | Magnetic feet | Pack of four |
+| 1 | Programming cable | USB-C data cable, if not already available |
+
+Check that the existing 2,000 mAh LiPo has a JST-PH 2.0 mm connector and
+correct polarity before connecting it to the MagTag's battery socket.
+
+Optional cables:
+
+- one 3-pin STEMMA-to-male cable;
+- one 3-pin STEMMA-to-female cable;
+- one 4-pin STEMMA QT cable;
+- one or two PicoBlade matching pairs for the Home Controller motor.
+
+Do not buy the PowerBoost 1000C, a replacement controller, a separate
+display or the ADA6106 for this route — the MagTag replaces all of them. See
+[07-magtag-plan.md](07-magtag-plan.md) for the power path and wake cycle.
+
+## Fallback: modular ESP32-C6 build
+
+Only relevant if the MagTag proves unsuitable. See
+[06-eink-power-plan.md](06-eink-power-plan.md) for the full fallback plan.
+
+### Stage 1: battery-powered prototype
 
 Use the owned battery hardware. Do not buy solar parts yet.
 
@@ -31,7 +61,7 @@ Use the owned battery hardware. Do not buy solar parts yet.
 The display has a Raspberry Pi Pico header, but it also exposes standard Serial
 Peripheral Interface connections. A Raspberry Pi Pico is not required.
 
-## Temporary power path
+### Temporary power path
 
 ```text
 protected LiPo
@@ -53,7 +83,7 @@ connect two 5 V sources unless the board power path has been verified.
 The PowerBoost is suitable for functional testing. Its approximately 5 mA
 standby load makes it unsuitable for final battery-life measurements.
 
-## Stage 2: planned solar upgrade
+### Stage 2: planned solar upgrade
 
 When available, replace the PowerBoost with:
 
@@ -86,7 +116,7 @@ connection unused.
 Describe the system as solar-assisted until testing at the real installation
 position proves energy neutrality through winter.
 
-## Controller choice
+### Controller choice
 
 Do not buy a replacement controller yet.
 
@@ -105,7 +135,7 @@ controller must:
 The future solar plan does not require an onboard battery charger. The ADA6106
 will provide charging and power-path control.
 
-## Display choice
+### Display choice
 
 Use the Waveshare 4.2-inch black-and-white 400 x 300 display for Stage 1. It
 matches the current server output and retains its image without continuous
@@ -114,12 +144,7 @@ power.
 After the server gains an 800 x 480 render profile, the Waveshare 3.97-inch
 black-and-white 800 x 480 HAT+ remains a possible refined display.
 
-## QR labels
-
-The app already generates printable A4 Quick Response code label sheets. Start
-with normal paper under clear tape or full-sheet self-adhesive paper.
-
-## Purchase order
+### Fallback purchase order
 
 1. Buy the 4.2-inch black-and-white display and required connection hardware.
 2. Build a USB-powered bench prototype.
@@ -128,3 +153,8 @@ with normal paper under clear tape or full-sheet self-adhesive paper.
 5. Buy the ADA6106 when stock returns.
 6. Measure complete-system sleep current with the final charger fitted.
 7. Select and add a solar panel only after the battery system is stable.
+
+## QR labels
+
+The app already generates printable A4 Quick Response code label sheets. Start
+with normal paper under clear tape or full-sheet self-adhesive paper.
