@@ -20,7 +20,23 @@ import { registerActivity } from "./routes/activity.js";
 import { registerMaintenance } from "./routes/maintenance.js";
 import { registerHomeAssistant } from "./routes/homeAssistant.js";
 import { redactRequestUrl } from "./services/logging.js";
-import { bearerCredential, secretMatches } from "./services/security.js";
+import { bearerCredential, browserOriginMatches, secretMatches } from "./services/security.js";
+
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "img-src 'self' data: blob:",
+  "style-src 'self' 'unsafe-inline'",
+  // The barcode detector compiles its own same-origin ZXing WebAssembly. This
+  // narrower source expression permits WebAssembly without allowing eval().
+  "script-src 'self' 'wasm-unsafe-eval'",
+  "connect-src 'self'",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+].join("; ");
 
 /** Build the Fastify app. Call migrate()/seedIfEmpty() before this so the
  *  repositories' prepared statements bind against existing tables. */
@@ -55,10 +71,33 @@ export function buildApp(): FastifyInstance {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("Referrer-Policy", "no-referrer");
     reply.header("X-Permitted-Cross-Domain-Policies", "none");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+    reply.header(
+      "Permissions-Policy",
+      "camera=(self), geolocation=(), microphone=(), payment=(), usb=()",
+    );
+    if (req.protocol === "https") {
+      reply.header("Strict-Transport-Security", "max-age=31536000");
+    }
     if (req.url.split("?")[0].startsWith("/api/") && !reply.hasHeader("Cache-Control")) {
       reply.header("Cache-Control", "no-store");
     }
     return payload;
+  });
+
+  app.addHook("onRequest", async (req, reply) => {
+    if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return;
+    const origin = req.headers.origin;
+    if (
+      origin &&
+      !browserOriginMatches(origin, req.protocol, [
+        req.headers["x-forwarded-host"],
+        req.headers.host,
+      ])
+    ) {
+      return reply.code(403).send({ error: { message: "cross-origin write rejected" } });
+    }
   });
 
   app.setErrorHandler((error, req, reply) => {

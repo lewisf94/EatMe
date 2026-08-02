@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import {
   api,
+  type AutomaticBackupStatus,
   type DatabaseIntegrity,
   type HomeAssistantStatus,
   type MagtagHealth,
@@ -70,6 +71,24 @@ function MagtagSection() {
             <div className="srow">
               <span className="grow">Firmware</span>
               <strong>{health.status?.firmware ?? "Unknown"}</strong>
+            </div>
+            <div className="srow">
+              <span className="grow">Last display check</span>
+              <strong>
+                {health.status?.displayUpdated == null
+                  ? "Unknown"
+                  : health.status.displayUpdated
+                    ? "Screen updated"
+                    : "Content unchanged"}
+              </strong>
+            </div>
+            <div className="srow">
+              <span className="grow">Wake duration</span>
+              <strong>
+                {health.status?.wakeSeconds == null
+                  ? "Unknown"
+                  : `${health.status.wakeSeconds.toFixed(1)} seconds`}
+              </strong>
             </div>
           </div>
           {(health.isStale || health.isLowBattery) && (
@@ -219,8 +238,11 @@ function HomeAssistantSection() {
 function DataSection() {
   const input = useRef<HTMLInputElement>(null);
   const [integrity, setIntegrity] = useState<DatabaseIntegrity | null>(null);
+  const [backups, setBackups] = useState<AutomaticBackupStatus | null>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [snapshotBusy, setSnapshotBusy] = useState(false);
   const check = () =>
     api
       .databaseIntegrity()
@@ -231,7 +253,38 @@ function DataSection() {
     work().catch((reason) => setNote(reason instanceof Error ? reason.message : "Export failed"));
   useEffect(() => {
     void check();
+    void Promise.all([api.automaticBackups(), api.getSettings()]).then(
+      ([nextBackups, nextSettings]) => {
+        setBackups(nextBackups);
+        setSettings(nextSettings);
+      },
+      (reason) =>
+        setNote(reason instanceof Error ? reason.message : "Couldnâ€™t load backup status"),
+    );
   }, []);
+  const createSnapshot = async () => {
+    setSnapshotBusy(true);
+    try {
+      const next = await api.createAutomaticBackup();
+      setBackups(next);
+      setNote("Recovery snapshot created");
+    } catch (reason) {
+      setNote(reason instanceof Error ? reason.message : "Snapshot failed");
+    } finally {
+      setSnapshotBusy(false);
+    }
+  };
+  const saveRetention = async () => {
+    if (!settings) return;
+    const backup_retention = Math.max(1, Math.min(30, settings.backup_retention || 7));
+    try {
+      const next = await api.putSettings({ backup_retention });
+      setSettings(next);
+      setBackups(await api.automaticBackups());
+    } catch (reason) {
+      setNote(reason instanceof Error ? reason.message : "Couldnâ€™t save retention");
+    }
+  };
   const restore = async (file: File) => {
     if (
       !window.confirm(
@@ -262,6 +315,49 @@ function DataSection() {
             : `Database problem: ${integrity.quickCheck}`
           : "Checking database…"}
       </p>
+      <div className="rgroup" style={{ marginTop: 10 }}>
+        <div className="srow">
+          <span className="grow">
+            <strong>Automatic recovery snapshots</strong>
+            <small style={{ display: "block" }}>
+              {backups?.latest
+                ? `${backups.count} saved Â· latest ${new Date(backups.latest.createdAt).toLocaleString()} Â· ${Math.ceil(backups.latest.size / 1024)} KB`
+                : "The first daily snapshot is created when the server starts"}
+            </small>
+          </span>
+          <button
+            className="btn btn-line"
+            disabled={snapshotBusy}
+            onClick={() => void createSnapshot()}
+          >
+            {snapshotBusy ? "Savingâ€¦" : "Create now"}
+          </button>
+          <button
+            className="btn btn-line"
+            disabled={!backups?.latest}
+            onClick={() => void download(api.downloadLatestAutomaticBackup)}
+          >
+            Download latest
+          </button>
+        </div>
+        {settings && (
+          <label className="srow">
+            <span className="grow">Snapshots to keep</span>
+            <input
+              className="field"
+              style={{ width: 84 }}
+              type="number"
+              min={1}
+              max={30}
+              value={settings.backup_retention}
+              onChange={(event) =>
+                setSettings({ ...settings, backup_retention: Number(event.target.value) })
+              }
+              onBlur={() => void saveRetention()}
+            />
+          </label>
+        )}
+      </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
         <button className="btn btn-line" onClick={() => void download(api.downloadBackup)}>
           Export full backup

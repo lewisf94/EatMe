@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bearerCredential, secretMatches } from "../src/services/security.js";
+import { bearerCredential, browserOriginMatches, secretMatches } from "../src/services/security.js";
 
 describe("credential handling", () => {
   it("matches only the complete secret", () => {
@@ -13,5 +13,13 @@ describe("credential handling", () => {
     expect(bearerCredential("Bearer admin-secret")).toBe("admin-secret");
     expect(bearerCredential("bearer admin-secret")).toBe("admin-secret");
     expect(bearerCredential("Basic admin-secret")).toBe("");
+  });
+
+  it("accepts only the request host for browser-origin writes", () => {
+    expect(browserOriginMatches("https://eatme.example", "https", ["eatme.example"])).toBe(true);
+    expect(
+      browserOriginMatches("https://evil.example", "https", ["eatme.example", "localhost:8099"]),
+    ).toBe(false);
+    expect(browserOriginMatches("not a URL", "http", ["localhost:8099"])).toBe(false);
   });
 });

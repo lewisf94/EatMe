@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
@@ -177,6 +177,31 @@ describe("backup and database maintenance", () => {
     ).toBeUndefined();
     const integrity = await app.inject({ method: "GET", url: "/api/maintenance/integrity" });
     expect(integrity.json().data).toEqual({ ok: true, quickCheck: "ok", foreignKeyErrors: 0 });
+  });
+
+  it("writes atomic automatic snapshots and prunes the oldest copies", async () => {
+    const { createAutomaticBackup } = await import("../src/services/backup.js");
+    createAutomaticBackup(2, new Date("2026-01-01T01:00:00.000Z"));
+    createAutomaticBackup(2, new Date("2026-01-02T01:00:00.000Z"));
+    const status = createAutomaticBackup(2, new Date("2026-01-03T01:00:00.000Z"));
+
+    expect(status).toEqual(
+      expect.objectContaining({ retention: 2, count: 2, latest: expect.any(Object) }),
+    );
+    const files = readdirSync(join(dataDir, "backups"));
+    expect(files).toHaveLength(2);
+    expect(files.some((file) => file.includes("2026-01-01"))).toBe(false);
+    const parsed = JSON.parse(readFileSync(join(dataDir, "backups", files.at(-1)!), "utf8"));
+    expect(parsed).toEqual(expect.objectContaining({ format: "eatme-backup", version: 1 }));
+    expect(files.some((file) => file.endsWith(".tmp"))).toBe(false);
+
+    const latest = await app.inject({
+      method: "GET",
+      url: "/api/maintenance/automatic-backups/latest",
+    });
+    expect(latest.statusCode).toBe(200);
+    expect(latest.headers["content-disposition"]).toContain("2026-01-03");
+    expect(latest.json()).toEqual(expect.objectContaining({ format: "eatme-backup", version: 1 }));
   });
 });
 

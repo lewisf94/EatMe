@@ -27,6 +27,7 @@ This directory contains the implementation record for EatMe. Each phase describe
 | P8 | [08-phase-push.md](08-phase-push.md) | Web push notifications | Built; iPhone delivery verification required |
 | P9 | [09-phase-stretch.md](09-phase-stretch.md) | Optional future work | Planned individually |
 | IX | [14-phase-household-improvements.md](14-phase-household-improvements.md) | Undo, insights, backups, HA and startup performance | Built |
+| RX | [15-phase-resilience-and-power.md](15-phase-resilience-and-power.md) | Conditional MagTag refresh, recovery snapshots and browser hardening | Built |
 
 ## Research status
 

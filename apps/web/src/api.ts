@@ -40,6 +40,7 @@ export type Settings = {
   magtag_stale_hours: number;
   magtag_low_battery: number;
   ha_shopping_sync: boolean;
+  backup_retention: number;
 };
 
 export type MagtagHealth = {
@@ -49,6 +50,8 @@ export type MagtagHealth = {
     wakeReason: string | null;
     firmware: string | null;
     rssi: number | null;
+    displayUpdated: boolean | null;
+    wakeSeconds: number | null;
     reportedAt: string;
   } | null;
   lastButton: { button: string; at: string } | null;
@@ -70,6 +73,12 @@ export type DatabaseIntegrity = {
   ok: boolean;
   quickCheck: string;
   foreignKeyErrors: number;
+};
+
+export type AutomaticBackupStatus = {
+  retention: number;
+  count: number;
+  latest: { createdAt: string; size: number } | null;
 };
 
 export type StarterRecipe = RecipeInput & {
@@ -295,6 +304,10 @@ export const api = {
   insights: (days = 90) => req<UsageInsights>(`/insights?days=${days}`),
   magtagHealth: () => req<MagtagHealth>("/magtag/health"),
   databaseIntegrity: () => req<DatabaseIntegrity>("/maintenance/integrity"),
+  automaticBackups: () => req<AutomaticBackupStatus>("/maintenance/automatic-backups"),
+  createAutomaticBackup: () =>
+    req<AutomaticBackupStatus>("/maintenance/automatic-backups", { method: "POST" }),
+  downloadLatestAutomaticBackup: () => downloadReq("/maintenance/automatic-backups/latest"),
   downloadBackup: () => downloadReq("/maintenance/backup"),
   downloadInventoryCsv: () => downloadReq("/maintenance/inventory.csv"),
   restoreBackup: (backup: unknown) =>

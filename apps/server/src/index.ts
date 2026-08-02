@@ -11,6 +11,7 @@ const { buildApp } = await import("./app.js");
 const app = buildApp();
 let pushTimer: NodeJS.Timeout | undefined;
 let homeAssistantTimer: NodeJS.Timeout | undefined;
+let automaticBackupTimer: NodeJS.Timeout | undefined;
 let shuttingDown = false;
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
@@ -19,6 +20,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
   app.log.info({ signal }, "shutting down");
   if (pushTimer) clearInterval(pushTimer);
   if (homeAssistantTimer) clearInterval(homeAssistantTimer);
+  if (automaticBackupTimer) clearInterval(automaticBackupTimer);
   let exitCode = 0;
   const forceCloseTimer = setTimeout(() => {
     app.log.warn("shutdown grace period expired; closing remaining connections");
@@ -66,6 +68,18 @@ try {
   publishHomeAssistant();
   homeAssistantTimer = setInterval(publishHomeAssistant, 15 * 60_000);
   homeAssistantTimer.unref();
+  const { ensureDailyAutomaticBackup } = await import("./services/backup.js");
+  const { getSetting } = await import("./repo/settings.js");
+  const maintainBackups = () => {
+    try {
+      ensureDailyAutomaticBackup(Number(getSetting("backup_retention", "7")));
+    } catch (err) {
+      app.log.warn({ err }, "automatic backup failed");
+    }
+  };
+  maintainBackups();
+  automaticBackupTimer = setInterval(maintainBackups, 6 * 60 * 60_000);
+  automaticBackupTimer.unref();
 } catch (err) {
   console.error(err);
   try {

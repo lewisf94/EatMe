@@ -2,8 +2,10 @@
 
 CircuitPython 10+ firmware for the [Adafruit MagTag](https://www.adafruit.com/product/4800).
 It wakes, connects to Wi-Fi, downloads one 296 × 128 four-gray BMP, refreshes
-the panel, reports optional status, and deep-sleeps. The image and selected page
-stay in RAM/sleep memory, so normal refreshes do not write to CIRCUITPY flash.
+the panel only when its content changed, reports optional status, and
+deep-sleeps. The image stays in RAM and its short content validator plus
+selected page stay in sleep memory, so normal refreshes do not write to
+CIRCUITPY flash.
 
 **Written but not yet run on this project's real hardware.** Work through the
 [verification checklist](#verification-checklist) before relying on it
@@ -34,7 +36,9 @@ unattended on battery power.
    Wi-Fi credentials, the EatMe server's numeric LAN address and `EATME_TOKEN`
    if the Home Assistant app has `magtag_token` configured.
 5. Reset the board and watch the serial console. Confirm it receives HTTP 200,
-   refreshes once and schedules deep sleep.
+   refreshes once and schedules deep sleep. On the next unchanged timer wake it
+   should receive HTTP 304, keep the existing image and return to sleep without
+   refreshing the panel.
 
 Before the board arrives, run the server preflight from the repository root. It
 checks all three display pages and their BMP headers without changing food data:
@@ -78,6 +82,8 @@ with the USB data connection removed and the board powered from its battery.
       anti-aliased text without mirroring or inversion.
 - [ ] A Wi-Fi or server outage leaves the last e-ink image visible and retries
       after `EATME_FAILURE_SLEEP_MINUTES` rather than staying awake.
+- [ ] An unchanged scheduled wake reports `displayUpdated: false`, skips the
+      display refresh and still records fresh battery/Wi-Fi health telemetry.
 - [ ] `POST /api/magtag/status` records battery, wake reason, firmware and RSSI;
       `POST /api/magtag/button` records a button action without changing food.
 - [ ] At least 50 wake, download, refresh and sleep cycles complete reliably.
@@ -91,6 +97,12 @@ The server quantizes each MagTag page to a compact 4-bit indexed BMP (~19 KB).
 client gets the panel's four gray levels without a temporary image file or
 filesystem remount. The classic ESPHome display continues using PNG at
 `/api/display.png`.
+
+The server returns a strong `ETag` for each rendered page. The firmware retains
+the most recent validator in `alarm.sleep_memory` and sends `If-None-Match` on
+the next scheduled check. A `304 Not Modified` avoids the image transfer and the
+far more expensive e-paper refresh. Button D deliberately bypasses the
+validator, so a requested manual refresh still redraws the current page.
 
 MagTag endpoints are documented in
 [`docs/07-magtag-plan.md`](../../docs/07-magtag-plan.md). The CircuitPython

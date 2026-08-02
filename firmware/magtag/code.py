@@ -26,6 +26,8 @@ import adafruit_requests
 SERVER = os.getenv("EATME_SERVER", "http://homeassistant.local:8099").rstrip("/")
 TOKEN = os.getenv("EATME_TOKEN", "")
 REQUEST_TIMEOUT = 15
+ETAG_START = 1
+ETAG_LENGTH = 16
 
 
 def _bounded_number(name, default, minimum, maximum):
@@ -133,6 +135,35 @@ def write_last_page(page):
     alarm.sleep_memory[0] = PAGE_IDS.get(page, 0)
 
 
+def read_cached_etag(page):
+    """Return the last strong ETag for this page from retained sleep memory."""
+    if read_last_page() != page:
+        return None
+    try:
+        raw = bytes(
+            alarm.sleep_memory[ETAG_START : ETAG_START + ETAG_LENGTH]
+        ).decode("ascii")
+    except (UnicodeError, ValueError):
+        return None
+    if len(raw) != ETAG_LENGTH or any(
+        char not in "0123456789abcdef" for char in raw
+    ):
+        return None
+    return '"{}"'.format(raw)
+
+
+def write_page_cache(page, etag):
+    """Retain one page validator across deep sleep without writing flash."""
+    write_last_page(page)
+    raw = str(etag or "").strip('"')
+    if len(raw) != ETAG_LENGTH or any(
+        char not in "0123456789abcdef" for char in raw
+    ):
+        raw = "0" * ETAG_LENGTH
+    for offset, byte in enumerate(raw.encode("ascii")):
+        alarm.sleep_memory[ETAG_START + offset] = byte
+
+
 def read_battery_percent():
     """Read the documented MagTag battery divider and return 0–100."""
     battery_pin = getattr(board, "BATTERY", None)
@@ -165,17 +196,29 @@ def connect_wifi():
         wifi.radio.connect(ssid, password, timeout=REQUEST_TIMEOUT)
 
 
-def fetch_dashboard(requests, page, battery):
+def fetch_dashboard(requests, page, battery, allow_not_modified=True):
     path = DASHBOARD_PATH if page == "urgent" else PAGE_PATH.format(page=page)
     url = with_token(SERVER + path)
     if battery is not None:
         url = add_query(url, "battery", battery)
 
-    response = requests.get(url, timeout=REQUEST_TIMEOUT)
+    cached_etag = read_cached_etag(page) if allow_not_modified else None
+    response = (
+        requests.get(
+            url,
+            headers={"If-None-Match": cached_etag},
+            timeout=REQUEST_TIMEOUT,
+        )
+        if cached_etag
+        else requests.get(url, timeout=REQUEST_TIMEOUT)
+    )
     try:
+        if response.status_code == 304 and cached_etag:
+            return None, None, cached_etag, False
         if response.status_code != 200:
             raise RuntimeError("EatMe returned HTTP {}".format(response.status_code))
         payload = response.content
+        etag = response.headers.get("ETag") or response.headers.get("etag")
         if len(payload) < 54 or len(payload) > 65536:
             raise RuntimeError("EatMe returned an invalid MagTag image size")
         image_bytes = BytesIO(payload)
@@ -189,7 +232,7 @@ def fetch_dashboard(requests, page, battery):
     )
     if bitmap.width != 296 or bitmap.height != 128:
         raise RuntimeError("Expected a 296 x 128 MagTag image")
-    return bitmap, palette
+    return bitmap, palette, etag, True
 
 
 def show_bitmap(bitmap, palette):
@@ -218,7 +261,7 @@ def wifi_rssi():
         return None
 
 
-def report_status(requests, action, battery):
+def report_status(requests, action, battery, display_updated, wake_seconds):
     try:
         response = requests.post(
             with_token(SERVER + STATUS_PATH),
@@ -226,8 +269,10 @@ def report_status(requests, action, battery):
                 {
                     "battery": battery,
                     "wakeReason": "button:{}".format(action) if action else "timer",
-                    "firmware": "eatme-magtag/0.2",
+                    "firmware": "eatme-magtag/0.3",
                     "rssi": wifi_rssi(),
+                    "displayUpdated": display_updated,
+                    "wakeSeconds": wake_seconds,
                 }
             ),
             headers={"Content-Type": "application/json"},
@@ -264,6 +309,7 @@ def deep_sleep(seconds):
 
 
 def main():
+    started = time.monotonic()
     if alarm.wake_alarm is None:
         alarm.sleep_memory[0] = PAGE_IDS["urgent"]
 
@@ -276,10 +322,21 @@ def main():
         connect_wifi()
         pool = socketpool.SocketPool(wifi.radio)
         requests = adafruit_requests.Session(pool, ssl.create_default_context())
-        bitmap, palette = fetch_dashboard(requests, page, battery)
-        show_bitmap(bitmap, palette)
-        write_last_page(page)
-        report_status(requests, action, battery)
+        bitmap, palette, etag, display_updated = fetch_dashboard(
+            requests, page, battery, allow_not_modified=action != "refresh"
+        )
+        if display_updated:
+            show_bitmap(bitmap, palette)
+            write_page_cache(page, etag)
+        else:
+            print("Dashboard unchanged; keeping the existing e-paper image")
+        report_status(
+            requests,
+            action,
+            battery,
+            display_updated,
+            round(time.monotonic() - started, 2),
+        )
         success = True
     except Exception as error:
         print("Wake cycle failed:", safe_error(error))
