@@ -1,80 +1,86 @@
 # EatMe MagTag firmware
 
-CircuitPython 10+ firmware for the [Adafruit MagTag](https://www.adafruit.com/product/4800),
-implementing the wake cycle in [`docs/07-magtag-plan.md`](../../docs/07-magtag-plan.md):
-wake, connect Wi-Fi, download one rendered image, refresh the panel, report
-optional status, deep sleep.
+CircuitPython 10+ firmware for the [Adafruit MagTag](https://www.adafruit.com/product/4800).
+It wakes, connects to Wi-Fi, downloads one 296 × 128 four-gray BMP, refreshes
+the panel, reports optional status, and deep-sleeps. The image and selected page
+stay in RAM/sleep memory, so normal refreshes do not write to CIRCUITPY flash.
 
-**Written but not yet run on real hardware.** It follows the documented
-MagTag pinout and CircuitPython 10 APIs, but this repository has no MagTag to
-test against. Work through [Verification checklist](#verification-checklist)
-before trusting it on battery power unattended.
+**Written but not yet run on this project's real hardware.** Work through the
+[verification checklist](#verification-checklist) before relying on it
+unattended on battery power.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `code.py` | The wake cycle itself. |
-| `boot.py` | Makes the filesystem writable from code (needed to save the fetched image), unless button A is held at boot. |
-| `settings.toml.example` | Copy to `settings.toml` on the device and fill in Wi-Fi + server details. Never commit the real file. |
+| `code.py` | Complete wake, fetch, display, status and sleep cycle. |
+| `settings.toml.example` | Copy to `settings.toml` on the device and fill in Wi-Fi and server details. |
+| `requirements.txt` | CircuitPython Bundle libraries required by `code.py`. |
 
 ## Setup
 
-1. Install **CircuitPython 10** (or later) on the MagTag via the
-   [Adafruit installer](https://circuitpython.org/board/adafruit_magtag_2.9_grayscale/).
-2. Copy these CircuitPython Community Bundle libraries to `/lib` on the
-   `CIRCUITPY` drive (match the bundle version to your CircuitPython version):
-   - `adafruit_requests.mpy`
+1. Install the latest CircuitPython for MagTag. The 2025 SSD1680 revision
+   requires CircuitPython 10 or later and an updated TinyUF2 bootloader; using
+   10+ for either revision keeps one supported setup.
+2. From the CircuitPython Community Bundle matching that major version, copy
+   these libraries into `CIRCUITPY/lib/`:
    - `adafruit_connection_manager.mpy`
-3. Copy `code.py`, `boot.py` to the root of `CIRCUITPY`.
-4. Copy `settings.toml.example` to `settings.toml` on `CIRCUITPY` and fill in
-   your Wi-Fi credentials, the server URL, and `EATME_TOKEN` if the server has
-   `MAGTAG_TOKEN` set (see `apps/server/src/config.ts` and
-   [`addon/DOCS.md`](../../addon/DOCS.md)).
-5. Reset the board. It should connect, fetch the dashboard, draw it and sleep.
+   - `adafruit_imageload/`
+   - `adafruit_requests.mpy`
+3. Copy `code.py` to the root of `CIRCUITPY`. If upgrading from the earlier
+   EatMe draft, delete its obsolete `boot.py` and `/dashboard.bmp`; the new
+   client does not remount or write the device filesystem.
+4. Copy `settings.toml.example` to `CIRCUITPY/settings.toml`, then enter the
+   Wi-Fi credentials, the EatMe server's numeric LAN address and `EATME_TOKEN`
+   if the Home Assistant app has `magtag_token` configured.
+5. Reset the board and watch the serial console. Confirm it receives HTTP 200,
+   refreshes once and schedules deep sleep.
 
-If you need to get back into the `CIRCUITPY` drive from a computer afterwards,
-hold button **A** while resetting — `boot.py` leaves the filesystem
-USB-writable in that case, at the cost of the device not being able to save
-its own fetched image until you let go and reset again.
+If `circup` is installed, the libraries can instead be added while the board is
+mounted with:
+
+```sh
+circup install adafruit_connection_manager adafruit_imageload adafruit_requests
+```
+
+## Buttons and battery life
+
+With `EATME_BUTTON_WAKE = true`, buttons A–D wake the board for urgent food,
+recipe, shopping and manual refresh pages. CircuitPython's published ESP32-S2
+figures put time-alarm deep sleep around 230 µA and pin-alarm sleep around
+1.65 mA. Set `EATME_BUTTON_WAKE = false` if scheduled updates matter more than
+the button interface. Measure the actual complete board rather than treating
+either figure as a battery-life guarantee.
+
+Deep sleep is simulated while connected to a computer over USB. Measure current
+with the USB data connection removed and the board powered from its battery.
 
 ## Verification checklist
 
-Confirm each of these against the actual board and update the code if they
-differ — none of them were checked against real hardware:
+- [ ] Buttons A–D open urgent / recipe / shopping / refresh respectively when
+      button wake is enabled.
+- [ ] `board.BATTERY` reports a plausible LiPo voltage and percentage on the
+      delivered board revision.
+- [ ] The screen is landscape, uses all 296 × 128 pixels and shows four-gray
+      anti-aliased text without mirroring or inversion.
+- [ ] A Wi-Fi or server outage leaves the last e-ink image visible and retries
+      after `EATME_FAILURE_SLEEP_MINUTES` rather than staying awake.
+- [ ] `POST /api/magtag/status` records battery, wake reason, firmware and RSSI;
+      `POST /api/magtag/button` records a button action without changing food.
+- [ ] At least 50 wake, download, refresh and sleep cycles complete reliably.
+- [ ] Sleep current is measured with button wake both enabled and disabled
+      before choosing the final interval and battery-life expectation.
 
-- [ ] `board.BUTTON_A` / `_B` / `_C` / `_D` are the correct four buttons, in
-      the order urgent / recipe / shopping / refresh (swap `BUTTON_ACTIONS` in
-      `code.py` if not).
-- [ ] Those four pins wake the board from deep sleep as `alarm.pin.PinAlarm`
-      sources — the Adafruit MagTag deep-sleep guide documents this pattern,
-      but confirm on your unit.
-- [ ] `board.VOLTAGE_MONITOR` is the correct battery-sense pin name for your
-      MagTag revision. If `read_battery_percent()` logs "No battery monitor
-      available", check Adafruit's MagTag pinout reference and correct the
-      pin name — the wake cycle still completes fine without it, just without
-      a reported battery percentage.
-- [ ] `board.DISPLAY` auto-initializes to the correct panel driver (expected
-      for a stock MagTag; only relevant if you've swapped the display).
-- [ ] One full wake-fetch-draw-sleep cycle actually shows the dashboard
-      correctly, matches the 296×128 four-gray image the server renders, and
-      the device returns to deep sleep rather than hanging.
-- [ ] `POST /api/magtag/status` and `POST /api/magtag/button` calls reach the
-      server and update its settings (`magtag_status` / `magtag_last_button`)
-      — check via the server logs or by inspecting the SQLite `settings`
-      table.
-- [ ] Measure actual wake duration and battery drain over at least a few
-      dozen cycles before trusting `EATME_SLEEP_HOURS` for unattended
-      operation, per the validation discipline in
-      [`docs/07-magtag-plan.md`](../../docs/07-magtag-plan.md).
+## Why BMP
 
-## Why BMP, not PNG
+The server quantizes each MagTag page to a compact 4-bit indexed BMP (~19 KB).
+`adafruit_imageload` decodes the HTTP response directly from `BytesIO`, so the
+client gets the panel's four gray levels without a temporary image file or
+filesystem remount. The classic ESPHome display continues using PNG at
+`/api/display.png`.
 
-The server's classic ESPHome-facing endpoint (`/api/display.png`) serves PNG
-because ESPHome's `online_image` component decodes PNG natively. CircuitPython
-has no equivalent built-in PNG decoder for e-paper use, but
-`displayio.OnDiskBitmap` streams a BMP straight to the panel without decoding
-a whole image into RAM first — the well-documented pattern for MagTag-style
-info displays. So the MagTag-specific endpoints
-(`/api/magtag/display.bmp`, `/api/magtag/page/:page`) serve a compact 4-bit
-indexed grayscale BMP instead (`apps/server/src/services/magtagDisplay.ts`).
+MagTag endpoints are documented in
+[`docs/07-magtag-plan.md`](../../docs/07-magtag-plan.md). The CircuitPython
+installation and sleep behavior are based on Adafruit's
+[MagTag guide](https://learn.adafruit.com/adafruit-magtag/circuitpython) and
+[deep-sleep guide](https://learn.adafruit.com/deep-sleep-with-circuitpython).

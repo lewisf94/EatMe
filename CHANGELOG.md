@@ -2,6 +2,15 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.8.4
+
+- Add the Adafruit MagTag's 296 × 128 four-gray dashboards and CircuitPython
+  client, with urgent-food, recipe and shopping pages.
+- Decode downloaded BMPs in RAM so routine MagTag refreshes do not write flash,
+  and support scheduled-only sleep when lower power matters more than buttons.
+- Add `magtag_token` and `display_token` Home Assistant app options for
+  device-scoped e-ink API credentials.
+
 ## 0.8.3
 
 - Select OCR passes by complete product-and-price rows rather than isolated

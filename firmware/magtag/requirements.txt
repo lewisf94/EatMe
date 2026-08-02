@@ -1,0 +1,3 @@
+adafruit_connection_manager
+adafruit_imageload
+adafruit_requests

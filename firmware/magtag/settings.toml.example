@@ -4,13 +4,22 @@
 CIRCUITPY_WIFI_SSID = "your-wifi-name"
 CIRCUITPY_WIFI_PASSWORD = "your-wifi-password"
 
-# Base URL of the EatMe server, no trailing slash.
-EATME_SERVER = "http://homeassistant.local:8099"
+# Base URL of the EatMe server, no trailing slash. A numeric LAN address avoids
+# relying on local-name resolution during a short battery-powered wake.
+EATME_SERVER = "http://192.168.1.10:8099"
 
-# Only required if the server has MAGTAG_TOKEN set (see apps/server/src/config.ts).
+# Only required if the Home Assistant app has magtag_token configured.
 EATME_TOKEN = ""
 
 # Hours between scheduled wakes. Food expiry moves slowly; twice a day is
 # already generous for a cupboard, and halving the wake count roughly halves
 # radio energy versus a more frequent schedule.
 EATME_SLEEP_HOURS = "12"
+
+# Retry sooner after a Wi-Fi, HTTP or display failure.
+EATME_FAILURE_SLEEP_MINUTES = "30"
+
+# Button wake enables the urgent / recipe / shopping / refresh interface, but
+# PinAlarm uses more sleep current on ESP32-S2. Set false for maximum runtime
+# when scheduled updates are all you need.
+EATME_BUTTON_WAKE = true

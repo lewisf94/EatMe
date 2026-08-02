@@ -122,10 +122,8 @@ function nearestGrayIndex(v: number): number {
 }
 
 /** Minimal 4-bit indexed BMP encoder (4 of the format's 16 possible palette
- *  slots used, one per gray level). CircuitPython's `displayio.OnDiskBitmap`
- *  streams a BMP straight to the panel without decoding a whole image into
- *  RAM first — it does not read PNG at all, so the MagTag firmware fetches
- *  this instead of the PNG the classic ESPHome panel uses. Indexed rather
+ *  slots used, one per gray level). CircuitPython's `adafruit_imageload`
+ *  decodes this format from an in-memory HTTP response. Indexed rather
  *  than 24-bit truecolor because it's a twelfth of the size to download on
  *  every wake, which matters far more for battery life than the encoder's
  *  extra few lines. */

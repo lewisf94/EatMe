@@ -3,66 +3,67 @@
 ## Project context
 
 EatMe is a self-hosted household food inventory app. Its optional e-paper unit
-wakes, downloads a rendered dashboard image, refreshes the panel and returns to
+wakes, downloads a server-rendered dashboard, refreshes the panel and returns to
 deep sleep.
 
-## Current hardware plan
+## Current e-paper hardware decision
 
-Use `docs/06-eink-power-plan.md` as the current decision record.
+Use `docs/07-magtag-plan.md` as the current plan. The preferred build is an
+Adafruit MagTag: ESP32-S2, integrated 2.9-inch 296 × 128 four-gray e-paper,
+four buttons, LiPo socket and USB-C charging.
 
-The immediate build is battery-powered without solar:
+- Connect the protected LiPo directly to the MagTag only after checking
+  JST-PH polarity.
+- Charge through the MagTag USB-C port.
+- Do not connect the PowerBoost or another charger to the same battery.
+- Defer solar until the complete battery-powered unit has been measured.
 
-- owned Tenstar Robot ESP32-C6 Super Mini;
-- Waveshare 4.2-inch black-and-white 400 x 300 e-paper display;
-- owned Adafruit PowerBoost 1000C as a temporary charger and 5 V supply;
-- owned protected single-cell LiPo.
+The modular Tenstar ESP32-C6 + Waveshare 4.2-inch build in
+`docs/06-eink-power-plan.md` is the fallback only.
 
-The PowerBoost is for functional bring-up only. Its standby current prevents
-valid final battery-life measurements.
+## MagTag firmware rules
 
-The planned second stage uses the Adafruit BQ25185 USB/DC/Solar Charger with
-5 V Boost, product 6106. Add the solar panel only after the battery-powered
-system operates reliably and the charger becomes available.
+The CircuitPython 10+ client is in `firmware/magtag/`.
 
-## Mandatory hardware rules
+- Fetch one 296 × 128 indexed BMP per wake.
+- Decode the response in RAM; routine wakes must not write CIRCUITPY flash.
+- Use `board.BATTERY` for the documented battery divider, with compatibility
+  fallback only when necessary.
+- Force landscape rotation and verify the native image dimensions.
+- Enter deep sleep after success or a bounded failure.
+- Disable Wi-Fi, speaker and NeoPixel power before sleeping.
+- Keep button wake configurable: ESP32-S2 `PinAlarm` uses materially more sleep
+  current than a timer-only alarm.
+- Store only the device-scoped `magtag_token` on the MagTag, never the household
+  API/admin token.
 
-- Connect the battery to only one charger.
-- Leave the Tenstar battery pads unused with PowerBoost or ADA6106.
-- Isolate external 5 V before connecting the Tenstar USB-C port.
-- Feed the Tenstar through its `5V` input.
-- Feed the e-paper module from the controller 3.3 V rail.
-- Reserve enclosure space for ADA6106, solar wiring and USB-C access.
-- Keep the battery shaded and mechanically protected.
+The firmware remains unverified on physical hardware. Complete at least 50
+wake/download/refresh/sleep cycles and measure sleep current with button wake
+both enabled and disabled.
+
+## Server-side MagTag support
+
+- `apps/server/src/services/magtagDisplay.ts`: four-gray urgent, recipe and
+  shopping layouts plus BMP encoding.
+- `apps/server/src/routes/magtag.ts`: image, status and button endpoints under
+  `/api/magtag/*`.
+- `magtag_token` in the Home Assistant app is exported as `MAGTAG_TOKEN` and
+  gates those routes through `?token=`.
+
+## Fallback hardware rules
+
+These apply only if the MagTag is rejected and the modular build is resumed:
+
+- Keep the battery connected to one charger only.
+- Leave Tenstar battery pads unused with PowerBoost or ADA6106.
+- Isolate external 5 V before connecting Tenstar USB-C.
+- Feed Tenstar through `5V` and the e-paper module from 3.3 V.
 - Do not buy a replacement controller before measuring the Tenstar.
 
-## Controller selection constraints
+## Sources of truth
 
-The future solar charger produces regulated 5 V. Any replacement controller
-must accept this supply and must support reliable low-current deep sleep.
-
-Prefer the Seeed XIAO ESP32-C6 only if the Tenstar fails current or reliability
-tests. Do not select a board because of bare-chip sleep figures alone.
-
-## Firmware warning
-
-`firmware/eatme-display.yaml` still targets a XIAO ESP32-C3 reference setup.
-Do not flash it unchanged to the Tenstar ESP32-C6.
-
-Before testing hardware:
-
-- select the ESP32-C6 target;
-- verify the exact Tenstar pin map;
-- start the download after Wi-Fi connects;
-- make one image request per wake;
-- enter deep sleep after success or a bounded failure;
-- avoid a permanently active battery divider.
-
-## Documents
-
-- Current plan: `docs/06-eink-power-plan.md`
+- Current plan: `docs/07-magtag-plan.md`
+- MagTag setup: `firmware/magtag/README.md`
 - Active buying list: `docs/parts-list.md`
-- Research archive: `docs/05-hardware-research.md`
-- Firmware reference: `firmware/eatme-display.yaml`
-
-Treat the solar-first recommendation in the older research document as
-superseded for the first build.
+- Fallback plan: `docs/06-eink-power-plan.md`
+- Hardware research: `docs/05-hardware-research.md`
