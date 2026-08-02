@@ -42,7 +42,7 @@ jobs:
       # The e2e script builds the web PWA, then Playwright boots the server
       # (with and without the auth token) and drives the real app.
       - run: pnpm --filter @eatme/e2e run e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
