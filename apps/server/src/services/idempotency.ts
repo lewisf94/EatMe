@@ -1,4 +1,4 @@
-import { db } from "../db.js";
+import { atomic, db } from "../db.js";
 
 /**
  * Run `fn` inside a single IMMEDIATE transaction, keyed by an optional client
@@ -14,13 +14,11 @@ import { db } from "../db.js";
  */
 export function idempotent<T>(scope: string, opId: string | undefined, fn: () => T): T {
   const key = opId ? `${scope}:${opId}` : undefined;
-  db.exec("BEGIN IMMEDIATE");
-  try {
+  return atomic(() => {
     if (key) {
       const seen = db.prepare("SELECT result_json FROM op_log WHERE op_id = ?").get(key) as
         { result_json: string } | undefined;
       if (seen) {
-        db.exec("COMMIT");
         return JSON.parse(seen.result_json) as T;
       }
     }
@@ -35,10 +33,6 @@ export function idempotent<T>(scope: string, opId: string | undefined, fn: () =>
         new Date().toISOString(),
       );
     }
-    db.exec("COMMIT");
     return result;
-  } catch (err) {
-    db.exec("ROLLBACK");
-    throw err;
-  }
+  });
 }

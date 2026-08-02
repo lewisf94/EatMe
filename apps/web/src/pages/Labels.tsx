@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { api, type LabelContainer } from "../api";
 import { printLabelSheet } from "../labels";
 import { IconBack, IconQr } from "../ui/icons";

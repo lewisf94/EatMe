@@ -66,9 +66,9 @@ before stock is added.
 |---|---|
 | `tailscale_authkey` | Paste a Tailscale **auth key** for the first connection. Once the app has joined successfully, clear this field; EatMe reuses its saved Tailscale identity. |
 | `tailscale_hostname` | The device name on your tailnet (default `eatme`). |
-| `auth_token` | Optional. If set, the API requires this token; paste the same value into the app's **Settings > Access token** on each device. Leave blank on a trusted home network. |
-| `display_token` | Optional URL-safe query token for the fallback ESPHome display endpoint. |
-| `magtag_token` | Optional URL-safe device token for `/api/magtag/*`. Put the same value in `EATME_TOKEN` on the MagTag; do not reuse the household admin token. |
+| `auth_token` | Recommended. If set, the API requires this token; paste the same value into the app's **Settings > Access token** on each device. |
+| `display_token` | Recommended when using the fallback ESPHome endpoint. Use a long, random device-specific token. |
+| `magtag_token` | Recommended for `/api/magtag/*`. Put the same long, random value in `EATME_TOKEN` on the MagTag; do not reuse the household admin token. |
 | `receipt_provider` | `local` for the separate **EatMe OCR** app. `stub` returns fixed demonstration data and is only useful for development. |
 | `ocr_url` | Leave blank to discover EatMe OCR automatically. Set an explicit base URL only when the OCR service is hosted elsewhere. |
 
@@ -117,6 +117,8 @@ labels must still be checked for allergies and cross-contamination.
 - Tailscale limits the HTTPS URL to signed-in devices on your tailnet. For
   another layer of protection, set a long random `auth_token` and paste the same
   value into **EatMe > Settings > Access token** on every device.
+- Set separate long, random `display_token` and `magtag_token` values for any
+  e-ink devices. The app logs a startup warning while an API token is unset.
 - Do not share a Tailscale auth key or EatMe access token in logs or screenshots.
 
 ## Notes & troubleshooting

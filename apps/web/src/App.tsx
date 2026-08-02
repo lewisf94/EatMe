@@ -1,4 +1,4 @@
-import { NavLink, Routes, Route } from "react-router-dom";
+import { NavLink, Routes, Route } from "react-router";
 import type { ReactNode } from "react";
 import Today from "./pages/Today";
 import Inventory from "./pages/Inventory";

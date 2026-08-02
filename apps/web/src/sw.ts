@@ -19,6 +19,18 @@ clientsClaim();
 
 type PushBody = { title?: string; body?: string; url?: string };
 
+function safeNotificationTarget(raw: string): string {
+  try {
+    const target = new URL(raw, self.location.origin);
+    if (target.origin === self.location.origin) {
+      return `${target.pathname}${target.search}${target.hash}`;
+    }
+  } catch {
+    // Fall back to the app root for malformed notification data.
+  }
+  return "/";
+}
+
 self.addEventListener("push", (event) => {
   let data: PushBody = {};
   try {
@@ -38,7 +50,9 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data as { url?: string } | undefined)?.url ?? "/";
+  const url = safeNotificationTarget(
+    (event.notification.data as { url?: string } | undefined)?.url ?? "/",
+  );
   event.waitUntil(
     (async () => {
       // Focus an open EatMe window if there is one, rather than piling up tabs.

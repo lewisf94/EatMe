@@ -11,7 +11,9 @@ const DEVICE_TOKEN = "magtag-route-test-token";
 let app: FastifyInstance;
 let dataDir: string;
 let db: (typeof import("../src/db.js"))["db"];
+let atomic: (typeof import("../src/db.js"))["atomic"];
 let getSetting: (typeof import("../src/repo/settings.js"))["getSetting"];
+let setSetting: (typeof import("../src/repo/settings.js"))["setSetting"];
 
 function expectMagTagBitmap(payload: Buffer): void {
   expect(payload.subarray(0, 2).toString("ascii")).toBe("BM");
@@ -29,12 +31,13 @@ beforeAll(async () => {
 
   const dbModule = await import("../src/db.js");
   db = dbModule.db;
+  atomic = dbModule.atomic;
   dbModule.migrate();
 
   const { seedIfEmpty } = await import("../src/seed.js");
   seedIfEmpty();
 
-  ({ getSetting } = await import("../src/repo/settings.js"));
+  ({ getSetting, setSetting } = await import("../src/repo/settings.js"));
   const { buildApp } = await import("../src/app.js");
   app = buildApp();
   await app.ready();
@@ -48,12 +51,30 @@ afterAll(async () => {
 }, 30_000);
 
 describe("MagTag routes", () => {
+  it("reports database health and rolls failed write groups back", async () => {
+    const health = await app.inject({ method: "GET", url: "/api/health" });
+    expect(health.statusCode).toBe(200);
+    expect(health.json()).toEqual({ data: { ok: true } });
+
+    setSetting("transaction_probe", "before");
+    expect(() =>
+      atomic(() => {
+        setSetting("transaction_probe", "partial");
+        throw new Error("forced rollback");
+      }),
+    ).toThrow("forced rollback");
+    expect(getSetting("transaction_probe")).toBe("before");
+  });
+
   it("requires the dedicated device token", async () => {
     const missing = await app.inject({
       method: "GET",
       url: "/api/magtag/display.bmp",
     });
     expect(missing.statusCode).toBe(401);
+    expect(missing.headers["cache-control"]).toBe("no-store");
+    expect(missing.headers["x-content-type-options"]).toBe("nosniff");
+    expect(missing.headers["referrer-policy"]).toBe("no-referrer");
 
     const wrong = await app.inject({
       method: "GET",
@@ -128,6 +149,23 @@ describe("MagTag routes", () => {
         reportedAt: expect.any(String),
       }),
     );
+
+    const invalid = await app.inject({
+      method: "POST",
+      url: `/api/magtag/status?token=${DEVICE_TOKEN}`,
+      payload: { battery: 101 },
+    });
+    expect(invalid.statusCode).toBe(400);
+  });
+
+  it("rejects oversized non-image request bodies", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/magtag/status?token=${DEVICE_TOKEN}`,
+      payload: { firmware: "x".repeat(300_000) },
+    });
+
+    expect(response.statusCode).toBe(413);
   });
 
   it("stores valid button events and rejects invalid ones", async () => {

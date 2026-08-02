@@ -7,7 +7,22 @@ import { config } from "./config.js";
 mkdirSync(config.dataDir, { recursive: true });
 
 export const db = new DatabaseSync(join(config.dataDir, "eatme.db"));
-db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
+db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
+
+/** Run related synchronous SQLite writes as one durable unit. IMMEDIATE takes
+ * the write reservation up front and busy_timeout lets a short-lived lock clear
+ * instead of turning normal overlap into SQLITE_BUSY. */
+export function atomic<T>(work: () => T): T {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const result = work();
+    db.exec("COMMIT");
+    return result;
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
 
 const migrationsDir =
   process.env.MIGRATIONS_DIR ?? join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");

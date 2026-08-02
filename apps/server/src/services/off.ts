@@ -51,6 +51,8 @@ export function mapOff(barcode: string, json: unknown): OffResult {
 }
 
 const DAY = 86_400_000;
+const OFF_TIMEOUT_MS = 10_000;
+const inFlight = new Map<string, Promise<OffResult>>();
 
 /** Cache TTL: hits last ~30 days; misses only ~3 (a product added to OFF
  *  tomorrow, or a corrected name, should be picked up soon). Pure → unit-tested. */
@@ -60,11 +62,19 @@ export function cacheIsFresh(found: boolean, fetchedAt: string, now = Date.now()
 
 /** Look up a barcode, serving from a fresh local cache first (statements are lazy
  *  so importing this module for `mapOff` never touches the DB schema). */
-export async function lookup(barcode: string): Promise<OffResult> {
+async function lookupOnce(barcode: string): Promise<OffResult> {
   const cached = db
     .prepare("SELECT off_json, fetched_at FROM lookup_cache WHERE barcode = ?")
     .get(barcode) as { off_json: string; fetched_at: string } | undefined;
-  const cachedResult = cached ? mapOff(barcode, JSON.parse(cached.off_json)) : null;
+  let cachedResult: OffResult | null = null;
+  if (cached) {
+    try {
+      cachedResult = mapOff(barcode, JSON.parse(cached.off_json));
+    } catch {
+      // A damaged cache entry should be replaceable by the upstream response,
+      // not permanently break every future lookup for this barcode.
+    }
+  }
   if (cached && cachedResult && cacheIsFresh(cachedResult.found, cached.fetched_at)) {
     return cachedResult;
   }
@@ -74,7 +84,10 @@ export async function lookup(barcode: string): Promise<OffResult> {
     `?fields=product_name,brands,quantity,image_front_small_url,categories,categories_tags`;
   let json: unknown;
   try {
-    const res = await fetch(url, { headers: { "User-Agent": config.offUserAgent } });
+    const res = await fetch(url, {
+      headers: { "User-Agent": config.offUserAgent },
+      signal: AbortSignal.timeout(OFF_TIMEOUT_MS),
+    });
     if (res.status === 503) throw new Error("Open Food Facts rate-limited; try again shortly");
     if (!res.ok) throw new Error(`Open Food Facts returned HTTP ${res.status}`);
     json = await res.json();
@@ -88,4 +101,15 @@ export async function lookup(barcode: string): Promise<OffResult> {
     "INSERT OR REPLACE INTO lookup_cache (barcode, off_json, fetched_at) VALUES (?, ?, ?)",
   ).run(barcode, JSON.stringify(json), new Date().toISOString());
   return mapOff(barcode, json);
+}
+
+/** Share one upstream request when camera scans or UI retries ask for the same
+ * uncached barcode concurrently. This reduces latency, traffic and OFF rate
+ * limiting without changing cache semantics. */
+export function lookup(barcode: string): Promise<OffResult> {
+  const current = inFlight.get(barcode);
+  if (current) return current;
+  const pending = lookupOnce(barcode).finally(() => inFlight.delete(barcode));
+  inFlight.set(barcode, pending);
+  return pending;
 }

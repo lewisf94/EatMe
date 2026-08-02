@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router";
 import { api } from "../api";
 
 /** A printed QR label opens /i/:qrUid — resolve it to its product and jump to

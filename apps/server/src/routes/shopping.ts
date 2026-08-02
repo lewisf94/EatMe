@@ -10,6 +10,7 @@ import {
 import { getProduct } from "../repo/products.js";
 import { logEvent } from "../repo/stockLots.js";
 import { createGuidedLot } from "../services/foodGuidance.js";
+import { atomic } from "../db.js";
 
 export async function registerShopping(app: FastifyInstance): Promise<void> {
   app.get("/shopping-list", async (req) => {
@@ -36,19 +37,23 @@ export async function registerShopping(app: FastifyInstance): Promise<void> {
   // cupboard — that's what "bought it again" means once you're home.
   app.post("/shopping-list/:id/done", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const before = getShopping(id);
-    if (!before) return reply.code(404).send({ error: { message: "not found" } });
+    const result = atomic(() => {
+      const before = getShopping(id);
+      if (!before) return null;
 
-    const item = setDone(id, true);
-    let lot = null;
-    if (before.productId && !before.doneAt) {
-      const product = getProduct(before.productId);
-      if (product) {
-        lot = createGuidedLot(product, { count: 1, fractionLeft: 1, source: "shopping" });
-        logEvent(lot.id, "repurchased");
+      const item = setDone(id, true);
+      let lot = null;
+      if (before.productId && !before.doneAt) {
+        const product = getProduct(before.productId);
+        if (product) {
+          lot = createGuidedLot(product, { count: 1, fractionLeft: 1, source: "shopping" });
+          logEvent(lot.id, "repurchased");
+        }
       }
-    }
-    return { data: { item, lot } };
+      return { item, lot };
+    });
+    if (!result) return reply.code(404).send({ error: { message: "not found" } });
+    return { data: result };
   });
 
   app.post("/shopping-list/:id/undone", async (req, reply) => {
