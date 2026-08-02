@@ -2,6 +2,19 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.10.0
+
+- Let MagTag firmware retain a content validator in deep-sleep memory and skip
+  both the BMP transfer and e-paper refresh when dashboard content is unchanged.
+- Cache unchanged MagTag renders server-side, report whether the screen was
+  updated and record wake duration in device health.
+- Create one atomic local recovery snapshot per day, retain a configurable 1â€“30
+  snapshots and provide an on-demand snapshot action in Settings.
+- Add same-origin enforcement for browser writes plus Content Security Policy,
+  permissions, framing and HTTPS transport headers.
+- Extend the reusable MagTag preflight and automated tests to cover conditional
+  refreshes, rotating snapshots and cross-site write rejection.
+
 ## 0.9.0
 
 - Add a recent-activity screen with one-tap restore for accidentally removed

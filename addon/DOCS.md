@@ -95,10 +95,16 @@ EatMe **Settings** now includes:
 
 - **History & insights** for recent changes, undoing an accidental removal and
   reviewing finished/binned patterns.
-- **MagTag health** for last check-in, battery, Wi-Fi signal and firmware.
+- **MagTag health** for last check-in, battery, Wi-Fi signal, firmware, wake
+  duration and whether the last wake actually refreshed the screen.
 - **Data & backups** for a versioned full JSON export/restore, inventory CSV and
-  an on-demand database integrity check. Export a current backup before using
-  restore; restore replaces EatMe's food, recipes, shopping list and history.
+  an on-demand database integrity check. EatMe also writes one atomic recovery
+  snapshot per day under `/data/backups`; Settings can retain 1â€“30 copies and
+  create one immediately or download the latest. Export a current backup before
+  using restore; restore replaces EatMe's food, recipes, shopping list and
+  history. Local snapshots are
+  included in Home Assistant backups but do not replace an occasional export to
+  another device.
 - **Home Assistant** status. EatMe publishes `sensor.eatme_expiring_soon` and
   `sensor.eatme_low_stock` every 15 minutes. Optional shopping mirroring sends
   new EatMe list actions one-way to Home Assistant's built-in shopping list.
@@ -135,6 +141,9 @@ EatMe **Settings** now includes:
   value into **EatMe > Settings > Access token** on every device.
 - Set separate long, random `display_token` and `magtag_token` values for any
   e-ink devices. The app logs a startup warning while an API token is unset.
+- Browser writes are accepted only from EatMe's own origin. The app also sends a
+  restrictive content policy, disables framing and unnecessary browser APIs,
+  and enables transport security on HTTPS requests.
 - Do not share a Tailscale auth key or EatMe access token in logs or screenshots.
 
 ## Notes & troubleshooting

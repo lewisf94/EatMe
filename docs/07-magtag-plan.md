@@ -71,7 +71,9 @@ bounded failure — the same firmware discipline as the modular plan.
 
 An initial build following this cycle is in `firmware/magtag/` (`code.py`,
 `settings.toml.example`). It decodes the HTTP response in RAM and uses sleep
-memory for the selected page, so routine wakes do not write flash. **It has not been run on real
+memory for the selected page and content validator, so routine wakes do not
+write flash. Scheduled wakes use `If-None-Match`; unchanged content returns 304
+and skips the panel refresh while still reporting device health. **It has not been run on real
 hardware** — see `firmware/magtag/README.md` for the setup steps and a
 verification checklist (button-to-pin mapping, battery reading,
 an actual end-to-end wake cycle) to work through once a MagTag is in hand.
@@ -105,7 +107,7 @@ Endpoints:
 |---|---|
 | `GET /api/magtag/display.bmp` | Dashboard image download (the default wake screen — urgent items) |
 | `GET /api/magtag/page/:page` | Selected page download (`urgent`, `recipe` or `shopping`) |
-| `POST /api/magtag/status` | Device status reporting (battery, wake reason, firmware, Wi-Fi signal) |
+| `POST /api/magtag/status` | Device status reporting (battery, wake reason, firmware, Wi-Fi signal, refresh result and wake duration) |
 | `POST /api/magtag/button` | Optional button-press telemetry |
 
 All four endpoints accept `?token=` and are gated by the Home Assistant app's

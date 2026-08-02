@@ -132,6 +132,25 @@ describe("MagTag routes", () => {
     expect(getSetting("display_battery")).toBe("73");
   });
 
+  it("returns 304 when dashboard content has not changed", async () => {
+    const first = await app.inject({
+      method: "GET",
+      url: `/api/magtag/display.bmp?token=${DEVICE_TOKEN}`,
+    });
+    const etag = first.headers.etag;
+    expect(etag).toMatch(/^"[0-9a-f]{16}"$/);
+
+    const unchanged = await app.inject({
+      method: "GET",
+      url: `/api/magtag/display.bmp?token=${DEVICE_TOKEN}&battery=72`,
+      headers: { "if-none-match": etag },
+    });
+    expect(unchanged.statusCode).toBe(304);
+    expect(unchanged.rawPayload).toHaveLength(0);
+    expect(unchanged.headers.etag).toBe(etag);
+    expect(getSetting("display_battery")).toBe("72");
+  });
+
   it("returns 404 for an unknown page", async () => {
     const response = await app.inject({
       method: "GET",
@@ -150,6 +169,8 @@ describe("MagTag routes", () => {
         wakeReason: "button_b",
         firmware: "test-firmware",
         rssi: -47,
+        displayUpdated: false,
+        wakeSeconds: 2.4,
       },
     });
 
@@ -164,6 +185,8 @@ describe("MagTag routes", () => {
         wakeReason: "button_b",
         firmware: "test-firmware",
         rssi: -47,
+        displayUpdated: false,
+        wakeSeconds: 2.4,
         reportedAt: expect.any(String),
       }),
     );

@@ -15,6 +15,7 @@ const SettingsPatch = z.object({
   magtag_stale_hours: z.number().int().min(1).max(336).optional(),
   magtag_low_battery: z.number().int().min(1).max(99).optional(),
   ha_shopping_sync: z.boolean().optional(),
+  backup_retention: z.number().int().min(1).max(30).optional(),
 });
 
 const current = () => ({
@@ -23,6 +24,7 @@ const current = () => ({
   magtag_stale_hours: Number(getSetting("magtag_stale_hours", "30")),
   magtag_low_battery: Number(getSetting("magtag_low_battery", "20")),
   ha_shopping_sync: getSetting("ha_shopping_sync", "false") === "true",
+  backup_retention: Number(getSetting("backup_retention", "7")),
 });
 
 export async function registerSettings(app: FastifyInstance): Promise<void> {
@@ -44,6 +46,8 @@ export async function registerSettings(app: FastifyInstance): Promise<void> {
       setSetting("magtag_low_battery", String(parsed.data.magtag_low_battery));
     if (parsed.data.ha_shopping_sync !== undefined)
       setSetting("ha_shopping_sync", String(parsed.data.ha_shopping_sync));
+    if (parsed.data.backup_retention !== undefined)
+      setSetting("backup_retention", String(parsed.data.backup_retention));
     return { data: current() };
   });
 }

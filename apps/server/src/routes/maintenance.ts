@@ -2,7 +2,15 @@ import type { FastifyInstance } from "fastify";
 import { byUrgency, civilToday } from "@eatme/shared";
 import { listInventory } from "../repo/inventory.js";
 import { timezone } from "../repo/settings.js";
-import { createBackup, databaseIntegrity, restoreBackup } from "../services/backup.js";
+import { getSetting } from "../repo/settings.js";
+import {
+  automaticBackupStatus,
+  createAutomaticBackup,
+  createBackup,
+  databaseIntegrity,
+  latestAutomaticBackup,
+  restoreBackup,
+} from "../services/backup.js";
 
 const csv = (value: unknown): string => {
   const text = value == null ? "" : String(value);
@@ -11,6 +19,23 @@ const csv = (value: unknown): string => {
 
 export async function registerMaintenance(app: FastifyInstance): Promise<void> {
   app.get("/maintenance/integrity", async () => ({ data: databaseIntegrity() }));
+
+  app.get("/maintenance/automatic-backups", async () => ({
+    data: automaticBackupStatus(Number(getSetting("backup_retention", "7"))),
+  }));
+
+  app.post("/maintenance/automatic-backups", async () => ({
+    data: createAutomaticBackup(Number(getSetting("backup_retention", "7"))),
+  }));
+
+  app.get("/maintenance/automatic-backups/latest", async (_req, reply) => {
+    const latest = latestAutomaticBackup();
+    if (!latest) return reply.code(404).send({ error: { message: "no recovery snapshot yet" } });
+    return reply
+      .type("application/json")
+      .header("Content-Disposition", `attachment; filename="${latest.filename}"`)
+      .send(latest.payload);
+  });
 
   app.get("/maintenance/backup", async (_req, reply) => {
     const date = new Date().toISOString().slice(0, 10);

@@ -1,4 +1,5 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { createHash } from "node:crypto";
 import { byUrgency, civilToday } from "@eatme/shared";
 import { z } from "zod";
 import { config } from "../config.js";
@@ -36,6 +37,8 @@ const MagtagStatus = z.object({
   wakeReason: z.string().max(100).nullable().optional(),
   firmware: z.string().max(100).nullable().optional(),
   rssi: z.number().min(-200).max(0).nullable().optional(),
+  displayUpdated: z.boolean().nullable().optional(),
+  wakeSeconds: z.number().min(0).max(300).nullable().optional(),
 });
 const MagtagButton = z.object({ button: z.enum(BUTTONS) });
 
@@ -93,10 +96,60 @@ function gatherShopping(now = new Date()): MagtagShoppingData {
   };
 }
 
-function renderPage(page: Page): Buffer {
-  if (page === "recipe") return renderMagtagBmp(buildMagtagRecipeSvg(gatherRecipe()));
-  if (page === "shopping") return renderMagtagBmp(buildMagtagShoppingSvg(gatherShopping()));
-  return renderMagtagBmp(buildMagtagUrgentSvg(gatherUrgent()));
+type PageData = MagtagUrgentData | MagtagRecipeData | MagtagShoppingData;
+type CachedPage = { semantic: string; payload: Buffer; etag: string };
+const pageCache = new Map<Page, CachedPage>();
+
+function gatherPage(page: Page): PageData {
+  if (page === "recipe") return gatherRecipe();
+  if (page === "shopping") return gatherShopping();
+  return gatherUrgent();
+}
+
+function semanticPage(page: Page, data: PageData): string {
+  // The footer time and battery are useful context when content changes, but
+  // neither should force an e-paper refresh by itself. Battery is still sent
+  // to device health on every wake, including a 304 response.
+  const { rendered: _rendered, battery: _battery, ...content } = data;
+  return JSON.stringify({ page, content });
+}
+
+function renderPage(page: Page): CachedPage {
+  const data = gatherPage(page);
+  const semantic = semanticPage(page, data);
+  const cached = pageCache.get(page);
+  if (cached?.semantic === semantic) return cached;
+
+  const payload =
+    page === "recipe"
+      ? renderMagtagBmp(buildMagtagRecipeSvg(data as MagtagRecipeData))
+      : page === "shopping"
+        ? renderMagtagBmp(buildMagtagShoppingSvg(data as MagtagShoppingData))
+        : renderMagtagBmp(buildMagtagUrgentSvg(data as MagtagUrgentData));
+  const next = {
+    semantic,
+    payload,
+    etag: `"${createHash("sha256").update(payload).digest("hex").slice(0, 16)}"`,
+  };
+  pageCache.set(page, next);
+  return next;
+}
+
+function etagMatches(raw: string | undefined, etag: string): boolean {
+  if (!raw) return false;
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .some((value) => value === "*" || value === etag || value === `W/${etag}`);
+}
+
+function sendPage(page: Page, req: FastifyRequest, reply: FastifyReply) {
+  const rendered = renderPage(page);
+  reply.header("ETag", rendered.etag).header("Cache-Control", "no-store");
+  const candidate = req.headers["if-none-match"];
+  const ifNoneMatch = Array.isArray(candidate) ? candidate.join(",") : candidate;
+  if (etagMatches(ifNoneMatch, rendered.etag)) return reply.code(304).send();
+  return reply.type("image/bmp").send(rendered.payload);
 }
 
 export async function registerMagtag(app: FastifyInstance): Promise<void> {
@@ -115,6 +168,8 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
       wakeReason: string | null;
       firmware: string | null;
       rssi: number | null;
+      displayUpdated: boolean | null;
+      wakeSeconds: number | null;
       reportedAt: string;
     }>("magtag_status");
     const lastButton = jsonSetting<{ button: string; at: string }>("magtag_last_button");
@@ -141,7 +196,7 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
     const q = req.query as Record<string, string | undefined>;
     if (unauthorized(q)) return reply.code(401).send({ error: { message: "unauthorized" } });
     recordDisplayBattery(q.battery);
-    return reply.type("image/bmp").header("Cache-Control", "no-store").send(renderPage("urgent"));
+    return sendPage("urgent", req, reply);
   });
 
   // Buttons 2-3: the recipe suggestion or shopping summary, fetched only when
@@ -152,7 +207,7 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
     const { page } = req.params as { page: string };
     if (!isPage(page)) return reply.code(404).send({ error: { message: "unknown page" } });
     recordDisplayBattery(q.battery);
-    return reply.type("image/bmp").header("Cache-Control", "no-store").send(renderPage(page));
+    return sendPage(page, req, reply);
   });
 
   // Read-only device status (battery, wake reason, firmware, Wi-Fi signal).
@@ -172,6 +227,8 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
         wakeReason: typeof body.wakeReason === "string" ? body.wakeReason : null,
         firmware: typeof body.firmware === "string" ? body.firmware : null,
         rssi: typeof body.rssi === "number" ? body.rssi : null,
+        displayUpdated: typeof body.displayUpdated === "boolean" ? body.displayUpdated : null,
+        wakeSeconds: typeof body.wakeSeconds === "number" ? body.wakeSeconds : null,
         reportedAt: new Date().toISOString(),
       }),
     );

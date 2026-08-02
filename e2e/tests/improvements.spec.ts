@@ -57,10 +57,14 @@ test("recipe actions update Shopping and activity from the Cook screen", async (
   await expect(page.getByText(missing)).toBeVisible();
 });
 
-test("settings exposes MagTag, Home Assistant, and backup health", async ({ page }) => {
+test("settings exposes device health and creates a recovery snapshot", async ({ page }) => {
   await page.goto("/settings");
   await expect(page.getByText("MagTag health")).toBeVisible();
   await expect(page.getByText("Home Assistant", { exact: true })).toBeVisible();
   await expect(page.getByText("Database check passed")).toBeVisible();
+  await expect(page.getByText("Automatic recovery snapshots")).toBeVisible();
+  await page.getByRole("button", { name: "Create now" }).click();
+  await expect(page.getByText("Recovery snapshot created")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download latest" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Export full backup" })).toBeVisible();
 });
