@@ -174,4 +174,18 @@ jobs:
             --output /tmp/eatme-display.png \
             "http://127.0.0.1:18099/api/display.png"
           file /tmp/eatme-display.png | grep -F "PNG image data"
+          curl --fail --silent \
+            --output /tmp/eatme-magtag.bmp \
+            "http://127.0.0.1:18099/api/magtag/display.bmp?battery=77"
+          python3 -c "import struct; p=open('/tmp/eatme-magtag.bmp','rb').read(); assert p[:2] == b'BM'; assert struct.unpack_from('<I',p,2)[0] == len(p); assert struct.unpack_from('<ii',p,18) == (296,128); assert struct.unpack_from('<H',p,28)[0] == 4"
+          curl --fail --silent \
+            --header "content-type: application/json" \
+            --data '{"battery":77,"wakeReason":"ci","firmware":"ci","rssi":-50}' \
+            http://127.0.0.1:18099/api/magtag/status \
+            | grep -F '"ok":true'
+          curl --fail --silent \
+            --header "content-type: application/json" \
+            --data '{"button":"refresh"}' \
+            http://127.0.0.1:18099/api/magtag/button \
+            | grep -F '"ok":true'
           curl --fail --silent http://127.0.0.1:18099/ | grep -F "<div id=\"root\">"

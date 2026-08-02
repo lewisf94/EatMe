@@ -16,13 +16,20 @@ import { registerShopping } from "./routes/shopping.js";
 import { registerPush } from "./routes/push.js";
 import { registerLabels } from "./routes/labels.js";
 import { registerGuidance } from "./routes/guidance.js";
+import { redactRequestUrl } from "./services/logging.js";
 
 /** Build the Fastify app. Call migrate()/seedIfEmpty() before this so the
  *  repositories' prepared statements bind against existing tables. */
 export function buildApp(): FastifyInstance {
   // Receipt photos arrive as raw image bytes, so allow a larger body than JSON.
   const app = Fastify({
-    logger: { level: process.env.LOG_LEVEL ?? "info" },
+    logger: {
+      level: process.env.LOG_LEVEL ?? "info",
+      // Display credentials travel in the query string because the e-ink
+      // clients cannot reliably send an Authorization header. Keep useful
+      // request logging, but never persist those device tokens in HA logs.
+      redact: { paths: ["req.url"], censor: redactRequestUrl },
+    },
     bodyLimit: 12_582_912,
     // Home Assistant and reverse proxies provide the public scheme/host here.
     // Printed QR codes must use that external HTTPS origin, not the container's.
