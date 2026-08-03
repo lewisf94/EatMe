@@ -114,6 +114,23 @@ export function buildApp(): FastifyInstance {
     return reply.code(status).send({ error: { message } });
   });
 
+  // Backups export the entire database and restore replaces it outright. That
+  // is a far larger blast radius than any other endpoint, so unlike the rest of
+  // the API these fail closed rather than falling back to "open on the LAN":
+  // without auth_token there is no way to tell the household apart from anyone
+  // else on the network, and a single anonymous request must not be able to
+  // overwrite the food history.
+  app.addHook("onRequest", async (req, reply) => {
+    if (!req.url.split("?")[0].startsWith("/api/maintenance/")) return;
+    if (!config.authToken) {
+      return reply.code(503).send({
+        error: {
+          message: "set auth_token in the EatMe app configuration to use backups and restore",
+        },
+      });
+    }
+  });
+
   // Optional bearer-token gate (belt-and-braces on top of LAN/tailnet-only
   // reachability). Off by default; /api/health stays open for the HA watchdog.
   if (config.authToken) {

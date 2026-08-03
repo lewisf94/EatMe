@@ -76,8 +76,8 @@ async function checkBitmap(baseUrl, path, token, query) {
   if (!contentType.includes("image/bmp")) {
     throw new Error(`${path} returned content-type ${contentType || "(missing)"}`);
   }
-  if (response.headers.get("cache-control") !== "no-store") {
-    throw new Error(`${path} did not return cache-control: no-store`);
+  if (response.headers.get("cache-control") !== "no-cache") {
+    throw new Error(`${path} did not return cache-control: no-cache`);
   }
   const etag = response.headers.get("etag");
   if (!/^"[0-9a-f]{16}"$/.test(etag ?? "")) {

@@ -66,7 +66,7 @@ before stock is added.
 |---|---|
 | `tailscale_authkey` | Paste a Tailscale **auth key** for the first connection. Once the app has joined successfully, clear this field; EatMe reuses its saved Tailscale identity. |
 | `tailscale_hostname` | The device name on your tailnet (default `eatme`). |
-| `auth_token` | Recommended. If set, the API requires this token; paste the same value into the app's **Settings > Access token** on each device. |
+| `auth_token` | Recommended. If set, the API requires this token; paste the same value into the app's **Settings > Access token** on each device. **Required** for the backup/restore section of Settings, which refuses to run without it. |
 | `display_token` | Recommended when using the fallback ESPHome endpoint. Use a long, random device-specific token. |
 | `magtag_token` | Recommended for `/api/magtag/*`. Put the same long, random value in `EATME_TOKEN` on the MagTag; do not reuse the household admin token. |
 | `receipt_provider` | `local` for the separate **EatMe OCR** app. `stub` returns fixed demonstration data and is only useful for development. |
@@ -98,13 +98,16 @@ EatMe **Settings** now includes:
 - **MagTag health** for last check-in, battery, Wi-Fi signal, firmware, wake
   duration and whether the last wake actually refreshed the screen.
 - **Data & backups** for a versioned full JSON export/restore, inventory CSV and
-  an on-demand database integrity check. EatMe also writes one atomic recovery
-  snapshot per day under `/data/backups`; Settings can retain 1â€“30 copies and
-  create one immediately or download the latest. Export a current backup before
-  using restore; restore replaces EatMe's food, recipes, shopping list and
-  history. Local snapshots are
-  included in Home Assistant backups but do not replace an occasional export to
-  another device.
+  an on-demand database integrity check. **These require `auth_token` to be
+  set.** Exporting reveals the whole database and restoring replaces it, so
+  unlike the rest of the API they refuse to run rather than staying open to
+  anything on the LAN; without a token they return "set auth_token in the EatMe
+  app configuration to use backups and restore". EatMe still writes one atomic
+  recovery snapshot per day under `/data/backups` regardless; Settings can
+  retain 1–30 copies and create one immediately or download the latest. Export a
+  current backup before using restore; restore replaces EatMe's food, recipes,
+  shopping list and history. Local snapshots are included in Home Assistant
+  backups but do not replace an occasional export to another device.
 - **Home Assistant** status. EatMe publishes `sensor.eatme_expiring_soon` and
   `sensor.eatme_low_stock` every 15 minutes. Optional shopping mirroring sends
   new EatMe list actions one-way to Home Assistant's built-in shopping list.

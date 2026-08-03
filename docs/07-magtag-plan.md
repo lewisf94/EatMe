@@ -141,6 +141,14 @@ Keep the first version **read-only**: button presses only change what's
 displayed, never inventory data. `POST /api/magtag/button` records which
 button was pressed for future use, but has no side effects today.
 
+**Battery level is not shown on the panel.** A rendered page is only redrawn
+when its content actually changes — that is what makes an e-paper display
+cheap to run — so a percentage baked into the image would freeze at whatever
+it was when the food list last moved, and could read 87% while the cell is
+really at 20%. The device reports its battery on every wake instead, and the
+app's **Settings > MagTag health** shows the current value, along with the
+time of the last check-in, when that screen is opened.
+
 ## Solar plan
 
 Defer solar until the battery-powered MagTag has been measured. When ready,

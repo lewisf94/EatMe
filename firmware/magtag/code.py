@@ -14,6 +14,7 @@ import alarm
 import board
 import digitalio
 import displayio
+import microcontroller
 import socketpool
 import ssl
 import wifi
@@ -28,6 +29,8 @@ TOKEN = os.getenv("EATME_TOKEN", "")
 REQUEST_TIMEOUT = 15
 ETAG_START = 1
 ETAG_LENGTH = 16
+# A full e-paper refresh takes a few seconds; this only bounds a stuck panel.
+PANEL_BUSY_TIMEOUT = 30
 
 
 def _bounded_number(name, default, minimum, maximum):
@@ -152,14 +155,26 @@ def read_cached_etag(page):
     return '"{}"'.format(raw)
 
 
+def clear_page_cache(page="urgent"):
+    """Forget the retained validator so the next fetch is unconditional.
+
+    NUL bytes fail the hex check in read_cached_etag, so this cannot be
+    mistaken for a real server validator.
+    """
+    write_last_page(page)
+    for offset in range(ETAG_LENGTH):
+        alarm.sleep_memory[ETAG_START + offset] = 0
+
+
 def write_page_cache(page, etag):
     """Retain one page validator across deep sleep without writing flash."""
-    write_last_page(page)
     raw = str(etag or "").strip('"')
     if len(raw) != ETAG_LENGTH or any(
         char not in "0123456789abcdef" for char in raw
     ):
-        raw = "0" * ETAG_LENGTH
+        clear_page_cache(page)
+        return
+    write_last_page(page)
     for offset, byte in enumerate(raw.encode("ascii")):
         alarm.sleep_memory[ETAG_START + offset] = byte
 
@@ -250,7 +265,14 @@ def show_bitmap(bitmap, palette):
             if attempt == 2:
                 raise
             time.sleep(2)
+    # Bounded: a panel whose busy line never clears must not hold the board
+    # awake, because skipping deep sleep costs orders of magnitude more energy
+    # than a partially refreshed image does.
+    deadline = time.monotonic() + PANEL_BUSY_TIMEOUT
     while getattr(display, "busy", False):
+        if time.monotonic() > deadline:
+            print("Panel stayed busy; continuing to deep sleep")
+            break
         time.sleep(0.1)
 
 
@@ -298,20 +320,42 @@ def report_status(requests, action, battery, display_updated, wake_seconds):
 
 
 def deep_sleep(seconds):
+    """Enter deep sleep, degrading rather than failing.
+
+    Reaching deep sleep matters more than any feature that might prevent it:
+    an awake ESP32-S2 draws tens of milliamps, so a board that falls through
+    to the REPL flattens the LiPo in days instead of lasting months. Button
+    wake is therefore best-effort, and an outright sleep failure resets the
+    board so the next boot can try again.
+    """
     print("Sleeping for", seconds, "seconds")
-    wifi.radio.enabled = False
-    alarms = [alarm.time.TimeAlarm(monotonic_time=time.monotonic() + seconds)]
+    try:
+        wifi.radio.enabled = False
+    except Exception as error:
+        print("Could not disable the radio:", safe_error(error))
+
+    time_alarm = alarm.time.TimeAlarm(monotonic_time=time.monotonic() + seconds)
     if BUTTON_WAKE:
-        alarms.extend(
-            alarm.pin.PinAlarm(pin=pin, value=False, pull=True) for pin in BUTTON_ACTIONS
-        )
-    alarm.exit_and_deep_sleep_until_alarms(*alarms)
+        try:
+            buttons = [
+                alarm.pin.PinAlarm(pin=pin, value=False, pull=True)
+                for pin in BUTTON_ACTIONS
+            ]
+            alarm.exit_and_deep_sleep_until_alarms(time_alarm, *buttons)
+        except Exception as error:
+            # Any pin that cannot arm a wake alarm costs the button interface,
+            # never the sleep itself.
+            print("Button wake unavailable:", safe_error(error))
+    alarm.exit_and_deep_sleep_until_alarms(time_alarm)
 
 
 def main():
     started = time.monotonic()
     if alarm.wake_alarm is None:
-        alarm.sleep_memory[0] = PAGE_IDS["urgent"]
+        # Sleep memory after a cold boot or hard reset is not ours to trust.
+        # Clearing the page and its validator together stops a retained ETag
+        # from being paired with a page it never described.
+        clear_page_cache()
 
     action = wake_action()
     page = read_last_page() if action == "refresh" else (action or "urgent")
@@ -342,7 +386,15 @@ def main():
         print("Wake cycle failed:", safe_error(error))
 
     sleep_seconds = SLEEP_HOURS * 3600 if success else FAILURE_SLEEP_MINUTES * 60
-    deep_sleep(sleep_seconds)
+    try:
+        deep_sleep(sleep_seconds)
+    except Exception as error:
+        # Last resort. Falling off the end of code.py would drop the board into
+        # the REPL and leave it awake until the battery is flat; a reset at
+        # least retries the whole cycle.
+        print("Deep sleep failed; resetting:", safe_error(error))
+        time.sleep(2)
+        microcontroller.reset()
 
 
 main()
