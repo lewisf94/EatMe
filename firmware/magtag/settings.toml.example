@@ -19,7 +19,7 @@ EATME_SLEEP_HOURS = "12"
 # Retry sooner after a Wi-Fi, HTTP or display failure.
 EATME_FAILURE_SLEEP_MINUTES = "30"
 
-# Button wake enables the urgent / recipe / shopping / refresh interface, but
+# Button wake enables the urgent / recipe / shopping / status interface, but
 # PinAlarm uses more sleep current on ESP32-S2. Set false for maximum runtime
 # when scheduled updates are all you need.
 EATME_BUTTON_WAKE = true

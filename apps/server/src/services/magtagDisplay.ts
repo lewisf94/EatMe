@@ -26,6 +26,11 @@ export type MagtagChrome = { rendered: string };
 export type MagtagUrgentData = MagtagChrome & { urgent: { name: string; sub: string }[] };
 export type MagtagRecipeData = MagtagChrome & { recipe?: string; matchedItems: string[] };
 export type MagtagShoppingData = MagtagChrome & { items: string[]; total: number };
+export type MagtagStatusData = MagtagChrome & {
+  battery: number | null;
+  rssi: number | null;
+  lastSync: string | null;
+};
 
 function chrome(title: string): string[] {
   return [
@@ -102,6 +107,27 @@ export function buildMagtagShoppingSvg(d: MagtagShoppingData): string {
       )}</text>`,
     );
   }
+  parts.push(footer(d));
+  return wrap(parts);
+}
+
+/** Button 4: device health — battery, Wi-Fi signal and when it last checked
+ *  in. Every button press bypasses the ETag cache (see routes/magtag.ts), so
+ *  this always shows the value from the wake that requested it, not a frozen
+ *  reading from whenever some other page's content last changed. */
+export function buildMagtagStatusSvg(d: MagtagStatusData): string {
+  const parts = chrome("STATUS");
+  parts.push(
+    `<text x="8" y="${HEADER_H + 22}" font-family="Archivo" font-weight="700" font-size="15">Battery ${esc(
+      d.battery == null ? "unknown" : `${d.battery}%`,
+    )}</text>`,
+    `<text x="8" y="${HEADER_H + 42}" font-family="Archivo" font-size="11" fill="#555">Wi-Fi ${esc(
+      d.rssi == null ? "unknown" : `${d.rssi} dBm`,
+    )}</text>`,
+    `<text x="8" y="${HEADER_H + 62}" font-family="Archivo" font-size="11" fill="#555">Last sync ${esc(
+      d.lastSync ?? "never",
+    )}</text>`,
+  );
   parts.push(footer(d));
   return wrap(parts);
 }

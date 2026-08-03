@@ -66,9 +66,9 @@ BUTTON_ACTIONS = {
     board.BUTTON_A: "urgent",
     board.BUTTON_B: "recipe",
     board.BUTTON_C: "shopping",
-    board.BUTTON_D: "refresh",
+    board.BUTTON_D: "status",
 }
-PAGE_IDS = {"urgent": 0, "recipe": 1, "shopping": 2}
+PAGE_IDS = {"urgent": 0, "recipe": 1, "shopping": 2, "status": 3}
 ID_PAGES = {value: key for key, value in PAGE_IDS.items()}
 
 # Keep the speaker and NeoPixel rail disabled during the wake and across sleep.
@@ -358,7 +358,12 @@ def main():
         clear_page_cache()
 
     action = wake_action()
-    page = read_last_page() if action == "refresh" else (action or "urgent")
+    # A timer wake always checks the default urgent page. A button wake shows
+    # its own page (A-D map to a distinct page each — see BUTTON_ACTIONS) and
+    # always redraws it: allow_not_modified is False for every button press,
+    # so the ETag cache is only ever used to skip a scheduled, unattended
+    # refresh, never one the user just asked for by pressing something.
+    page = action or "urgent"
     battery = read_battery_percent()
     success = False
 
@@ -367,7 +372,7 @@ def main():
         pool = socketpool.SocketPool(wifi.radio)
         requests = adafruit_requests.Session(pool, ssl.create_default_context())
         bitmap, palette, etag, display_updated = fetch_dashboard(
-            requests, page, battery, allow_not_modified=action != "refresh"
+            requests, page, battery, allow_not_modified=action is None
         )
         if display_updated:
             show_bitmap(bitmap, palette)

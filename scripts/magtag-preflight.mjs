@@ -153,6 +153,7 @@ async function main() {
   await checkBitmap(baseUrl, "/api/magtag/page/urgent", token);
   await checkBitmap(baseUrl, "/api/magtag/page/recipe", token);
   await checkBitmap(baseUrl, "/api/magtag/page/shopping", token);
+  await checkBitmap(baseUrl, "/api/magtag/page/status", token);
 
   await expectStatus(endpoint(baseUrl, "/api/magtag/page/not-a-page", token), 404);
   console.log("[ok] unknown pages are rejected");
@@ -166,7 +167,7 @@ async function main() {
     });
     console.log("[ok] status and battery telemetry accepted");
 
-    await postJson(baseUrl, "/api/magtag/button", token, { button: "refresh" });
+    await postJson(baseUrl, "/api/magtag/button", token, { button: "status" });
     await postJson(baseUrl, "/api/magtag/button", token, { button: "not-a-button" }, 400);
     console.log("[ok] valid button accepted and invalid button rejected");
   }

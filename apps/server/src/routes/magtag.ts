@@ -21,17 +21,22 @@ import {
   buildMagtagUrgentSvg,
   buildMagtagRecipeSvg,
   buildMagtagShoppingSvg,
+  buildMagtagStatusSvg,
   renderMagtagBmp,
   MAGTAG_ROWS,
   type MagtagUrgentData,
   type MagtagRecipeData,
   type MagtagShoppingData,
+  type MagtagStatusData,
 } from "../services/magtagDisplay.js";
 
-const PAGES = ["urgent", "recipe", "shopping"] as const;
+// Buttons A-D and pages are the same four things, one to one — there is no
+// separate "refresh" button. Instead, the firmware skips its ETag cache on
+// every button-triggered wake (never on a scheduled one), so any button
+// press redraws its page even when the content happens to be unchanged.
+const PAGES = ["urgent", "recipe", "shopping", "status"] as const;
 type Page = (typeof PAGES)[number];
 const isPage = (v: string): v is Page => (PAGES as readonly string[]).includes(v);
-const BUTTONS = [...PAGES, "refresh"] as const;
 const MagtagStatus = z.object({
   battery: z.number().min(0).max(100).nullable().optional(),
   wakeReason: z.string().max(100).nullable().optional(),
@@ -40,7 +45,7 @@ const MagtagStatus = z.object({
   displayUpdated: z.boolean().nullable().optional(),
   wakeSeconds: z.number().min(0).max(300).nullable().optional(),
 });
-const MagtagButton = z.object({ button: z.enum(BUTTONS) });
+const MagtagButton = z.object({ button: z.enum(PAGES) });
 
 function jsonSetting<T>(key: string): T | null {
   try {
@@ -88,13 +93,29 @@ function gatherShopping(now = new Date()): MagtagShoppingData {
   };
 }
 
-type PageData = MagtagUrgentData | MagtagRecipeData | MagtagShoppingData;
+function gatherStatus(now = new Date()): MagtagStatusData {
+  const tz = timezone();
+  const status = jsonSetting<{
+    battery: number | null;
+    rssi: number | null;
+    reportedAt: string;
+  }>("magtag_status");
+  return {
+    battery: status?.battery ?? null,
+    rssi: status?.rssi ?? null,
+    lastSync: status ? formatRendered(tz, new Date(status.reportedAt)) : null,
+    rendered: formatRendered(tz, now),
+  };
+}
+
+type PageData = MagtagUrgentData | MagtagRecipeData | MagtagShoppingData | MagtagStatusData;
 type CachedPage = { semantic: string; payload: Buffer; etag: string };
 const pageCache = new Map<Page, CachedPage>();
 
 function gatherPage(page: Page): PageData {
   if (page === "recipe") return gatherRecipe();
   if (page === "shopping") return gatherShopping();
+  if (page === "status") return gatherStatus();
   return gatherUrgent();
 }
 
@@ -118,7 +139,9 @@ function renderPage(page: Page): CachedPage {
       ? renderMagtagBmp(buildMagtagRecipeSvg(data as MagtagRecipeData))
       : page === "shopping"
         ? renderMagtagBmp(buildMagtagShoppingSvg(data as MagtagShoppingData))
-        : renderMagtagBmp(buildMagtagUrgentSvg(data as MagtagUrgentData));
+        : page === "status"
+          ? renderMagtagBmp(buildMagtagStatusSvg(data as MagtagStatusData))
+          : renderMagtagBmp(buildMagtagUrgentSvg(data as MagtagUrgentData));
   const next = {
     semantic,
     payload,
@@ -195,8 +218,8 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
     return sendPage("urgent", req, reply);
   });
 
-  // Buttons 2-3: the recipe suggestion or shopping summary, fetched only when
-  // the matching button is pressed.
+  // Buttons 2-4: recipe suggestion, shopping summary, or device status —
+  // fetched only when the matching button is pressed.
   app.get("/magtag/page/:page", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
     if (unauthorized(q)) return reply.code(401).send({ error: { message: "unauthorized" } });
