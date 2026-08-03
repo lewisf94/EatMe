@@ -51,11 +51,6 @@ function jsonSetting<T>(key: string): T | null {
   }
 }
 
-function currentBattery(): number | undefined {
-  const stored = getSetting("display_battery", "");
-  return stored === "" ? undefined : Number(stored);
-}
-
 function gatherUrgent(now = new Date()): MagtagUrgentData {
   const tz = timezone();
   const rows = listInventory({}, civilToday(tz, now)).sort(byUrgency);
@@ -64,7 +59,6 @@ function gatherUrgent(now = new Date()): MagtagUrgentData {
       .filter((r) => r.status !== "ok")
       .slice(0, MAGTAG_ROWS)
       .map((r) => ({ name: r.name, sub: urgencyPhrase(r) })),
-    battery: currentBattery(),
     rendered: formatRendered(tz, now),
   };
 }
@@ -81,7 +75,6 @@ function gatherRecipe(now = new Date()): MagtagRecipeData {
   return {
     recipe: top?.recipe.name,
     matchedItems: top?.matchedItems.map((m) => m.name) ?? [],
-    battery: currentBattery(),
     rendered: formatRendered(tz, now),
   };
 }
@@ -91,7 +84,6 @@ function gatherShopping(now = new Date()): MagtagShoppingData {
   return {
     items: items.map((i) => i.name),
     total: items.length,
-    battery: currentBattery(),
     rendered: formatRendered(timezone(), now),
   };
 }
@@ -107,10 +99,11 @@ function gatherPage(page: Page): PageData {
 }
 
 function semanticPage(page: Page, data: PageData): string {
-  // The footer time and battery are useful context when content changes, but
-  // neither should force an e-paper refresh by itself. Battery is still sent
-  // to device health on every wake, including a 304 response.
-  const { rendered: _rendered, battery: _battery, ...content } = data;
+  // The footer time must not force an e-paper refresh by itself; only real
+  // content changes justify a redraw. Battery isn't drawn on the panel at all
+  // (see services/magtagDisplay.ts), so it can't go stale here — it is still
+  // recorded for device health on every wake, including a 304 response.
+  const { rendered: _rendered, ...content } = data;
   return JSON.stringify({ page, content });
 }
 
@@ -145,7 +138,10 @@ function etagMatches(raw: string | undefined, etag: string): boolean {
 
 function sendPage(page: Page, req: FastifyRequest, reply: FastifyReply) {
   const rendered = renderPage(page);
-  reply.header("ETag", rendered.etag).header("Cache-Control", "no-store");
+  // no-cache, not no-store: the device is *expected* to keep the last validator
+  // and revalidate on the next wake, which is what makes the 304 path (and the
+  // skipped e-paper refresh) possible. no-store would forbid retaining it.
+  reply.header("ETag", rendered.etag).header("Cache-Control", "no-cache");
   const candidate = req.headers["if-none-match"];
   const ifNoneMatch = Array.isArray(candidate) ? candidate.join(",") : candidate;
   if (etagMatches(ifNoneMatch, rendered.etag)) return reply.code(304).send();

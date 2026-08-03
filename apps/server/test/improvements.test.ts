@@ -148,61 +148,124 @@ describe("recipe actions", () => {
 });
 
 describe("backup and database maintenance", () => {
-  it("round-trips a versioned backup and rejects malformed input atomically", async () => {
-    await intake("In backup");
-    const exported = await app.inject({ method: "GET", url: "/api/maintenance/backup" });
-    expect(exported.statusCode).toBe(200);
-    const backup = exported.json();
-    expect(backup).toEqual(expect.objectContaining({ format: "eatme-backup", version: 1 }));
+  // This suite builds the app with auth_token empty. Backup/restore refuse to
+  // run in that state, so each test opts in explicitly — which also keeps the
+  // gate itself honest rather than silently disabled.
+  let config: (typeof import("../src/config.js"))["config"];
 
-    await intake("Added after backup");
-    const invalid = structuredClone(backup) as Record<string, unknown>;
-    invalid.format = "not-eatme";
-    const rejected = await app.inject({
-      method: "POST",
-      url: "/api/maintenance/restore",
-      payload: invalid,
-    });
-    expect(rejected.statusCode).toBe(400);
-    expect(db.prepare("SELECT 1 FROM products WHERE name='Added after backup'").get()).toBeTruthy();
-
-    const restored = await app.inject({
-      method: "POST",
-      url: "/api/maintenance/restore",
-      payload: backup,
-    });
-    expect(restored.statusCode).toBe(200);
-    expect(
-      db.prepare("SELECT 1 FROM products WHERE name='Added after backup'").get(),
-    ).toBeUndefined();
-    const integrity = await app.inject({ method: "GET", url: "/api/maintenance/integrity" });
-    expect(integrity.json().data).toEqual({ ok: true, quickCheck: "ok", foreignKeyErrors: 0 });
+  beforeAll(async () => {
+    ({ config } = await import("../src/config.js"));
   });
 
-  it("writes atomic automatic snapshots and prunes the oldest copies", async () => {
-    const { createAutomaticBackup } = await import("../src/services/backup.js");
-    createAutomaticBackup(2, new Date("2026-01-01T01:00:00.000Z"));
-    createAutomaticBackup(2, new Date("2026-01-02T01:00:00.000Z"));
-    const status = createAutomaticBackup(2, new Date("2026-01-03T01:00:00.000Z"));
+  const withAuthToken = async <T>(work: () => Promise<T>): Promise<T> => {
+    const previous = config.authToken;
+    config.authToken = "maintenance-test-token";
+    try {
+      return await work();
+    } finally {
+      config.authToken = previous;
+    }
+  };
 
-    expect(status).toEqual(
-      expect.objectContaining({ retention: 2, count: 2, latest: expect.any(Object) }),
-    );
-    const files = readdirSync(join(dataDir, "backups"));
-    expect(files).toHaveLength(2);
-    expect(files.some((file) => file.includes("2026-01-01"))).toBe(false);
-    const parsed = JSON.parse(readFileSync(join(dataDir, "backups", files.at(-1)!), "utf8"));
-    expect(parsed).toEqual(expect.objectContaining({ format: "eatme-backup", version: 1 }));
-    expect(files.some((file) => file.endsWith(".tmp"))).toBe(false);
-
-    const latest = await app.inject({
-      method: "GET",
-      url: "/api/maintenance/automatic-backups/latest",
-    });
-    expect(latest.statusCode).toBe(200);
-    expect(latest.headers["content-disposition"]).toContain("2026-01-03");
-    expect(latest.json()).toEqual(expect.objectContaining({ format: "eatme-backup", version: 1 }));
+  it("refuses to export or restore while auth_token is unset", async () => {
+    for (const [method, url] of [
+      ["GET", "/api/maintenance/backup"],
+      ["GET", "/api/maintenance/integrity"],
+      ["POST", "/api/maintenance/restore"],
+    ] as const) {
+      const response = await app.inject({
+        method,
+        url,
+        payload: method === "POST" ? {} : undefined,
+      });
+      expect(response.statusCode).toBe(503);
+      expect(response.json().error.message).toContain("auth_token");
+    }
+    // The gate must fail closed without touching data.
+    expect(db.prepare("SELECT 1 FROM _migrations LIMIT 1").get()).toBeTruthy();
   });
+
+  it("round-trips a versioned backup and rejects malformed input atomically", () =>
+    withAuthToken(async () => {
+      await intake("In backup");
+      const exported = await app.inject({ method: "GET", url: "/api/maintenance/backup" });
+      expect(exported.statusCode).toBe(200);
+      const backup = exported.json();
+      expect(backup).toEqual(expect.objectContaining({ format: "eatme-backup", version: 1 }));
+
+      await intake("Added after backup");
+      const invalid = structuredClone(backup) as Record<string, unknown>;
+      invalid.format = "not-eatme";
+      const rejected = await app.inject({
+        method: "POST",
+        url: "/api/maintenance/restore",
+        payload: invalid,
+      });
+      expect(rejected.statusCode).toBe(400);
+      expect(
+        db.prepare("SELECT 1 FROM products WHERE name='Added after backup'").get(),
+      ).toBeTruthy();
+
+      const restored = await app.inject({
+        method: "POST",
+        url: "/api/maintenance/restore",
+        payload: backup,
+      });
+      expect(restored.statusCode).toBe(200);
+      expect(
+        db.prepare("SELECT 1 FROM products WHERE name='Added after backup'").get(),
+      ).toBeUndefined();
+      const integrity = await app.inject({ method: "GET", url: "/api/maintenance/integrity" });
+      expect(integrity.json().data).toEqual({ ok: true, quickCheck: "ok", foreignKeyErrors: 0 });
+    }));
+
+  it("writes atomic automatic snapshots and prunes the oldest copies", () =>
+    withAuthToken(async () => {
+      const { createAutomaticBackup } = await import("../src/services/backup.js");
+      createAutomaticBackup(2, new Date("2026-01-01T01:00:00.000Z"));
+      createAutomaticBackup(2, new Date("2026-01-02T01:00:00.000Z"));
+      const status = createAutomaticBackup(2, new Date("2026-01-03T01:00:00.000Z"));
+
+      expect(status).toEqual(
+        expect.objectContaining({ retention: 2, count: 2, latest: expect.any(Object) }),
+      );
+      const files = readdirSync(join(dataDir, "backups"));
+      expect(files).toHaveLength(2);
+      expect(files.some((file) => file.includes("2026-01-01"))).toBe(false);
+      const parsed = JSON.parse(readFileSync(join(dataDir, "backups", files.at(-1)!), "utf8"));
+      expect(parsed).toEqual(expect.objectContaining({ format: "eatme-backup", version: 1 }));
+      expect(files.some((file) => file.endsWith(".tmp"))).toBe(false);
+
+      const latest = await app.inject({
+        method: "GET",
+        url: "/api/maintenance/automatic-backups/latest",
+      });
+      expect(latest.statusCode).toBe(200);
+      expect(latest.headers["content-disposition"]).toContain("2026-01-03");
+      expect(latest.json()).toEqual(
+        expect.objectContaining({ format: "eatme-backup", version: 1 }),
+      );
+    }));
+
+  it("clears the idempotency log so a replayed op cannot resurrect removed rows", () =>
+    withAuthToken(async () => {
+      const exported = await app.inject({ method: "GET", url: "/api/maintenance/backup" });
+      db.prepare("INSERT INTO op_log (op_id, result_json, at) VALUES (?, ?, ?)").run(
+        "intake:stale-op",
+        JSON.stringify({ stale: true }),
+        new Date().toISOString(),
+      );
+
+      const restored = await app.inject({
+        method: "POST",
+        url: "/api/maintenance/restore",
+        payload: exported.json(),
+      });
+      expect(restored.statusCode).toBe(200);
+      expect(
+        db.prepare("SELECT 1 FROM op_log WHERE op_id='intake:stale-op'").get(),
+      ).toBeUndefined();
+    }));
 });
 
 describe("Home Assistant publishing", () => {

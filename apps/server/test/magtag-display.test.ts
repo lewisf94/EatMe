@@ -43,8 +43,12 @@ describe("magtag urgent page", () => {
     expect(svg).not.toContain(`Item ${MAGTAG_ROWS}`);
   });
 
-  it("shows the battery percentage when reported", () => {
-    expect(buildMagtagUrgentSvg({ ...chrome, urgent: [], battery: 42 })).toContain("42%");
+  it("keeps battery off the panel, since a cached image would freeze the value", () => {
+    // The panel is only redrawn when its content changes, so a percentage baked
+    // into the image would show whatever it was when the food list last moved.
+    // Settings > MagTag health owns the live figure instead.
+    const svg = buildMagtagUrgentSvg({ ...chrome, urgent: [] });
+    expect(svg).not.toMatch(/\d+%/);
   });
 });
 
@@ -85,7 +89,7 @@ describe("magtag shopping page", () => {
 
 describe("magtag bmp render", () => {
   it("renders a valid 4-bit indexed BMP at exactly the MagTag panel size", () => {
-    const bmp = renderMagtagBmp(buildMagtagUrgentSvg({ ...chrome, urgent: [], battery: 64 }));
+    const bmp = renderMagtagBmp(buildMagtagUrgentSvg({ ...chrome, urgent: [] }));
     expect(bmpInfo(bmp)).toEqual({ w: MAGTAG_W, h: MAGTAG_H, bpp: 4 });
   });
 

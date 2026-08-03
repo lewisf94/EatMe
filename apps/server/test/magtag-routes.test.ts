@@ -125,7 +125,9 @@ describe("MagTag routes", () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.headers["content-type"]).toContain("image/bmp");
-      expect(response.headers["cache-control"]).toBe("no-store");
+      // no-cache keeps the validator usable so the device can revalidate and
+      // skip the e-paper refresh; no-store would forbid retaining it.
+      expect(response.headers["cache-control"]).toBe("no-cache");
       expectMagTagBitmap(response.rawPayload);
     }
 

@@ -82,6 +82,12 @@ with the USB data connection removed and the board powered from its battery.
       anti-aliased text without mirroring or inversion.
 - [ ] A Wi-Fi or server outage leaves the last e-ink image visible and retries
       after `EATME_FAILURE_SLEEP_MINUTES` rather than staying awake.
+- [ ] The board always reaches deep sleep. Reaching sleep takes priority over
+      every other feature, so if a button cannot arm a wake alarm the firmware
+      logs "Button wake unavailable" and sleeps on the timer alone rather than
+      dropping to the REPL. Confirm the serial console ends every cycle with a
+      "Sleeping for" line and never a traceback — an awake board flattens the
+      LiPo in days.
 - [ ] An unchanged scheduled wake reports `displayUpdated: false`, skips the
       display refresh and still records fresh battery/Wi-Fi health telemetry.
 - [ ] `POST /api/magtag/status` records battery, wake reason, firmware and RSSI;

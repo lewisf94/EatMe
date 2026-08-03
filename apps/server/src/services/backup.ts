@@ -172,6 +172,10 @@ export function restoreBackup(value: unknown): { rows: number } {
   const backup = validatedBackup(value);
   return atomic(() => {
     for (const table of [...TABLES].reverse()) db.exec(`DELETE FROM ${table}`);
+    // The idempotency log is deliberately not part of a backup, but leaving it
+    // populated would let a client replaying an operation id short-circuit
+    // against a cached result describing rows the restore just removed.
+    db.exec("DELETE FROM op_log");
     let rows = 0;
     for (const table of TABLES) {
       const columns = TABLE_COLUMNS[table];

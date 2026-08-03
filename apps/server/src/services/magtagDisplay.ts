@@ -14,23 +14,25 @@ const HEADER_H = 20;
 const FOOTER_H = 14;
 const ROW_H = (MAGTAG_H - HEADER_H - FOOTER_H) / MAGTAG_ROWS;
 
-export type MagtagChrome = { battery?: number; rendered: string };
+/** Battery is deliberately not on the panel. A rendered image is only redrawn
+ *  when its *content* changes — an e-paper refresh is the most expensive thing
+ *  this device does — so a percentage baked into the image would sit frozen at
+ *  whatever it was when the food list last changed, and could read 87% while
+ *  the cell is actually at 20%. The device reports battery on every wake and
+ *  the app's Settings > MagTag health shows the current value, fetched when
+ *  that screen is opened. */
+export type MagtagChrome = { rendered: string };
 
 export type MagtagUrgentData = MagtagChrome & { urgent: { name: string; sub: string }[] };
 export type MagtagRecipeData = MagtagChrome & { recipe?: string; matchedItems: string[] };
 export type MagtagShoppingData = MagtagChrome & { items: string[]; total: number };
 
-function chrome(title: string, d: MagtagChrome): string[] {
-  const parts = [
+function chrome(title: string): string[] {
+  return [
     `<rect width="${MAGTAG_W}" height="${MAGTAG_H}" fill="#fff"/>`,
     `<rect width="${MAGTAG_W}" height="${HEADER_H}" fill="#000"/>`,
     `<text x="8" y="14" font-family="Archivo" font-weight="700" font-size="12" fill="#fff">${esc(title)}</text>`,
   ];
-  if (d.battery != null)
-    parts.push(
-      `<text x="${MAGTAG_W - 8}" y="14" text-anchor="end" font-family="Archivo" font-size="10" fill="#fff">${d.battery}%</text>`,
-    );
-  return parts;
 }
 
 function footer(d: MagtagChrome): string {
@@ -43,7 +45,7 @@ function wrap(parts: string[]): string {
 
 /** Button 1: the same urgency list as the classic panel, cut down to two rows. */
 export function buildMagtagUrgentSvg(d: MagtagUrgentData): string {
-  const parts = chrome("EAT ME FIRST", d);
+  const parts = chrome("EAT ME FIRST");
   if (d.urgent.length === 0) {
     parts.push(
       `<text x="${MAGTAG_W / 2}" y="72" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="14">Nothing to use up</text>`,
@@ -63,7 +65,7 @@ export function buildMagtagUrgentSvg(d: MagtagUrgentData): string {
 
 /** Button 2: the top use-it-up recipe suggestion, if any recipe matches. */
 export function buildMagtagRecipeSvg(d: MagtagRecipeData): string {
-  const parts = chrome("RECIPE", d);
+  const parts = chrome("RECIPE");
   if (!d.recipe) {
     parts.push(
       `<text x="${MAGTAG_W / 2}" y="72" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="14">No suggestion</text>`,
@@ -85,7 +87,7 @@ export function buildMagtagRecipeSvg(d: MagtagRecipeData): string {
 
 /** Button 3: how many things are on the shopping list, and the first few. */
 export function buildMagtagShoppingSvg(d: MagtagShoppingData): string {
-  const parts = chrome("SHOPPING", d);
+  const parts = chrome("SHOPPING");
   if (d.total === 0) {
     parts.push(
       `<text x="${MAGTAG_W / 2}" y="72" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="14">List is empty</text>`,
