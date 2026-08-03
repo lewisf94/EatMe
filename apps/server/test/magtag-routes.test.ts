@@ -114,6 +114,7 @@ describe("MagTag routes", () => {
       "/api/magtag/page/urgent",
       "/api/magtag/page/recipe",
       "/api/magtag/page/shopping",
+      "/api/magtag/page/status",
     ];
 
     for (const path of paths) {
@@ -151,6 +152,29 @@ describe("MagTag routes", () => {
     expect(unchanged.rawPayload).toHaveLength(0);
     expect(unchanged.headers.etag).toBe(etag);
     expect(getSetting("display_battery")).toBe("72");
+  });
+
+  it("renders the status page from the last reported check-in", async () => {
+    const before = await app.inject({
+      method: "GET",
+      url: `/api/magtag/page/status?token=${DEVICE_TOKEN}`,
+    });
+    expect(before.statusCode).toBe(200);
+    expectMagTagBitmap(before.rawPayload);
+
+    setSetting(
+      "magtag_status",
+      JSON.stringify({ battery: 42, rssi: -61, reportedAt: new Date().toISOString() }),
+    );
+    const after = await app.inject({
+      method: "GET",
+      url: `/api/magtag/page/status?token=${DEVICE_TOKEN}`,
+    });
+    // A real check-in changes the rendered content, so this must not be the
+    // same image (or ETag) as before it — the status page exists precisely
+    // to show a value that a cached image would otherwise freeze.
+    expect(after.headers.etag).not.toBe(before.headers.etag);
+    expectMagTagBitmap(after.rawPayload);
   });
 
   it("returns 404 for an unknown page", async () => {

@@ -63,7 +63,9 @@ circup install adafruit_connection_manager adafruit_imageload adafruit_requests
 ## Buttons and battery life
 
 With `EATME_BUTTON_WAKE = true`, buttons A–D wake the board for urgent food,
-recipe, shopping and manual refresh pages. CircuitPython's published ESP32-S2
+recipe, shopping and device status pages, and each press always redraws its
+page even when the content hasn't changed — only a scheduled, unattended
+timer wake can skip an unchanged redraw. CircuitPython's published ESP32-S2
 figures put time-alarm deep sleep around 230 µA and pin-alarm sleep around
 1.65 mA. Set `EATME_BUTTON_WAKE = false` if scheduled updates matter more than
 the button interface. Measure the actual complete board rather than treating
@@ -74,8 +76,9 @@ with the USB data connection removed and the board powered from its battery.
 
 ## Verification checklist
 
-- [ ] Buttons A–D open urgent / recipe / shopping / refresh respectively when
-      button wake is enabled.
+- [ ] Buttons A–D open urgent / recipe / shopping / status respectively when
+      button wake is enabled, and each press redraws the panel even if its
+      content is unchanged from what's already showing.
 - [ ] `board.BATTERY` reports a plausible LiPo voltage and percentage on the
       delivered board revision.
 - [ ] The screen is landscape, uses all 296 × 128 pixels and shows four-gray
@@ -105,10 +108,12 @@ filesystem remount. The classic ESPHome display continues using PNG at
 `/api/display.png`.
 
 The server returns a strong `ETag` for each rendered page. The firmware retains
-the most recent validator in `alarm.sleep_memory` and sends `If-None-Match` on
-the next scheduled check. A `304 Not Modified` avoids the image transfer and the
-far more expensive e-paper refresh. Button D deliberately bypasses the
-validator, so a requested manual refresh still redraws the current page.
+the most recent validator in `alarm.sleep_memory` and sends `If-None-Match`
+only on a scheduled timer wake. A `304 Not Modified` then avoids the image
+transfer and the far more expensive e-paper refresh. Every button wake skips
+`If-None-Match` entirely, so pressing a button always redraws its page —
+someone pressing it is standing in front of the panel and expects to see it
+respond.
 
 MagTag endpoints are documented in
 [`docs/07-magtag-plan.md`](../../docs/07-magtag-plan.md). The CircuitPython

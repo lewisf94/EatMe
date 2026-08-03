@@ -106,7 +106,7 @@ Endpoints:
 | Endpoint | Purpose |
 |---|---|
 | `GET /api/magtag/display.bmp` | Dashboard image download (the default wake screen — urgent items) |
-| `GET /api/magtag/page/:page` | Selected page download (`urgent`, `recipe` or `shopping`) |
+| `GET /api/magtag/page/:page` | Selected page download (`urgent`, `recipe`, `shopping` or `status`) |
 | `POST /api/magtag/status` | Device status reporting (battery, wake reason, firmware, Wi-Fi signal, refresh result and wake duration) |
 | `POST /api/magtag/button` | Optional button-press telemetry |
 
@@ -130,12 +130,19 @@ proven.
 
 ## Interface plan
 
-The four onboard buttons select:
+The four onboard buttons each show their own page:
 
-1. Urgent food (the default dashboard);
+1. Urgent food (the default, timer-scheduled dashboard);
 2. Recipe suggestion;
 3. Shopping summary;
-4. Manual refresh (re-fetches the current page).
+4. Device status (battery, Wi-Fi signal, last successful check-in).
+
+Pressing any button always redraws its page, even if the content happens to be
+identical to what's already on screen. Only a scheduled, unattended timer wake
+skips the redraw when nothing has changed — that's the case the ETag cache
+exists for, to save the far more expensive e-paper refresh when no one is
+actually looking. A button press means someone is standing in front of it, so
+it always gets a fresh draw.
 
 Keep the first version **read-only**: button presses only change what's
 displayed, never inventory data. `POST /api/magtag/button` records which
@@ -154,7 +161,9 @@ time of the last check-in, when that screen is opened.
 Defer solar until the battery-powered MagTag has been measured. When ready,
 the later system can add:
 
-- Adafruit ADA6106 solar charger;
+- Adafruit ADA6106 — the **Adafruit bq25185 USB/DC/Solar Charger with 5 V
+  Boost, product 6106** — same board as the fallback plan's charger, just
+  referred to here by product number;
 - a 5–7 V solar panel;
 - the existing 2,000 mAh battery;
 - a regulated 5 V supply to the MagTag.

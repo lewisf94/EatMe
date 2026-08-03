@@ -3,6 +3,7 @@ import {
   buildMagtagUrgentSvg,
   buildMagtagRecipeSvg,
   buildMagtagShoppingSvg,
+  buildMagtagStatusSvg,
   renderMagtagBmp,
   MAGTAG_W,
   MAGTAG_H,
@@ -10,6 +11,7 @@ import {
   type MagtagUrgentData,
   type MagtagRecipeData,
   type MagtagShoppingData,
+  type MagtagStatusData,
 } from "../src/services/magtagDisplay.js";
 
 const chrome = { rendered: "Fri 24 Jul, 08:00" };
@@ -84,6 +86,28 @@ describe("magtag shopping page", () => {
     expect(svg).toContain("4 items to buy");
     expect(svg).toContain("Milk, Eggs, Bread");
     expect(svg).not.toContain("Butter");
+  });
+});
+
+describe("magtag status page", () => {
+  it("shows unknown for battery and signal before any device has checked in", () => {
+    const data: MagtagStatusData = { ...chrome, battery: null, rssi: null, lastSync: null };
+    const svg = buildMagtagStatusSvg(data);
+    expect(svg).toContain("Battery unknown");
+    expect(svg).toContain("Wi-Fi unknown");
+    expect(svg).toContain("Last sync never");
+  });
+
+  it("shows the last reported battery, signal and check-in time", () => {
+    const svg = buildMagtagStatusSvg({
+      ...chrome,
+      battery: 42,
+      rssi: -61,
+      lastSync: "Fri 24 Jul, 07:55",
+    });
+    expect(svg).toContain("Battery 42%");
+    expect(svg).toContain("Wi-Fi -61 dBm");
+    expect(svg).toContain("Last sync Fri 24 Jul, 07:55");
   });
 });
 
