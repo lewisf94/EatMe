@@ -2,6 +2,15 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.10.1
+
+- Fit MagTag product names using the bundled font's pixel widths instead of a
+  fixed character limit, so narrow names use the full 296-pixel display.
+- Increase small MagTag text size and contrast, add clearer row and footer
+  structure, and show the total number of urgent items alongside battery state.
+- Wrap recipe and shopping details over the previously unused screen space,
+  including a count of shopping items beyond the four-item preview.
+
 ## 0.10.0
 
 - Let MagTag firmware retain a content validator in deep-sleep memory and skip

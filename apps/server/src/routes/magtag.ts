@@ -59,11 +59,10 @@ function jsonSetting<T>(key: string): T | null {
 function gatherUrgent(now = new Date()): MagtagUrgentData {
   const tz = timezone();
   const rows = listInventory({}, civilToday(tz, now)).sort(byUrgency);
+  const urgent = rows.filter((r) => r.status !== "ok");
   return {
-    urgent: rows
-      .filter((r) => r.status !== "ok")
-      .slice(0, MAGTAG_ROWS)
-      .map((r) => ({ name: r.name, sub: urgencyPhrase(r) })),
+    urgent: urgent.slice(0, MAGTAG_ROWS).map((r) => ({ name: r.name, sub: urgencyPhrase(r) })),
+    urgentTotal: urgent.length,
     rendered: formatRendered(tz, now),
   };
 }

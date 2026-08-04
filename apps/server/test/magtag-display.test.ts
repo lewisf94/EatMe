@@ -8,6 +8,9 @@ import {
   MAGTAG_W,
   MAGTAG_H,
   MAGTAG_ROWS,
+  fitMagtagText,
+  measureMagtagText,
+  wrapMagtagText,
   type MagtagUrgentData,
   type MagtagRecipeData,
   type MagtagShoppingData,
@@ -52,6 +55,50 @@ describe("magtag urgent page", () => {
     const svg = buildMagtagUrgentSvg({ ...chrome, urgent: [] });
     expect(svg).not.toMatch(/\d+%/);
   });
+
+  it("uses the available pixel width instead of clipping names by character count", () => {
+    const name = "Reduced T W Some Price Rolls";
+    const svg = buildMagtagUrgentSvg({
+      ...chrome,
+      urgent: [{ name, sub: "Use by today" }],
+    });
+    expect(svg).toContain(name);
+    expect(svg).not.toContain("Reduced T W Some Price Ro…");
+  });
+
+  it("keeps small body text black and larger for four-gray panel contrast", () => {
+    const svg = buildMagtagUrgentSvg({
+      ...chrome,
+      urgent: [{ name: "Milk", sub: "Use by today" }],
+    });
+    expect(svg).toContain('font-size="11" fill="#000">Use by today</text>');
+    expect(svg).not.toContain('fill="#555"');
+  });
+
+  it("shows the total urgent count without reducing the item line width", () => {
+    const svg = buildMagtagUrgentSvg({
+      ...chrome,
+      urgentTotal: 5,
+      urgent: [{ name: "Milk", sub: "Use by today" }],
+    });
+    expect(svg).toContain("5 due");
+    expect(svg).not.toMatch(/\d+%/);
+  });
+});
+
+describe("magtag width-aware text", () => {
+  it("keeps narrow text that fits and ellipsizes genuinely wide text", () => {
+    const narrow = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii";
+    const wide = "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW";
+    expect(fitMagtagText(narrow, 280, 14, 700)).toBe(narrow);
+    const fittedWide = fitMagtagText(wide, 280, 14, 700);
+    expect(fittedWide).toMatch(/…$/);
+    expect(measureMagtagText(fittedWide, 14, 700)).toBeLessThanOrEqual(280);
+  });
+
+  it("wraps summaries onto the available lines before truncating", () => {
+    expect(wrapMagtagText("Milk Eggs Bread Butter", 80, 12, 400, 2)).toHaveLength(2);
+  });
 });
 
 describe("magtag recipe page", () => {
@@ -84,8 +131,16 @@ describe("magtag shopping page", () => {
       total: 4,
     });
     expect(svg).toContain("4 items to buy");
-    expect(svg).toContain("Milk, Eggs, Bread");
-    expect(svg).not.toContain("Butter");
+    expect(svg).toContain("Milk, Eggs, Bread, Butter");
+  });
+
+  it("reports how many shopping items remain beyond the four-item preview", () => {
+    const svg = buildMagtagShoppingSvg({
+      ...chrome,
+      items: ["Milk", "Eggs", "Bread", "Butter", "Apples", "Tea"],
+      total: 6,
+    });
+    expect(svg).toContain("+2 more");
   });
 });
 
@@ -108,6 +163,7 @@ describe("magtag status page", () => {
     expect(svg).toContain("Battery 42%");
     expect(svg).toContain("Wi-Fi -61 dBm");
     expect(svg).toContain("Last sync Fri 24 Jul, 07:55");
+    expect(svg).not.toContain('fill="#555"');
   });
 });
 

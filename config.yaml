@@ -1,6 +1,6 @@
 name: EatMe
 slug: eatme
-version: "0.10.0"
+version: "0.10.1"
 description: Self-hosted household food inventory with freshness guidance
 url: https://github.com/lewisf94/EatMe
 arch:
