@@ -10,6 +10,8 @@ Notable Home Assistant app changes are recorded here.
   structure, and show the total number of urgent items alongside battery state.
 - Wrap recipe and shopping details over the previously unused screen space,
   including a count of shopping items beyond the four-item preview.
+- Pin patched URI and glob parser dependencies, and extend authenticated
+  recovery coverage so release checks exercise the secured maintenance path.
 
 ## 0.10.0
 

@@ -21,3 +21,19 @@ test("client sends the token from localStorage and the authed API works", async 
     .poll(() => page.locator("#cat > option").count(), { timeout: 8000 })
     .toBeGreaterThan(1);
 });
+
+test("authenticated settings checks the database and creates a recovery snapshot", async ({
+  context,
+}) => {
+  await context.addInitScript(() => localStorage.setItem("eatme_token", "e2e-secret"));
+  const page = await context.newPage();
+
+  await page.goto("/settings");
+  await expect(page.getByText("Database check passed")).toBeVisible();
+  await expect(page.getByText("Automatic recovery snapshots")).toBeVisible();
+
+  await page.getByRole("button", { name: "Create now" }).click();
+  await expect(page.getByText("Recovery snapshot created")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download latest" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Export full backup" })).toBeVisible();
+});
