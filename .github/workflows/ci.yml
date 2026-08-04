@@ -190,7 +190,7 @@ jobs:
             | grep -F '"ok":true'
           curl --fail --silent \
             --header "content-type: application/json" \
-            --data '{"button":"refresh"}' \
+            --data '{"button":"status"}' \
             http://127.0.0.1:18099/api/magtag/button \
             | grep -F '"ok":true'
           curl --fail --silent http://127.0.0.1:18099/ | grep -F "<div id=\"root\">"
