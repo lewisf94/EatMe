@@ -1,8 +1,8 @@
 # EatMe MagTag firmware
 
 CircuitPython 10+ firmware for the [Adafruit MagTag](https://www.adafruit.com/product/4800).
-It wakes, connects to Wi-Fi, downloads one 296 × 128 four-gray BMP, refreshes
-the panel only when its content changed, reports optional status, and
+It wakes, connects to Wi-Fi, downloads one 296 × 128 indexed BMP, refreshes the
+panel only when its content changed, reports optional status, and
 deep-sleeps. The image stays in RAM and its short content validator plus
 selected page stay in sleep memory, so normal refreshes do not write to
 CIRCUITPY flash.
@@ -81,8 +81,8 @@ with the USB data connection removed and the board powered from its battery.
       content is unchanged from what's already showing.
 - [ ] `board.BATTERY` reports a plausible LiPo voltage and percentage on the
       delivered board revision.
-- [ ] The screen is landscape, uses all 296 × 128 pixels and shows four-gray
-      anti-aliased text without mirroring or inversion.
+- [ ] The screen is landscape, uses all 296 × 128 pixels and shows crisp,
+      high-contrast text without mirroring or inversion.
 - [ ] A Wi-Fi or server outage leaves the last e-ink image visible and retries
       after `EATME_FAILURE_SLEEP_MINUTES` rather than staying awake.
 - [ ] The board always reaches deep sleep. Reaching sleep takes priority over
@@ -101,10 +101,12 @@ with the USB data connection removed and the board powered from its battery.
 
 ## Why BMP
 
-The server quantizes each MagTag page to a compact 4-bit indexed BMP (~19 KB).
-`adafruit_imageload` decodes the HTTP response directly from `BytesIO`, so the
-client gets the panel's four gray levels without a temporary image file or
-filesystem remount. The classic ESPHome display continues using PNG at
+The server encodes each MagTag page as a compact 4-bit indexed BMP (~19 KB).
+`adafruit_imageload` decodes the HTTP response directly from `BytesIO`, without
+a temporary image file or filesystem remount. The palette preserves all four
+panel gray levels, but current text-first pages use only black and white after
+physical testing showed that intermediate anti-alias pixels made small text
+look faint. The classic ESPHome display continues using PNG at
 `/api/display.png`.
 
 The server returns a strong `ETag` for each rendered page. The firmware retains

@@ -86,9 +86,11 @@ delivered board in both modes before estimating battery life.
 
 ## Server changes
 
-Add a dedicated MagTag render profile that generates a four-level grayscale
-image at 296 x 128 pixels, matching the panel's native resolution and gray
-depth. Implemented in:
+Add a dedicated MagTag render profile that generates a 4-bit indexed image at
+296 x 128 pixels, matching the panel's native resolution. The palette retains
+the panel's four gray levels, while the text-first layouts deliberately use
+the black and white endpoints so small glyph edges stay readable on hardware.
+Implemented in:
 
 - `apps/server/src/services/magtagDisplay.ts` — the render profile (urgent,
   recipe and shopping layouts, sized for the small panel);
@@ -97,9 +99,11 @@ depth. Implemented in:
 
 The image is served as a **BMP**, not a PNG. `adafruit_imageload` can decode an
 indexed BMP directly from the HTTP response in memory, avoiding a temporary
-file and filesystem remount. The render profile quantizes to a 4-color grayscale palette and encodes a
-4-bit indexed BMP (~19 KB), a twelfth the size of an equivalent 24-bit BMP,
-which matters for wake time and therefore battery life.
+file and filesystem remount. The render profile encodes a four-entry grayscale
+palette in a 4-bit indexed BMP (~19 KB), a twelfth the size of an equivalent
+24-bit BMP. High-contrast pages currently use only the strongest black and
+white entries because physical-panel testing found intermediate anti-alias
+pixels too faint at small sizes.
 
 Endpoints:
 

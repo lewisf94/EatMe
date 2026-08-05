@@ -148,14 +148,14 @@ function chrome(title: string, context?: string): string[] {
     `<defs><clipPath id="body-clip"><rect x="${PAD_X}" y="${HEADER_H}" width="${CONTENT_W}" height="${MAGTAG_H - HEADER_H - FOOTER_H}"/></clipPath></defs>`,
     `<rect width="${MAGTAG_W}" height="${MAGTAG_H}" fill="#fff"/>`,
     `<rect width="${MAGTAG_W}" height="${HEADER_H}" fill="#000"/>`,
-    `<text x="${PAD_X}" y="15" font-family="Archivo" font-weight="700" font-size="12" fill="#fff">${esc(
-      fitMagtagText(title, 150, 12, 700),
+    `<text x="${PAD_X}" y="16" font-family="Archivo" font-weight="700" font-size="13" fill="#fff">${esc(
+      fitMagtagText(title, 150, 13, 700),
     )}</text>`,
   ];
   if (context)
     parts.push(
-      `<text x="${MAGTAG_W - PAD_X}" y="15" text-anchor="end" font-family="Archivo" font-weight="700" font-size="10" fill="#fff">${esc(
-        fitMagtagText(context, 126, 10, 700),
+      `<text x="${MAGTAG_W - PAD_X}" y="16" text-anchor="end" font-family="Archivo" font-weight="700" font-size="12" fill="#fff">${esc(
+        fitMagtagText(context, 126, 12, 700),
       )}</text>`,
     );
   return parts;
@@ -165,8 +165,8 @@ function footer(d: MagtagChrome): string {
   const top = MAGTAG_H - FOOTER_H;
   return [
     `<rect x="0" y="${top}" width="${MAGTAG_W}" height="${FOOTER_H}" fill="#000"/>`,
-    `<text x="${PAD_X}" y="${MAGTAG_H - 4}" font-family="Archivo" font-weight="700" font-size="10" fill="#fff">${esc(
-      fitMagtagText(`Updated ${d.rendered}`, CONTENT_W, 10, 700),
+    `<text x="${PAD_X}" y="${MAGTAG_H - 4}" font-family="Archivo" font-weight="700" font-size="12" fill="#fff">${esc(
+      fitMagtagText(`Updated ${d.rendered}`, CONTENT_W, 12, 700),
     )}</text>`,
   ].join("");
 }
@@ -181,8 +181,8 @@ export function buildMagtagUrgentSvg(d: MagtagUrgentData): string {
   const parts = chrome("EAT ME FIRST", total > 0 ? `${total} due` : undefined);
   if (d.urgent.length === 0) {
     parts.push(
-      `<text x="${MAGTAG_W / 2}" y="64" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="16">Nothing to use up</text>`,
-      `<text x="${MAGTAG_W / 2}" y="84" text-anchor="middle" font-family="Archivo" font-size="11">Everything is in good shape</text>`,
+      `<text x="${MAGTAG_W / 2}" y="63" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="17">Nothing to use up</text>`,
+      `<text x="${MAGTAG_W / 2}" y="85" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="13">Everything is in good shape</text>`,
     );
   } else {
     d.urgent.slice(0, MAGTAG_ROWS).forEach((item, i) => {
@@ -190,11 +190,11 @@ export function buildMagtagUrgentSvg(d: MagtagUrgentData): string {
       if (i > 0)
         parts.push(`<rect x="${PAD_X}" y="${top}" width="${CONTENT_W}" height="1" fill="#aaa"/>`);
       parts.push(
-        `<text x="${PAD_X}" y="${top + 17}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="14" fill="#000">${esc(
-          fitMagtagText(item.name, CONTENT_W, 14, 700),
+        `<text x="${PAD_X}" y="${top + 18}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="16" fill="#000">${esc(
+          fitMagtagText(item.name, CONTENT_W, 16, 700),
         )}</text>`,
-        `<text x="${PAD_X}" y="${top + 34}" clip-path="url(#body-clip)" font-family="Archivo" font-size="11" fill="#000">${esc(
-          fitMagtagText(item.sub, CONTENT_W, 11),
+        `<text x="${PAD_X}" y="${top + 38}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="14" fill="#000">${esc(
+          fitMagtagText(item.sub, CONTENT_W, 14, 700),
         )}</text>`,
       );
     });
@@ -208,25 +208,24 @@ export function buildMagtagRecipeSvg(d: MagtagRecipeData): string {
   const parts = chrome("RECIPE");
   if (!d.recipe) {
     parts.push(
-      `<text x="${MAGTAG_W / 2}" y="64" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="16">No suggestion yet</text>`,
-      `<text x="${MAGTAG_W / 2}" y="84" text-anchor="middle" font-family="Archivo" font-size="11">Add recipes to find a match</text>`,
+      `<text x="${MAGTAG_W / 2}" y="63" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="17">No suggestion yet</text>`,
+      `<text x="${MAGTAG_W / 2}" y="85" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="13">Add recipes to find a match</text>`,
     );
   } else {
-    const recipeLines = wrapMagtagText(d.recipe, CONTENT_W, 16, 700, 2);
+    const recipeLines = wrapMagtagText(d.recipe, CONTENT_W, 17, 700, 2);
     const uses = d.matchedItems.length
       ? `Uses: ${d.matchedItems.join(", ")}`
       : "Uses what's expiring";
-    const useLines = wrapMagtagText(uses, CONTENT_W, 11, 400, 2);
+    const useLines = wrapMagtagText(uses, CONTENT_W, 13, 700, 2);
     parts.push(
       ...recipeLines.map(
         (line, i) =>
-          `<text x="${PAD_X}" y="${HEADER_H + 20 + i * 18}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="16" fill="#000">${esc(line)}</text>`,
+          `<text x="${PAD_X}" y="${HEADER_H + 20 + i * 19}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="17" fill="#000">${esc(line)}</text>`,
       ),
       `<rect x="${PAD_X}" y="66" width="${CONTENT_W}" height="1" fill="#aaa"/>`,
-      `<text x="${PAD_X}" y="79" font-family="Archivo" font-weight="700" font-size="9" fill="#000">USE SOON</text>`,
       ...useLines.map(
         (line, i) =>
-          `<text x="${PAD_X}" y="${94 + i * 14}" clip-path="url(#body-clip)" font-family="Archivo" font-size="11" fill="#000">${esc(line)}</text>`,
+          `<text x="${PAD_X}" y="${84 + i * 18}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="13" fill="#000">${esc(line)}</text>`,
       ),
     );
   }
@@ -239,22 +238,22 @@ export function buildMagtagShoppingSvg(d: MagtagShoppingData): string {
   const parts = chrome("SHOPPING");
   if (d.total === 0) {
     parts.push(
-      `<text x="${MAGTAG_W / 2}" y="64" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="16">List is empty</text>`,
-      `<text x="${MAGTAG_W / 2}" y="84" text-anchor="middle" font-family="Archivo" font-size="11">Nothing to pick up</text>`,
+      `<text x="${MAGTAG_W / 2}" y="63" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="17">List is empty</text>`,
+      `<text x="${MAGTAG_W / 2}" y="85" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="13">Nothing to pick up</text>`,
     );
   } else {
     const shown = d.items.slice(0, 4);
     const remaining = Math.max(0, d.total - shown.length);
     const preview = `${shown.join(", ")}${remaining ? `; +${remaining} more` : ""}`;
-    const previewLines = wrapMagtagText(preview, CONTENT_W, 12, 400, 2);
+    const previewLines = wrapMagtagText(preview, CONTENT_W, 14, 700, 2);
     parts.push(
-      `<text x="${PAD_X}" y="43" font-family="Archivo" font-weight="700" font-size="17" fill="#000">${d.total} item${
+      `<text x="${PAD_X}" y="44" font-family="Archivo" font-weight="700" font-size="18" fill="#000">${d.total} item${
         d.total === 1 ? "" : "s"
       } to buy</text>`,
-      `<text x="${PAD_X}" y="63" font-family="Archivo" font-weight="700" font-size="9" fill="#000">NEXT</text>`,
+      `<rect x="${PAD_X}" y="55" width="${CONTENT_W}" height="1" fill="#aaa"/>`,
       ...previewLines.map(
         (line, i) =>
-          `<text x="${PAD_X}" y="${80 + i * 16}" clip-path="url(#body-clip)" font-family="Archivo" font-size="12" fill="#000">${esc(line)}</text>`,
+          `<text x="${PAD_X}" y="${75 + i * 20}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="14" fill="#000">${esc(line)}</text>`,
       ),
     );
   }
@@ -272,15 +271,15 @@ export function buildMagtagStatusSvg(d: MagtagStatusData): string {
   const signal = d.rssi == null ? "Wi-Fi unknown" : `Wi-Fi ${Math.round(d.rssi)} dBm`;
   const lastSync = `Last sync ${d.lastSync ?? "never"}`;
   parts.push(
-    `<text x="${PAD_X}" y="43" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="17" fill="#000">${esc(
-      fitMagtagText(battery, CONTENT_W, 17, 700),
+    `<text x="${PAD_X}" y="44" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="18" fill="#000">${esc(
+      fitMagtagText(battery, CONTENT_W, 18, 700),
     )}</text>`,
-    `<text x="${PAD_X}" y="68" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="12" fill="#000">${esc(
-      fitMagtagText(signal, CONTENT_W, 12, 700),
+    `<text x="${PAD_X}" y="70" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="14" fill="#000">${esc(
+      fitMagtagText(signal, CONTENT_W, 14, 700),
     )}</text>`,
-    `<rect x="${PAD_X}" y="78" width="${CONTENT_W}" height="1" fill="#aaa"/>`,
-    `<text x="${PAD_X}" y="98" clip-path="url(#body-clip)" font-family="Archivo" font-size="11" fill="#000">${esc(
-      fitMagtagText(lastSync, CONTENT_W, 11),
+    `<rect x="${PAD_X}" y="80" width="${CONTENT_W}" height="1" fill="#aaa"/>`,
+    `<text x="${PAD_X}" y="101" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="13" fill="#000">${esc(
+      fitMagtagText(lastSync, CONTENT_W, 13, 700),
     )}</text>`,
   );
   parts.push(footer(d));
@@ -291,17 +290,13 @@ export function buildMagtagStatusSvg(d: MagtagStatusData): string {
  *  profile called for by the hardware plan. */
 const GRAY_LEVELS = [0x00, 0x55, 0xaa, 0xff] as const;
 
-function nearestGrayIndex(v: number): number {
-  let best = 0;
-  let bestDiff = Math.abs(v - GRAY_LEVELS[0]);
-  for (let i = 1; i < GRAY_LEVELS.length; i++) {
-    const diff = Math.abs(v - GRAY_LEVELS[i]);
-    if (diff < bestDiff) {
-      best = i;
-      bestDiff = diff;
-    }
-  }
-  return best;
+/** Keep the four-entry indexed palette required by the panel decoder, but use
+ * only its strongest black and white endpoints for this text-first UI. Small
+ * anti-aliased glyph edges rendered as intermediate gray were visibly faint
+ * on the physical 2.9-inch panel. A generous cutoff slightly strengthens the
+ * edge pixels instead of letting them disappear into the white background. */
+function highContrastGrayIndex(v: number): number {
+  return v < 192 ? 0 : GRAY_LEVELS.length - 1;
 }
 
 /** Minimal 4-bit indexed BMP encoder (4 of the format's 16 possible palette
@@ -348,8 +343,8 @@ function encodeGrayBmp(width: number, height: number, rgba: Buffer): Buffer {
     for (let x = 0; x < width; x += 2) {
       // Every source channel is equal — the SVG palette above is grayscale
       // only — so reading the red channel alone is enough.
-      const hi = nearestGrayIndex(rgba[(srcY * width + x) * 4]);
-      const lo = x + 1 < width ? nearestGrayIndex(rgba[(srcY * width + x + 1) * 4]) : 0;
+      const hi = highContrastGrayIndex(rgba[(srcY * width + x) * 4]);
+      const lo = x + 1 < width ? highContrastGrayIndex(rgba[(srcY * width + x + 1) * 4]) : 0;
       buf[rowStart + x / 2] = (hi << 4) | lo;
     }
   }
