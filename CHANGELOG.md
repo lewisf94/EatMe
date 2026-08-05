@@ -2,6 +2,11 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.10.2
+
+- Render MagTag text with crisp black/white pixels, larger bold secondary
+  lines and fewer tiny labels for reliable reading on the physical panel.
+
 ## 0.10.1
 
 - Fit MagTag product names using the bundled font's pixel widths instead of a

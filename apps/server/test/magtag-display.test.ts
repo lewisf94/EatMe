@@ -66,12 +66,12 @@ describe("magtag urgent page", () => {
     expect(svg).not.toContain("Reduced T W Some Price Ro…");
   });
 
-  it("keeps small body text black and larger for four-gray panel contrast", () => {
+  it("keeps secondary body text black, bold and large for e-paper contrast", () => {
     const svg = buildMagtagUrgentSvg({
       ...chrome,
       urgent: [{ name: "Milk", sub: "Use by today" }],
     });
-    expect(svg).toContain('font-size="11" fill="#000">Use by today</text>');
+    expect(svg).toContain('font-weight="700" font-size="14" fill="#000">Use by today</text>');
     expect(svg).not.toContain('fill="#555"');
   });
 
@@ -190,5 +190,21 @@ describe("magtag bmp render", () => {
     for (let i = 0; i < 4; i++) palette.add(bmp.readUInt8(14 + 40 + i * 4));
     expect(palette.size).toBe(4);
     expect([...palette].sort((a, b) => a - b)).toEqual([0x00, 0x55, 0xaa, 0xff]);
+  });
+
+  it("uses only the strongest black and white palette entries for legibility", () => {
+    const bmp = renderMagtagBmp(
+      buildMagtagUrgentSvg({
+        ...chrome,
+        urgent: [{ name: "Reduced T W Some Price Rolls", sub: "Use by today" }],
+      }),
+    );
+    const dataOffset = bmp.readUInt32LE(10);
+    const used = new Set<number>();
+    for (const packed of bmp.subarray(dataOffset)) {
+      used.add(packed >> 4);
+      used.add(packed & 0x0f);
+    }
+    expect([...used].sort()).toEqual([0, 3]);
   });
 });

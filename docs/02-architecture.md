@@ -73,8 +73,9 @@ All layout happens server-side so the firmware stays dumb (and never needs refla
 
 1. A TS function builds an SVG string — "eat me first" top five, a use-it-up recipe, low-stock count, battery %, rendered date.
 2. `@resvg/resvg-js` rasterises the selected layout using bundled fonts. The
-   MagTag path quantizes this to a 296 × 128 four-gray indexed BMP; the fallback
-   Waveshare endpoint remains a 400 × 300 PNG.
+   MagTag path encodes this as a 296 × 128 indexed BMP with a four-gray palette;
+   its text layouts use the black/white endpoints for physical-panel contrast.
+   The fallback Waveshare endpoint remains a 400 × 300 PNG.
 3. The display wakes on a timer or optional button alarm, fetches one image over
    plain LAN HTTP, draws it, reports status and deep-sleeps. The MagTag retains
    the page ETag in sleep memory; a 304 response skips both the image transfer
