@@ -7,7 +7,7 @@
     "e2e": "node prepare.mjs && pnpm --filter @eatme/web build && playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "1.61.1",
-    "@types/node": "^22.0.0"
+    "@playwright/test": "1.62.1",
+    "@types/node": "^26.1.2"
   }
 }
