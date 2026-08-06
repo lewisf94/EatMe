@@ -76,12 +76,17 @@ async function checkBitmap(baseUrl, path, token, query) {
   if (!contentType.includes("image/bmp")) {
     throw new Error(`${path} returned content-type ${contentType || "(missing)"}`);
   }
-  if (response.headers.get("cache-control") !== "no-store") {
-    throw new Error(`${path} did not return cache-control: no-store`);
+  if (response.headers.get("cache-control") !== "no-cache") {
+    throw new Error(`${path} did not return cache-control: no-cache`);
+  }
+  const etag = response.headers.get("etag");
+  if (!/^"[0-9a-f]{16}"$/.test(etag ?? "")) {
+    throw new Error(`${path} did not return a valid content validator`);
   }
 
   inspectBitmap(Buffer.from(await response.arrayBuffer()));
   console.log(`[ok] ${path} -> ${WIDTH}x${HEIGHT}, ${BITS_PER_PIXEL}bpp BMP`);
+  return etag;
 }
 
 async function postJson(baseUrl, path, token, payload, expected = 200) {
@@ -135,10 +140,20 @@ async function main() {
     console.log("[skip] token rejection (EATME_MAGTAG_TOKEN is not set)");
   }
 
-  await checkBitmap(baseUrl, "/api/magtag/display.bmp", token, full ? { battery: 77 } : undefined);
+  const urgentEtag = await checkBitmap(
+    baseUrl,
+    "/api/magtag/display.bmp",
+    token,
+    full ? { battery: 77 } : undefined,
+  );
+  await expectStatus(endpoint(baseUrl, "/api/magtag/display.bmp", token), 304, {
+    headers: { "if-none-match": urgentEtag },
+  });
+  console.log("[ok] unchanged dashboard skips image transfer and panel refresh");
   await checkBitmap(baseUrl, "/api/magtag/page/urgent", token);
   await checkBitmap(baseUrl, "/api/magtag/page/recipe", token);
   await checkBitmap(baseUrl, "/api/magtag/page/shopping", token);
+  await checkBitmap(baseUrl, "/api/magtag/page/status", token);
 
   await expectStatus(endpoint(baseUrl, "/api/magtag/page/not-a-page", token), 404);
   console.log("[ok] unknown pages are rejected");
@@ -152,7 +167,7 @@ async function main() {
     });
     console.log("[ok] status and battery telemetry accepted");
 
-    await postJson(baseUrl, "/api/magtag/button", token, { button: "refresh" });
+    await postJson(baseUrl, "/api/magtag/button", token, { button: "status" });
     await postJson(baseUrl, "/api/magtag/button", token, { button: "not-a-button" }, 400);
     console.log("[ok] valid button accepted and invalid button rejected");
   }

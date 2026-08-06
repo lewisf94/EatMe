@@ -66,7 +66,7 @@ before stock is added.
 |---|---|
 | `tailscale_authkey` | Paste a Tailscale **auth key** for the first connection. Once the app has joined successfully, clear this field; EatMe reuses its saved Tailscale identity. |
 | `tailscale_hostname` | The device name on your tailnet (default `eatme`). |
-| `auth_token` | Recommended. If set, the API requires this token; paste the same value into the app's **Settings > Access token** on each device. |
+| `auth_token` | Recommended. If set, the API requires this token; paste the same value into the app's **Settings > Access token** on each device. **Required** for the backup/restore section of Settings, which refuses to run without it. |
 | `display_token` | Recommended when using the fallback ESPHome endpoint. Use a long, random device-specific token. |
 | `magtag_token` | Recommended for `/api/magtag/*`. Put the same long, random value in `EATME_TOKEN` on the MagTag; do not reuse the household admin token. |
 | `receipt_provider` | `local` for the separate **EatMe OCR** app. `stub` returns fixed demonstration data and is only useful for development. |
@@ -89,6 +89,29 @@ Dietary requirements can be selected in **EatMe > Settings**. They filter
 use-it-up suggestions and the repeat-safe starter-recipe import. Ingredient
 labels must still be checked for allergies and cross-contamination.
 
+## History, backups and Home Assistant
+
+EatMe **Settings** now includes:
+
+- **History & insights** for recent changes, undoing an accidental removal and
+  reviewing finished/binned patterns.
+- **MagTag health** for last check-in, battery, Wi-Fi signal, firmware, wake
+  duration and whether the last wake actually refreshed the screen.
+- **Data & backups** for a versioned full JSON export/restore, inventory CSV and
+  an on-demand database integrity check. **These require `auth_token` to be
+  set.** Exporting reveals the whole database and restoring replaces it, so
+  unlike the rest of the API they refuse to run rather than staying open to
+  anything on the LAN; without a token they return "set auth_token in the EatMe
+  app configuration to use backups and restore". EatMe still writes one atomic
+  recovery snapshot per day under `/data/backups` regardless; Settings can
+  retain 1–30 copies and create one immediately or download the latest. Export a
+  current backup before using restore; restore replaces EatMe's food, recipes,
+  shopping list and history. Local snapshots are included in Home Assistant
+  backups but do not replace an occasional export to another device.
+- **Home Assistant** status. EatMe publishes `sensor.eatme_expiring_soon` and
+  `sensor.eatme_low_stock` every 15 minutes. Optional shopping mirroring sends
+  new EatMe list actions one-way to Home Assistant's built-in shopping list.
+
 ## Enabling HTTPS (for the phone app, camera, and Web Push)
 
 1. In the **Tailscale admin console**: enable **MagicDNS** and **HTTPS
@@ -109,8 +132,10 @@ labels must still be checked for allergies and cross-contamination.
 
 ## Security
 
-- EatMe runs with Home Assistant protection enabled and requests no privileged
-  capabilities, host networking, Supervisor access or Docker access.
+- EatMe runs with Home Assistant protection enabled and requests only the Home
+  Assistant Core API used for its two sensors and optional shopping mirror. It
+  requests no privileged capabilities, host networking, Supervisor management
+  API or Docker access.
 - An enforced AppArmor profile limits executable files, writable paths and
   Linux capabilities. Home Assistant applies the profile when the app is
   installed.
@@ -119,6 +144,9 @@ labels must still be checked for allergies and cross-contamination.
   value into **EatMe > Settings > Access token** on every device.
 - Set separate long, random `display_token` and `magtag_token` values for any
   e-ink devices. The app logs a startup warning while an API token is unset.
+- Browser writes are accepted only from EatMe's own origin. The app also sends a
+  restrictive content policy, disables framing and unnecessary browser APIs,
+  and enables transport security on HTTPS requests.
 - Do not share a Tailscale auth key or EatMe access token in logs or screenshots.
 
 ## Notes & troubleshooting

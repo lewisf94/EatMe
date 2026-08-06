@@ -2,6 +2,52 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.10.2
+
+- Render MagTag text with crisp black/white pixels, larger bold secondary
+  lines and fewer tiny labels for reliable reading on the physical panel.
+
+## 0.10.1
+
+- Fit MagTag product names using the bundled font's pixel widths instead of a
+  fixed character limit, so narrow names use the full 296-pixel display.
+- Increase small MagTag text size and contrast, add clearer row and footer
+  structure, and show the total number of urgent items alongside battery state.
+- Wrap recipe and shopping details over the previously unused screen space,
+  including a count of shopping items beyond the four-item preview.
+- Pin patched URI and glob parser dependencies, and extend authenticated
+  recovery coverage so release checks exercise the secured maintenance path.
+
+## 0.10.0
+
+- Let MagTag firmware retain a content validator in deep-sleep memory and skip
+  both the BMP transfer and e-paper refresh when dashboard content is unchanged.
+- Cache unchanged MagTag renders server-side, report whether the screen was
+  updated and record wake duration in device health.
+- Create one atomic local recovery snapshot per day, retain a configurable 1â€“30
+  snapshots and provide an on-demand snapshot action in Settings.
+- Add same-origin enforcement for browser writes plus Content Security Policy,
+  permissions, framing and HTTPS transport headers.
+- Extend the reusable MagTag preflight and automated tests to cover conditional
+  refreshes, rotating snapshots and cross-site write rejection.
+
+## 0.9.0
+
+- Add a recent-activity screen with one-tap restore for accidentally removed
+  packs, plus 30/90/365-day finished, binned and cooking insights.
+- Estimate used and wasted value only when matched receipt prices are available;
+  never invent a price for unpriced food.
+- Add recipe actions to put missing ingredients on Shopping and record which
+  expiring ingredients were used without guessing a remaining quantity.
+- Add MagTag last-seen, battery, Wi-Fi, firmware and configurable stale/low
+  battery health reporting to Settings.
+- Add versioned full JSON backup/restore, inventory CSV export and transactional
+  SQLite integrity/foreign-key checks.
+- Publish expiring-soon and low-stock sensor states through Home Assistant's app
+  API, with optional one-way mirroring to its built-in shopping list.
+- Lazy-load phone screens and scanner code, reducing initial JavaScript from
+  about 412 KB to 228 KB while retaining offline precaching.
+
 ## 0.8.5
 
 - Upgrade the web and server runtimes to patched React Router, Fastify and

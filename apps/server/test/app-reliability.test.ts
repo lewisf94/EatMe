@@ -167,6 +167,31 @@ describe("input validation", () => {
     expect(response.statusCode).toBe(400);
     expect(response.json().error.message).toBe("invalid subscription");
   });
+
+  it("sets browser protections and rejects cross-origin writes", async () => {
+    const health = await app.inject({ method: "GET", url: "/api/health" });
+    expect(health.headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(health.headers["content-security-policy"]).toContain("'wasm-unsafe-eval'");
+    expect(health.headers["permissions-policy"]).toContain("camera=(self)");
+    expect(health.headers["x-frame-options"]).toBe("DENY");
+
+    const rejected = await app.inject({
+      method: "POST",
+      url: "/api/products",
+      headers: { origin: "https://evil.example", host: "eatme.example" },
+      payload: { name: "Cross-site product", categoryId },
+    });
+    expect(rejected.statusCode).toBe(403);
+    expect(rejected.json().error.message).toBe("cross-origin write rejected");
+
+    const accepted = await app.inject({
+      method: "POST",
+      url: "/api/products",
+      headers: { origin: "http://eatme.example", host: "eatme.example" },
+      payload: { name: "Same-origin product", categoryId },
+    });
+    expect(accepted.statusCode).toBe(200);
+  });
 });
 
 describe("bounded external lookups", () => {
