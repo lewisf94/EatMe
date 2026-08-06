@@ -11,6 +11,8 @@ export default function UseItUp() {
   const [hits, setHits] = useState<UseItUpHit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const td = today();
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export default function UseItUp() {
       </header>
       <div className="screen">
         {error && <p className="alert">{error}</p>}
+        {note && <p className="syncbar">{note}</p>}
 
         {loading ? (
           <p className="empty">Loading…</p>
@@ -70,6 +73,62 @@ export default function UseItUp() {
                         </a>
                       )}
                       {h.recipe.notes && <p className="cook-missing">{h.recipe.notes}</p>}
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                        <button
+                          className="btn btn-primary"
+                          disabled={busy === h.recipe.id}
+                          onClick={() => {
+                            setBusy(h.recipe.id);
+                            void api
+                              .markCooked(h.recipe.id)
+                              .then(
+                                ({ used }) =>
+                                  setNote(
+                                    used.length
+                                      ? `Recorded ${h.recipe.name} using ${used.join(", ")}`
+                                      : "No expiring ingredients to record",
+                                  ),
+                                (reason) =>
+                                  setError(
+                                    reason instanceof Error
+                                      ? reason.message
+                                      : "Couldn’t record cooking",
+                                  ),
+                              )
+                              .finally(() => setBusy(null));
+                          }}
+                        >
+                          I cooked this
+                        </button>
+                        {h.missing.length > 0 && (
+                          <button
+                            className="btn btn-line"
+                            disabled={busy === h.recipe.id}
+                            onClick={() => {
+                              setBusy(h.recipe.id);
+                              void api
+                                .shopMissing(h.recipe.id)
+                                .then(
+                                  ({ added }) =>
+                                    setNote(
+                                      added.length
+                                        ? `Added ${added.join(", ")} to Shopping`
+                                        : "Those ingredients are already on Shopping",
+                                    ),
+                                  (reason) =>
+                                    setError(
+                                      reason instanceof Error
+                                        ? reason.message
+                                        : "Couldn’t update Shopping",
+                                    ),
+                                )
+                                .finally(() => setBusy(null));
+                            }}
+                          >
+                            Add missing to Shopping
+                          </button>
+                        )}
+                      </div>
                     </article>
                   ))}
                 </div>

@@ -90,12 +90,31 @@ describe("MagTag routes", () => {
     expect(adminOnly.statusCode).toBe(401);
   });
 
+  it("keeps the household health view behind the admin token", async () => {
+    const deviceOnly = await app.inject({
+      method: "GET",
+      url: `/api/magtag/health?token=${DEVICE_TOKEN}`,
+    });
+    expect(deviceOnly.statusCode).toBe(401);
+
+    const admin = await app.inject({
+      method: "GET",
+      url: "/api/magtag/health",
+      headers: { authorization: "Bearer admin-route-test-token" },
+    });
+    expect(admin.statusCode).toBe(200);
+    expect(admin.json().data).toEqual(
+      expect.objectContaining({ configured: true, isStale: expect.any(Boolean) }),
+    );
+  });
+
   it("serves every supported 296x128 four-colour page and records battery", async () => {
     const paths = [
       "/api/magtag/display.bmp?battery=73",
       "/api/magtag/page/urgent",
       "/api/magtag/page/recipe",
       "/api/magtag/page/shopping",
+      "/api/magtag/page/status",
     ];
 
     for (const path of paths) {
@@ -107,11 +126,55 @@ describe("MagTag routes", () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.headers["content-type"]).toContain("image/bmp");
-      expect(response.headers["cache-control"]).toBe("no-store");
+      // no-cache keeps the validator usable so the device can revalidate and
+      // skip the e-paper refresh; no-store would forbid retaining it.
+      expect(response.headers["cache-control"]).toBe("no-cache");
       expectMagTagBitmap(response.rawPayload);
     }
 
     expect(getSetting("display_battery")).toBe("73");
+  });
+
+  it("returns 304 when dashboard content has not changed", async () => {
+    const first = await app.inject({
+      method: "GET",
+      url: `/api/magtag/display.bmp?token=${DEVICE_TOKEN}`,
+    });
+    const etag = first.headers.etag;
+    expect(etag).toMatch(/^"[0-9a-f]{16}"$/);
+
+    const unchanged = await app.inject({
+      method: "GET",
+      url: `/api/magtag/display.bmp?token=${DEVICE_TOKEN}&battery=72`,
+      headers: { "if-none-match": etag },
+    });
+    expect(unchanged.statusCode).toBe(304);
+    expect(unchanged.rawPayload).toHaveLength(0);
+    expect(unchanged.headers.etag).toBe(etag);
+    expect(getSetting("display_battery")).toBe("72");
+  });
+
+  it("renders the status page from the last reported check-in", async () => {
+    const before = await app.inject({
+      method: "GET",
+      url: `/api/magtag/page/status?token=${DEVICE_TOKEN}`,
+    });
+    expect(before.statusCode).toBe(200);
+    expectMagTagBitmap(before.rawPayload);
+
+    setSetting(
+      "magtag_status",
+      JSON.stringify({ battery: 42, rssi: -61, reportedAt: new Date().toISOString() }),
+    );
+    const after = await app.inject({
+      method: "GET",
+      url: `/api/magtag/page/status?token=${DEVICE_TOKEN}`,
+    });
+    // A real check-in changes the rendered content, so this must not be the
+    // same image (or ETag) as before it — the status page exists precisely
+    // to show a value that a cached image would otherwise freeze.
+    expect(after.headers.etag).not.toBe(before.headers.etag);
+    expectMagTagBitmap(after.rawPayload);
   });
 
   it("returns 404 for an unknown page", async () => {
@@ -132,6 +195,8 @@ describe("MagTag routes", () => {
         wakeReason: "button_b",
         firmware: "test-firmware",
         rssi: -47,
+        displayUpdated: false,
+        wakeSeconds: 2.4,
       },
     });
 
@@ -146,6 +211,8 @@ describe("MagTag routes", () => {
         wakeReason: "button_b",
         firmware: "test-firmware",
         rssi: -47,
+        displayUpdated: false,
+        wakeSeconds: 2.4,
         reportedAt: expect.any(String),
       }),
     );

@@ -14,6 +14,7 @@ import alarm
 import board
 import digitalio
 import displayio
+import microcontroller
 import socketpool
 import ssl
 import wifi
@@ -26,6 +27,10 @@ import adafruit_requests
 SERVER = os.getenv("EATME_SERVER", "http://homeassistant.local:8099").rstrip("/")
 TOKEN = os.getenv("EATME_TOKEN", "")
 REQUEST_TIMEOUT = 15
+ETAG_START = 1
+ETAG_LENGTH = 16
+# A full e-paper refresh takes a few seconds; this only bounds a stuck panel.
+PANEL_BUSY_TIMEOUT = 30
 
 
 def _bounded_number(name, default, minimum, maximum):
@@ -61,9 +66,9 @@ BUTTON_ACTIONS = {
     board.BUTTON_A: "urgent",
     board.BUTTON_B: "recipe",
     board.BUTTON_C: "shopping",
-    board.BUTTON_D: "refresh",
+    board.BUTTON_D: "status",
 }
-PAGE_IDS = {"urgent": 0, "recipe": 1, "shopping": 2}
+PAGE_IDS = {"urgent": 0, "recipe": 1, "shopping": 2, "status": 3}
 ID_PAGES = {value: key for key, value in PAGE_IDS.items()}
 
 # Keep the speaker and NeoPixel rail disabled during the wake and across sleep.
@@ -133,6 +138,47 @@ def write_last_page(page):
     alarm.sleep_memory[0] = PAGE_IDS.get(page, 0)
 
 
+def read_cached_etag(page):
+    """Return the last strong ETag for this page from retained sleep memory."""
+    if read_last_page() != page:
+        return None
+    try:
+        raw = bytes(
+            alarm.sleep_memory[ETAG_START : ETAG_START + ETAG_LENGTH]
+        ).decode("ascii")
+    except (UnicodeError, ValueError):
+        return None
+    if len(raw) != ETAG_LENGTH or any(
+        char not in "0123456789abcdef" for char in raw
+    ):
+        return None
+    return '"{}"'.format(raw)
+
+
+def clear_page_cache(page="urgent"):
+    """Forget the retained validator so the next fetch is unconditional.
+
+    NUL bytes fail the hex check in read_cached_etag, so this cannot be
+    mistaken for a real server validator.
+    """
+    write_last_page(page)
+    for offset in range(ETAG_LENGTH):
+        alarm.sleep_memory[ETAG_START + offset] = 0
+
+
+def write_page_cache(page, etag):
+    """Retain one page validator across deep sleep without writing flash."""
+    raw = str(etag or "").strip('"')
+    if len(raw) != ETAG_LENGTH or any(
+        char not in "0123456789abcdef" for char in raw
+    ):
+        clear_page_cache(page)
+        return
+    write_last_page(page)
+    for offset, byte in enumerate(raw.encode("ascii")):
+        alarm.sleep_memory[ETAG_START + offset] = byte
+
+
 def read_battery_percent():
     """Read the documented MagTag battery divider and return 0–100."""
     battery_pin = getattr(board, "BATTERY", None)
@@ -165,17 +211,29 @@ def connect_wifi():
         wifi.radio.connect(ssid, password, timeout=REQUEST_TIMEOUT)
 
 
-def fetch_dashboard(requests, page, battery):
+def fetch_dashboard(requests, page, battery, allow_not_modified=True):
     path = DASHBOARD_PATH if page == "urgent" else PAGE_PATH.format(page=page)
     url = with_token(SERVER + path)
     if battery is not None:
         url = add_query(url, "battery", battery)
 
-    response = requests.get(url, timeout=REQUEST_TIMEOUT)
+    cached_etag = read_cached_etag(page) if allow_not_modified else None
+    response = (
+        requests.get(
+            url,
+            headers={"If-None-Match": cached_etag},
+            timeout=REQUEST_TIMEOUT,
+        )
+        if cached_etag
+        else requests.get(url, timeout=REQUEST_TIMEOUT)
+    )
     try:
+        if response.status_code == 304 and cached_etag:
+            return None, None, cached_etag, False
         if response.status_code != 200:
             raise RuntimeError("EatMe returned HTTP {}".format(response.status_code))
         payload = response.content
+        etag = response.headers.get("ETag") or response.headers.get("etag")
         if len(payload) < 54 or len(payload) > 65536:
             raise RuntimeError("EatMe returned an invalid MagTag image size")
         image_bytes = BytesIO(payload)
@@ -189,7 +247,7 @@ def fetch_dashboard(requests, page, battery):
     )
     if bitmap.width != 296 or bitmap.height != 128:
         raise RuntimeError("Expected a 296 x 128 MagTag image")
-    return bitmap, palette
+    return bitmap, palette, etag, True
 
 
 def show_bitmap(bitmap, palette):
@@ -207,7 +265,14 @@ def show_bitmap(bitmap, palette):
             if attempt == 2:
                 raise
             time.sleep(2)
+    # Bounded: a panel whose busy line never clears must not hold the board
+    # awake, because skipping deep sleep costs orders of magnitude more energy
+    # than a partially refreshed image does.
+    deadline = time.monotonic() + PANEL_BUSY_TIMEOUT
     while getattr(display, "busy", False):
+        if time.monotonic() > deadline:
+            print("Panel stayed busy; continuing to deep sleep")
+            break
         time.sleep(0.1)
 
 
@@ -218,7 +283,7 @@ def wifi_rssi():
         return None
 
 
-def report_status(requests, action, battery):
+def report_status(requests, action, battery, display_updated, wake_seconds):
     try:
         response = requests.post(
             with_token(SERVER + STATUS_PATH),
@@ -226,8 +291,10 @@ def report_status(requests, action, battery):
                 {
                     "battery": battery,
                     "wakeReason": "button:{}".format(action) if action else "timer",
-                    "firmware": "eatme-magtag/0.2",
+                    "firmware": "eatme-magtag/0.3",
                     "rssi": wifi_rssi(),
+                    "displayUpdated": display_updated,
+                    "wakeSeconds": wake_seconds,
                 }
             ),
             headers={"Content-Type": "application/json"},
@@ -253,22 +320,50 @@ def report_status(requests, action, battery):
 
 
 def deep_sleep(seconds):
+    """Enter deep sleep, degrading rather than failing.
+
+    Reaching deep sleep matters more than any feature that might prevent it:
+    an awake ESP32-S2 draws tens of milliamps, so a board that falls through
+    to the REPL flattens the LiPo in days instead of lasting months. Button
+    wake is therefore best-effort, and an outright sleep failure resets the
+    board so the next boot can try again.
+    """
     print("Sleeping for", seconds, "seconds")
-    wifi.radio.enabled = False
-    alarms = [alarm.time.TimeAlarm(monotonic_time=time.monotonic() + seconds)]
+    try:
+        wifi.radio.enabled = False
+    except Exception as error:
+        print("Could not disable the radio:", safe_error(error))
+
+    time_alarm = alarm.time.TimeAlarm(monotonic_time=time.monotonic() + seconds)
     if BUTTON_WAKE:
-        alarms.extend(
-            alarm.pin.PinAlarm(pin=pin, value=False, pull=True) for pin in BUTTON_ACTIONS
-        )
-    alarm.exit_and_deep_sleep_until_alarms(*alarms)
+        try:
+            buttons = [
+                alarm.pin.PinAlarm(pin=pin, value=False, pull=True)
+                for pin in BUTTON_ACTIONS
+            ]
+            alarm.exit_and_deep_sleep_until_alarms(time_alarm, *buttons)
+        except Exception as error:
+            # Any pin that cannot arm a wake alarm costs the button interface,
+            # never the sleep itself.
+            print("Button wake unavailable:", safe_error(error))
+    alarm.exit_and_deep_sleep_until_alarms(time_alarm)
 
 
 def main():
+    started = time.monotonic()
     if alarm.wake_alarm is None:
-        alarm.sleep_memory[0] = PAGE_IDS["urgent"]
+        # Sleep memory after a cold boot or hard reset is not ours to trust.
+        # Clearing the page and its validator together stops a retained ETag
+        # from being paired with a page it never described.
+        clear_page_cache()
 
     action = wake_action()
-    page = read_last_page() if action == "refresh" else (action or "urgent")
+    # A timer wake always checks the default urgent page. A button wake shows
+    # its own page (A-D map to a distinct page each — see BUTTON_ACTIONS) and
+    # always redraws it: allow_not_modified is False for every button press,
+    # so the ETag cache is only ever used to skip a scheduled, unattended
+    # refresh, never one the user just asked for by pressing something.
+    page = action or "urgent"
     battery = read_battery_percent()
     success = False
 
@@ -276,16 +371,35 @@ def main():
         connect_wifi()
         pool = socketpool.SocketPool(wifi.radio)
         requests = adafruit_requests.Session(pool, ssl.create_default_context())
-        bitmap, palette = fetch_dashboard(requests, page, battery)
-        show_bitmap(bitmap, palette)
-        write_last_page(page)
-        report_status(requests, action, battery)
+        bitmap, palette, etag, display_updated = fetch_dashboard(
+            requests, page, battery, allow_not_modified=action is None
+        )
+        if display_updated:
+            show_bitmap(bitmap, palette)
+            write_page_cache(page, etag)
+        else:
+            print("Dashboard unchanged; keeping the existing e-paper image")
+        report_status(
+            requests,
+            action,
+            battery,
+            display_updated,
+            round(time.monotonic() - started, 2),
+        )
         success = True
     except Exception as error:
         print("Wake cycle failed:", safe_error(error))
 
     sleep_seconds = SLEEP_HOURS * 3600 if success else FAILURE_SLEEP_MINUTES * 60
-    deep_sleep(sleep_seconds)
+    try:
+        deep_sleep(sleep_seconds)
+    except Exception as error:
+        # Last resort. Falling off the end of code.py would drop the board into
+        # the REPL and leave it awake until the battery is flat; a reset at
+        # least retries the whole cycle.
+        print("Deep sleep failed; resetting:", safe_error(error))
+        time.sleep(2)
+        microcontroller.reset()
 
 
 main()

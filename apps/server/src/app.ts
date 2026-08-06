@@ -16,8 +16,27 @@ import { registerShopping } from "./routes/shopping.js";
 import { registerPush } from "./routes/push.js";
 import { registerLabels } from "./routes/labels.js";
 import { registerGuidance } from "./routes/guidance.js";
+import { registerActivity } from "./routes/activity.js";
+import { registerMaintenance } from "./routes/maintenance.js";
+import { registerHomeAssistant } from "./routes/homeAssistant.js";
 import { redactRequestUrl } from "./services/logging.js";
-import { bearerCredential, secretMatches } from "./services/security.js";
+import { bearerCredential, browserOriginMatches, secretMatches } from "./services/security.js";
+
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "img-src 'self' data: blob:",
+  "style-src 'self' 'unsafe-inline'",
+  // The barcode detector compiles its own same-origin ZXing WebAssembly. This
+  // narrower source expression permits WebAssembly without allowing eval().
+  "script-src 'self' 'wasm-unsafe-eval'",
+  "connect-src 'self'",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+].join("; ");
 
 /** Build the Fastify app. Call migrate()/seedIfEmpty() before this so the
  *  repositories' prepared statements bind against existing tables. */
@@ -52,10 +71,33 @@ export function buildApp(): FastifyInstance {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("Referrer-Policy", "no-referrer");
     reply.header("X-Permitted-Cross-Domain-Policies", "none");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+    reply.header(
+      "Permissions-Policy",
+      "camera=(self), geolocation=(), microphone=(), payment=(), usb=()",
+    );
+    if (req.protocol === "https") {
+      reply.header("Strict-Transport-Security", "max-age=31536000");
+    }
     if (req.url.split("?")[0].startsWith("/api/") && !reply.hasHeader("Cache-Control")) {
       reply.header("Cache-Control", "no-store");
     }
     return payload;
+  });
+
+  app.addHook("onRequest", async (req, reply) => {
+    if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return;
+    const origin = req.headers.origin;
+    if (
+      origin &&
+      !browserOriginMatches(origin, req.protocol, [
+        req.headers["x-forwarded-host"],
+        req.headers.host,
+      ])
+    ) {
+      return reply.code(403).send({ error: { message: "cross-origin write rejected" } });
+    }
   });
 
   app.setErrorHandler((error, req, reply) => {
@@ -72,6 +114,23 @@ export function buildApp(): FastifyInstance {
     return reply.code(status).send({ error: { message } });
   });
 
+  // Backups export the entire database and restore replaces it outright. That
+  // is a far larger blast radius than any other endpoint, so unlike the rest of
+  // the API these fail closed rather than falling back to "open on the LAN":
+  // without auth_token there is no way to tell the household apart from anyone
+  // else on the network, and a single anonymous request must not be able to
+  // overwrite the food history.
+  app.addHook("onRequest", async (req, reply) => {
+    if (!req.url.split("?")[0].startsWith("/api/maintenance/")) return;
+    if (!config.authToken) {
+      return reply.code(503).send({
+        error: {
+          message: "set auth_token in the EatMe app configuration to use backups and restore",
+        },
+      });
+    }
+  });
+
   // Optional bearer-token gate (belt-and-braces on top of LAN/tailnet-only
   // reachability). Off by default; /api/health stays open for the HA watchdog.
   if (config.authToken) {
@@ -83,7 +142,8 @@ export function buildApp(): FastifyInstance {
       if (path === "/api/display.png" && config.displayToken) return;
       // Same reasoning for the MagTag, plus it must never carry the household
       // admin token — MAGTAG_TOKEN is its own device-scoped credential.
-      if (path.startsWith("/api/magtag/") && config.magtagToken) return;
+      if (path.startsWith("/api/magtag/") && path !== "/api/magtag/health" && config.magtagToken)
+        return;
       if (!secretMatches(bearerCredential(req.headers.authorization), config.authToken)) {
         return reply.code(401).send({ error: { message: "unauthorized" } });
       }
@@ -99,6 +159,9 @@ export function buildApp(): FastifyInstance {
   app.register(registerTaxonomy, { prefix: "/api" });
   app.register(registerLookup, { prefix: "/api" });
   app.register(registerGuidance, { prefix: "/api" });
+  app.register(registerActivity, { prefix: "/api" });
+  app.register(registerMaintenance, { prefix: "/api" });
+  app.register(registerHomeAssistant, { prefix: "/api" });
   app.register(registerSettings, { prefix: "/api" });
   app.register(registerDisplay, { prefix: "/api" });
   app.register(registerMagtag, { prefix: "/api" });

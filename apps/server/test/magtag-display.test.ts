@@ -3,13 +3,18 @@ import {
   buildMagtagUrgentSvg,
   buildMagtagRecipeSvg,
   buildMagtagShoppingSvg,
+  buildMagtagStatusSvg,
   renderMagtagBmp,
   MAGTAG_W,
   MAGTAG_H,
   MAGTAG_ROWS,
+  fitMagtagText,
+  measureMagtagText,
+  wrapMagtagText,
   type MagtagUrgentData,
   type MagtagRecipeData,
   type MagtagShoppingData,
+  type MagtagStatusData,
 } from "../src/services/magtagDisplay.js";
 
 const chrome = { rendered: "Fri 24 Jul, 08:00" };
@@ -43,8 +48,56 @@ describe("magtag urgent page", () => {
     expect(svg).not.toContain(`Item ${MAGTAG_ROWS}`);
   });
 
-  it("shows the battery percentage when reported", () => {
-    expect(buildMagtagUrgentSvg({ ...chrome, urgent: [], battery: 42 })).toContain("42%");
+  it("keeps battery off the panel, since a cached image would freeze the value", () => {
+    // The panel is only redrawn when its content changes, so a percentage baked
+    // into the image would show whatever it was when the food list last moved.
+    // Settings > MagTag health owns the live figure instead.
+    const svg = buildMagtagUrgentSvg({ ...chrome, urgent: [] });
+    expect(svg).not.toMatch(/\d+%/);
+  });
+
+  it("uses the available pixel width instead of clipping names by character count", () => {
+    const name = "Reduced T W Some Price Rolls";
+    const svg = buildMagtagUrgentSvg({
+      ...chrome,
+      urgent: [{ name, sub: "Use by today" }],
+    });
+    expect(svg).toContain(name);
+    expect(svg).not.toContain("Reduced T W Some Price Ro…");
+  });
+
+  it("keeps secondary body text black, bold and large for e-paper contrast", () => {
+    const svg = buildMagtagUrgentSvg({
+      ...chrome,
+      urgent: [{ name: "Milk", sub: "Use by today" }],
+    });
+    expect(svg).toContain('font-weight="700" font-size="14" fill="#000">Use by today</text>');
+    expect(svg).not.toContain('fill="#555"');
+  });
+
+  it("shows the total urgent count without reducing the item line width", () => {
+    const svg = buildMagtagUrgentSvg({
+      ...chrome,
+      urgentTotal: 5,
+      urgent: [{ name: "Milk", sub: "Use by today" }],
+    });
+    expect(svg).toContain("5 due");
+    expect(svg).not.toMatch(/\d+%/);
+  });
+});
+
+describe("magtag width-aware text", () => {
+  it("keeps narrow text that fits and ellipsizes genuinely wide text", () => {
+    const narrow = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii";
+    const wide = "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW";
+    expect(fitMagtagText(narrow, 280, 14, 700)).toBe(narrow);
+    const fittedWide = fitMagtagText(wide, 280, 14, 700);
+    expect(fittedWide).toMatch(/…$/);
+    expect(measureMagtagText(fittedWide, 14, 700)).toBeLessThanOrEqual(280);
+  });
+
+  it("wraps summaries onto the available lines before truncating", () => {
+    expect(wrapMagtagText("Milk Eggs Bread Butter", 80, 12, 400, 2)).toHaveLength(2);
   });
 });
 
@@ -78,14 +131,45 @@ describe("magtag shopping page", () => {
       total: 4,
     });
     expect(svg).toContain("4 items to buy");
-    expect(svg).toContain("Milk, Eggs, Bread");
-    expect(svg).not.toContain("Butter");
+    expect(svg).toContain("Milk, Eggs, Bread, Butter");
+  });
+
+  it("reports how many shopping items remain beyond the four-item preview", () => {
+    const svg = buildMagtagShoppingSvg({
+      ...chrome,
+      items: ["Milk", "Eggs", "Bread", "Butter", "Apples", "Tea"],
+      total: 6,
+    });
+    expect(svg).toContain("+2 more");
+  });
+});
+
+describe("magtag status page", () => {
+  it("shows unknown for battery and signal before any device has checked in", () => {
+    const data: MagtagStatusData = { ...chrome, battery: null, rssi: null, lastSync: null };
+    const svg = buildMagtagStatusSvg(data);
+    expect(svg).toContain("Battery unknown");
+    expect(svg).toContain("Wi-Fi unknown");
+    expect(svg).toContain("Last sync never");
+  });
+
+  it("shows the last reported battery, signal and check-in time", () => {
+    const svg = buildMagtagStatusSvg({
+      ...chrome,
+      battery: 42,
+      rssi: -61,
+      lastSync: "Fri 24 Jul, 07:55",
+    });
+    expect(svg).toContain("Battery 42%");
+    expect(svg).toContain("Wi-Fi -61 dBm");
+    expect(svg).toContain("Last sync Fri 24 Jul, 07:55");
+    expect(svg).not.toContain('fill="#555"');
   });
 });
 
 describe("magtag bmp render", () => {
   it("renders a valid 4-bit indexed BMP at exactly the MagTag panel size", () => {
-    const bmp = renderMagtagBmp(buildMagtagUrgentSvg({ ...chrome, urgent: [], battery: 64 }));
+    const bmp = renderMagtagBmp(buildMagtagUrgentSvg({ ...chrome, urgent: [] }));
     expect(bmpInfo(bmp)).toEqual({ w: MAGTAG_W, h: MAGTAG_H, bpp: 4 });
   });
 
@@ -106,5 +190,21 @@ describe("magtag bmp render", () => {
     for (let i = 0; i < 4; i++) palette.add(bmp.readUInt8(14 + 40 + i * 4));
     expect(palette.size).toBe(4);
     expect([...palette].sort((a, b) => a - b)).toEqual([0x00, 0x55, 0xaa, 0xff]);
+  });
+
+  it("uses only the strongest black and white palette entries for legibility", () => {
+    const bmp = renderMagtagBmp(
+      buildMagtagUrgentSvg({
+        ...chrome,
+        urgent: [{ name: "Reduced T W Some Price Rolls", sub: "Use by today" }],
+      }),
+    );
+    const dataOffset = bmp.readUInt32LE(10);
+    const used = new Set<number>();
+    for (const packed of bmp.subarray(dataOffset)) {
+      used.add(packed >> 4);
+      used.add(packed & 0x0f);
+    }
+    expect([...used].sort()).toEqual([0, 3]);
   });
 });
