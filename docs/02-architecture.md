@@ -73,11 +73,14 @@ All layout happens server-side so the firmware stays dumb (and never needs refla
 
 1. A TS function builds an SVG string — "eat me first" top five, a use-it-up recipe, low-stock count, battery %, rendered date.
 2. `@resvg/resvg-js` rasterises the selected layout using bundled fonts. The
-   MagTag path quantizes this to a 296 × 128 four-gray indexed BMP; the fallback
-   Waveshare endpoint remains a 400 × 300 PNG.
+   MagTag path encodes this as a 296 × 128 indexed BMP with a four-gray palette;
+   its text layouts use the black/white endpoints for physical-panel contrast.
+   The fallback Waveshare endpoint remains a 400 × 300 PNG.
 3. The display wakes on a timer or optional button alarm, fetches one image over
-   plain LAN HTTP, draws it, reports status and deep-sleeps. Stale-by-hours is
-   fine for a cupboard.
+   plain LAN HTTP, draws it, reports status and deep-sleeps. The MagTag retains
+   the page ETag in sleep memory; a 304 response skips both the image transfer
+   and panel refresh when content is unchanged. Stale-by-hours is fine for a
+   cupboard.
 
 A `?panel=` parameter (a P9 extension) lets a second/different display request its own resolution and layout.
 
@@ -137,6 +140,12 @@ Alternatives, for the record:
 | Self-signed certificate | iOS treats self-signed PWAs badly (trust prompts, flaky service workers). Avoid. |
 
 ## Auth & security posture
+
+State-changing browser requests must come from EatMe's effective origin. Static
+and API responses also carry a restrictive content policy, permissions and
+framing controls, with transport security enabled only when the request is
+already HTTPS. Device and command-line clients without a browser `Origin`
+header continue to use their scoped credentials normally.
 
 Household app on a private network: **v1 ships with no login screen.** Reachability *is* the perimeter — LAN + tailnet only, nothing port-forwarded. The optional `auth_token` add-on option adds a bearer-token check (the PWA stores it once in settings) as belt-and-braces, e.g. if the LAN has untrusted guests. Multi-user accounts stay a non-goal; anyone in the household pointing at the same URL sees the same cupboard, which is the desired behaviour.
 

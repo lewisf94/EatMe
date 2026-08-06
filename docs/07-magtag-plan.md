@@ -71,7 +71,9 @@ bounded failure — the same firmware discipline as the modular plan.
 
 An initial build following this cycle is in `firmware/magtag/` (`code.py`,
 `settings.toml.example`). It decodes the HTTP response in RAM and uses sleep
-memory for the selected page, so routine wakes do not write flash. **It has not been run on real
+memory for the selected page and content validator, so routine wakes do not
+write flash. Scheduled wakes use `If-None-Match`; unchanged content returns 304
+and skips the panel refresh while still reporting device health. **It has not been run on real
 hardware** — see `firmware/magtag/README.md` for the setup steps and a
 verification checklist (button-to-pin mapping, battery reading,
 an actual end-to-end wake cycle) to work through once a MagTag is in hand.
@@ -84,9 +86,11 @@ delivered board in both modes before estimating battery life.
 
 ## Server changes
 
-Add a dedicated MagTag render profile that generates a four-level grayscale
-image at 296 x 128 pixels, matching the panel's native resolution and gray
-depth. Implemented in:
+Add a dedicated MagTag render profile that generates a 4-bit indexed image at
+296 x 128 pixels, matching the panel's native resolution. The palette retains
+the panel's four gray levels, while the text-first layouts deliberately use
+the black and white endpoints so small glyph edges stay readable on hardware.
+Implemented in:
 
 - `apps/server/src/services/magtagDisplay.ts` — the render profile (urgent,
   recipe and shopping layouts, sized for the small panel);
@@ -95,17 +99,19 @@ depth. Implemented in:
 
 The image is served as a **BMP**, not a PNG. `adafruit_imageload` can decode an
 indexed BMP directly from the HTTP response in memory, avoiding a temporary
-file and filesystem remount. The render profile quantizes to a 4-color grayscale palette and encodes a
-4-bit indexed BMP (~19 KB), a twelfth the size of an equivalent 24-bit BMP,
-which matters for wake time and therefore battery life.
+file and filesystem remount. The render profile encodes a four-entry grayscale
+palette in a 4-bit indexed BMP (~19 KB), a twelfth the size of an equivalent
+24-bit BMP. High-contrast pages currently use only the strongest black and
+white entries because physical-panel testing found intermediate anti-alias
+pixels too faint at small sizes.
 
 Endpoints:
 
 | Endpoint | Purpose |
 |---|---|
 | `GET /api/magtag/display.bmp` | Dashboard image download (the default wake screen — urgent items) |
-| `GET /api/magtag/page/:page` | Selected page download (`urgent`, `recipe` or `shopping`) |
-| `POST /api/magtag/status` | Device status reporting (battery, wake reason, firmware, Wi-Fi signal) |
+| `GET /api/magtag/page/:page` | Selected page download (`urgent`, `recipe`, `shopping` or `status`) |
+| `POST /api/magtag/status` | Device status reporting (battery, wake reason, firmware, Wi-Fi signal, refresh result and wake duration) |
 | `POST /api/magtag/button` | Optional button-press telemetry |
 
 All four endpoints accept `?token=` and are gated by the Home Assistant app's
@@ -128,23 +134,40 @@ proven.
 
 ## Interface plan
 
-The four onboard buttons select:
+The four onboard buttons each show their own page:
 
-1. Urgent food (the default dashboard);
+1. Urgent food (the default, timer-scheduled dashboard);
 2. Recipe suggestion;
 3. Shopping summary;
-4. Manual refresh (re-fetches the current page).
+4. Device status (battery, Wi-Fi signal, last successful check-in).
+
+Pressing any button always redraws its page, even if the content happens to be
+identical to what's already on screen. Only a scheduled, unattended timer wake
+skips the redraw when nothing has changed — that's the case the ETag cache
+exists for, to save the far more expensive e-paper refresh when no one is
+actually looking. A button press means someone is standing in front of it, so
+it always gets a fresh draw.
 
 Keep the first version **read-only**: button presses only change what's
 displayed, never inventory data. `POST /api/magtag/button` records which
 button was pressed for future use, but has no side effects today.
+
+**Battery level is not shown on the panel.** A rendered page is only redrawn
+when its content actually changes — that is what makes an e-paper display
+cheap to run — so a percentage baked into the image would freeze at whatever
+it was when the food list last moved, and could read 87% while the cell is
+really at 20%. The device reports its battery on every wake instead, and the
+app's **Settings > MagTag health** shows the current value, along with the
+time of the last check-in, when that screen is opened.
 
 ## Solar plan
 
 Defer solar until the battery-powered MagTag has been measured. When ready,
 the later system can add:
 
-- Adafruit ADA6106 solar charger;
+- Adafruit ADA6106 — the **Adafruit bq25185 USB/DC/Solar Charger with 5 V
+  Boost, product 6106** — same board as the fallback plan's charger, just
+  referred to here by product number;
 - a 5–7 V solar panel;
 - the existing 2,000 mAh battery;
 - a regulated 5 V supply to the MagTag.

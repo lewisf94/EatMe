@@ -108,7 +108,10 @@ jobs:
             docker rm --force "${container}" >/dev/null 2>&1 || true
             docker rm --force "${ocr_container}" >/dev/null 2>&1 || true
             sudo apparmor_parser -R apparmor.txt >/dev/null 2>&1 || true
-            rm -rf "${data_dir}"
+            # The app intentionally creates private root-owned snapshots in
+            # the bind-mounted /data directory. Remove that CI-only temp tree
+            # with the same privilege instead of weakening production modes.
+            sudo rm -rf -- "${data_dir}"
           }
           trap cleanup EXIT
 
@@ -187,7 +190,7 @@ jobs:
             | grep -F '"ok":true'
           curl --fail --silent \
             --header "content-type: application/json" \
-            --data '{"button":"refresh"}' \
+            --data '{"button":"status"}' \
             http://127.0.0.1:18099/api/magtag/button \
             | grep -F '"ok":true'
           curl --fail --silent http://127.0.0.1:18099/ | grep -F "<div id=\"root\">"

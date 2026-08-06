@@ -138,9 +138,11 @@ export const EVENTS = [
   "added",
   "opened",
   "fraction_changed",
+  "cooked",
   "finished",
   "binned",
   "archived",
+  "restored",
   "repurchased",
 ] as const;
 
@@ -472,6 +474,36 @@ export type ShoppingItem = {
   name: string;
   addedAt: string;
   doneAt: string | null;
+};
+
+// --- activity + insights -----------------------------------------------
+export type ActivityEntry = {
+  id: string;
+  event: string;
+  fractionAfter: number | null;
+  reason: string | null;
+  at: string;
+  lotId: string;
+  productId: string;
+  productName: string;
+  canRestore: boolean;
+};
+
+export type ProductWasteStat = {
+  productId: string;
+  name: string;
+  binned: number;
+  finished: number;
+};
+
+export type UsageInsights = {
+  days: number;
+  finished: number;
+  binned: number;
+  cooked: number;
+  estimatedValueUsed: number | null;
+  estimatedValueWasted: number | null;
+  products: ProductWasteStat[];
 };
 
 export const ShoppingInput = z.object({

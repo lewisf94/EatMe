@@ -1,12 +1,13 @@
 name: EatMe
 slug: eatme
-version: "0.8.5"
+version: "0.10.2"
 description: Self-hosted household food inventory with freshness guidance
 url: https://github.com/lewisf94/EatMe
 arch:
   - aarch64
   - amd64
 init: false
+homeassistant_api: true
 startup: application
 boot: auto
 # Optional LAN port — used by the e-ink display (P6) and for local access.
