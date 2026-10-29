@@ -114,7 +114,10 @@ Endpoints:
 | `POST /api/magtag/status` | Device status reporting (battery, wake reason, firmware, Wi-Fi signal, refresh result and wake duration) |
 | `POST /api/magtag/button` | Optional button-press telemetry |
 
-All four endpoints accept `?token=` and are gated by the Home Assistant app's
+All four endpoints take the device token in an `X-EatMe-Device-Token` header
+(the current firmware sends it there, so it never appears in a proxy access
+log). They still accept `?token=` for older firmware. They are gated by the
+Home Assistant app's
 `magtag_token` option, exported as `MAGTAG_TOKEN` (see
 `apps/server/src/config.ts`) — **do not store a
 Home Assistant administrator token on the MagTag.** This mirrors the existing

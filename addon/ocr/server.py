@@ -80,7 +80,7 @@ def crop_receipt(image: Image.Image) -> Image.Image:
     """Trim a dark table or worktop using the receipt's bright page area."""
     sample = image.copy()
     sample.thumbnail((320, 320), Image.Resampling.BILINEAR)
-    pixels = list(sample.getdata())
+    pixels = list(sample.get_flattened_data())
     width, height = sample.size
     bright = 170
     min_column_fill = 0.28

@@ -22,4 +22,5 @@ EATME_FAILURE_SLEEP_MINUTES = "30"
 # Button wake enables the urgent / recipe / shopping / status interface, but
 # PinAlarm uses more sleep current on ESP32-S2. Set false for maximum runtime
 # when scheduled updates are all you need.
-EATME_BUTTON_WAKE = true
+# Quote the value: settings.toml supports only strings and integers.
+EATME_BUTTON_WAKE = "true"

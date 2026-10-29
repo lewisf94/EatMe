@@ -46,6 +46,7 @@ const MagtagStatus = z.object({
   wakeSeconds: z.number().min(0).max(300).nullable().optional(),
 });
 const MagtagButton = z.object({ button: z.enum(PAGES) });
+const DEVICE_TOKEN_HEADER = "x-eatme-device-token";
 
 function jsonSetting<T>(key: string): T | null {
   try {
@@ -174,8 +175,14 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   // The MagTag carries its own device token, never the household's admin
   // token — set MAGTAG_TOKEN to require it (app.ts exempts this prefix from
   // the bearer gate in that case, same pattern as the classic display).
-  function unauthorized(q: Record<string, string | undefined>): boolean {
-    return Boolean(config.magtagToken) && !secretMatches(q.token, config.magtagToken);
+  // Current firmware sends it in a header, which keeps it out of proxy access
+  // logs; ?token= stays accepted for boards that still run older firmware.
+  function unauthorized(req: FastifyRequest): boolean {
+    if (!config.magtagToken) return false;
+    const header = req.headers[DEVICE_TOKEN_HEADER];
+    const q = req.query as Record<string, string | undefined>;
+    const supplied = typeof header === "string" && header ? header : q.token;
+    return !secretMatches(supplied, config.magtagToken);
   }
 
   // Household/admin view. This route is intentionally outside the device-token
@@ -212,7 +219,7 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   // compact indexed response in RAM without writing its flash filesystem.
   app.get("/magtag/display.bmp", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
-    if (unauthorized(q)) return reply.code(401).send({ error: { message: "unauthorized" } });
+    if (unauthorized(req)) return reply.code(401).send({ error: { message: "unauthorized" } });
     recordDisplayBattery(q.battery);
     return sendPage("urgent", req, reply);
   });
@@ -221,7 +228,7 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   // fetched only when the matching button is pressed.
   app.get("/magtag/page/:page", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
-    if (unauthorized(q)) return reply.code(401).send({ error: { message: "unauthorized" } });
+    if (unauthorized(req)) return reply.code(401).send({ error: { message: "unauthorized" } });
     const { page } = req.params as { page: string };
     if (!isPage(page)) return reply.code(404).send({ error: { message: "unknown page" } });
     recordDisplayBattery(q.battery);
@@ -231,8 +238,7 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   // Read-only device status (battery, wake reason, firmware, Wi-Fi signal).
   // Kept separate from the image fetch so a status-only wake needn't render.
   app.post("/magtag/status", async (req, reply) => {
-    const q = req.query as Record<string, string | undefined>;
-    if (unauthorized(q)) return reply.code(401).send({ error: { message: "unauthorized" } });
+    if (unauthorized(req)) return reply.code(401).send({ error: { message: "unauthorized" } });
     const parsed = MagtagStatus.safeParse(req.body ?? {});
     if (!parsed.success)
       return reply.code(400).send({ error: { message: "invalid status report" } });
@@ -256,8 +262,7 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   // Optional button telemetry: which button was pressed, for future use (the
   // first version stays read-only — this doesn't change what any button does).
   app.post("/magtag/button", async (req, reply) => {
-    const q = req.query as Record<string, string | undefined>;
-    if (unauthorized(q)) return reply.code(401).send({ error: { message: "unauthorized" } });
+    if (unauthorized(req)) return reply.code(401).send({ error: { message: "unauthorized" } });
     const parsed = MagtagButton.safeParse(req.body ?? {});
     if (!parsed.success) return reply.code(400).send({ error: { message: "unknown button" } });
     const { button } = parsed.data;
