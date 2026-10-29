@@ -103,6 +103,7 @@ separate `MAGTAG_TOKEN` (never the Home Assistant admin token):
 - Broader research and alternatives: `docs/05-hardware-research.md`
 - MagTag firmware (unverified on hardware): `firmware/magtag/`
 - Firmware reference (fallback route only): `firmware/eatme-display.yaml`
+- What is installed and the current device state: `docs/deployment-log.md`
 
 Do not treat the older solar-first recommendation, or the modular ESP32-C6
 build, in the research document as the immediate purchase plan — the MagTag
