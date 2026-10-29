@@ -20,3 +20,4 @@ firmware/secrets.yaml
 
 # MagTag Wi-Fi + device token (copy firmware/magtag/settings.toml.example)
 firmware/magtag/settings.toml
+~$*
