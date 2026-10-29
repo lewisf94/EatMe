@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5
+
+- Update the base image from Python 3.12 to Python 3.15.
+- Update Pillow from 11.3.0 to 12.3.0. Pillow 11.3.0 has no Python 3.15
+  package, so the image did not build.
+- Replace the deprecated `Image.getdata()` call with `get_flattened_data()`.
+  Pillow 14 removes `getdata()`.
+
 ## 0.1.4
 
 - Bound source and prepared-image dimensions to prevent excessive memory use.
