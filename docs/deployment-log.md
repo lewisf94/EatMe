@@ -21,10 +21,17 @@ in Home Assistant, the router and the MagTag's own `settings.toml`.
 **MagTag**
 
 - Left switched on with the battery connected for some months before the
-  move. Found in CircuitPython 10.2.1 safe mode. Investigation in progress.
-- Still to do: charge and check the battery, update `settings.toml` for the
-  new Wi-Fi and server address, copy firmware 0.4 (`code.py`), and work
-  through the verification checklist in `firmware/magtag/README.md`.
+  move. Found in CircuitPython 10.2.1 safe mode ("Power dipped"): the
+  battery had run flat. Charged through USB-C and reset out of safe mode.
+- Copied firmware 0.4 (`code.py`) and updated `settings.toml` for the new
+  Wi-Fi and server address.
+- First wake failed with "No network with that ssid". A Wi-Fi scan from the
+  REPL found the cause, and the fixed `settings.toml` then worked.
+- **First successful end-to-end wake cycle on real hardware:** connected to
+  Wi-Fi, downloaded the page and drew the EatMe screen (powered over USB).
+- Still to do: the rest of the verification checklist in
+  `firmware/magtag/README.md` (each button, an unchanged 304 wake, the
+  battery reading, at least 50 cycles, sleep current on battery).
 
 **Still to do**
 
