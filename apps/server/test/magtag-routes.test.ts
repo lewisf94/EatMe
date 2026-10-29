@@ -90,6 +90,14 @@ describe("MagTag routes", () => {
     expect(adminOnly.statusCode).toBe(401);
   });
 
+  it("applies the admin token to percent-encoded API paths", async () => {
+    // Fastify routes on the decoded path, so the gate must not read raw req.url.
+    for (const url of ["/%61pi/settings", "/%61pi/maintenance/backup", "/api/%6dagtag/health"]) {
+      const response = await app.inject({ method: "GET", url });
+      expect(response.statusCode, url).toBe(401);
+    }
+  });
+
   it("keeps the household health view behind the admin token", async () => {
     const deviceOnly = await app.inject({
       method: "GET",

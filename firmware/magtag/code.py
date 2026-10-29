@@ -49,7 +49,13 @@ FAILURE_SLEEP_MINUTES = _bounded_number(
 
 
 def _setting_enabled(name, default):
-    value = os.getenv(name, default)
+    # settings.toml only holds strings and integers; a bare TOML true/false is
+    # not a supported value. Fall back rather than stop before deep sleep.
+    try:
+        value = os.getenv(name, default)
+    except ValueError:
+        print(name, "is invalid; using", default)
+        value = default
     if isinstance(value, bool):
         return value
     return str(value).lower() in ("1", "true", "yes", "on")

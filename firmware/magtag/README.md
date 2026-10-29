@@ -62,12 +62,12 @@ circup install adafruit_connection_manager adafruit_imageload adafruit_requests
 
 ## Buttons and battery life
 
-With `EATME_BUTTON_WAKE = true`, buttons A–D wake the board for urgent food,
+With `EATME_BUTTON_WAKE = "true"`, buttons A–D wake the board for urgent food,
 recipe, shopping and device status pages, and each press always redraws its
 page even when the content hasn't changed — only a scheduled, unattended
 timer wake can skip an unchanged redraw. CircuitPython's published ESP32-S2
 figures put time-alarm deep sleep around 230 µA and pin-alarm sleep around
-1.65 mA. Set `EATME_BUTTON_WAKE = false` if scheduled updates matter more than
+1.65 mA. Set `EATME_BUTTON_WAKE = "false"` if scheduled updates matter more than
 the button interface. Measure the actual complete board rather than treating
 either figure as a battery-life guarantee.
 
