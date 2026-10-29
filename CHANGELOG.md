@@ -2,6 +2,25 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.10.3
+
+- Security: apply the `auth_token` gate to percent-encoded API paths. Before
+  this fix, a request such as `/%61pi/maintenance/backup` reached the API
+  handler without the token, including database backup and restore.
+- MagTag: quote `EATME_BUTTON_WAKE` in `settings.toml.example`, because
+  CircuitPython settings support only strings and integers.
+- MagTag firmware 0.4 sends the device token in an `X-EatMe-Device-Token`
+  header instead of the URL, so it does not appear in proxy access logs. The
+  server still accepts `?token=` from older firmware.
+- Inventory CSV export prefixes text that starts with `=`, `+`, `-`, `@`, tab
+  or carriage return with an apostrophe, so a spreadsheet does not run a
+  product name as a formula.
+- Update fastify to 5.12.7, zod to 4.6.7 and @fastify/static to 10.1.8, and
+  hold fast-uri and brace-expansion at their patched releases. The production
+  dependency audit reports no known vulnerabilities.
+- Update development tools (Vite, Vitest, React, Tailwind and others) within
+  their current major versions.
+
 ## 0.10.2
 
 - Render MagTag text with crisp black/white pixels, larger bold secondary

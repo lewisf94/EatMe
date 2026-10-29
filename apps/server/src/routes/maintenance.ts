@@ -12,8 +12,12 @@ import {
   restoreBackup,
 } from "../services/backup.js";
 
+// Spreadsheet apps run a cell that starts with =, +, -, @, tab or CR as a
+// formula. Product names come from users and Open Food Facts, so prefix text
+// cells with an apostrophe. Numbers stay numeric.
 const csv = (value: unknown): string => {
-  const text = value == null ? "" : String(value);
+  const raw = value == null ? "" : String(value);
+  const text = typeof value === "string" && /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
   return `"${text.replaceAll('"', '""')}"`;
 };
 

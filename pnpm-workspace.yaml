@@ -3,12 +3,11 @@ packages:
   - "packages/*"
   - "e2e"
 overrides:
-  # Pin patched releases for the exact vulnerable transitive edges.
-  "fastify@5.11.0>find-my-way": 9.7.0
-  "@fastify/ajv-compiler@4.0.5>fast-uri": 3.1.5
-  "ajv@8.20.0>fast-uri": 3.1.5
-  "fast-json-stringify@7.0.1>fast-uri": 4.1.2
-  "minimatch@10.2.5>brace-expansion": 5.0.9
+  # Hold transitive parsers at or above their patched releases, whatever
+  # version of fastify or @fastify/static pulls them in.
+  "fast-uri@3": ^3.1.9
+  "fast-uri@4": ^4.2.3
+  "brace-expansion@5": ^5.0.12
 allowBuilds:
   # Vite/tsx require esbuild's platform-binary setup script. Keep the build
   # allow-list explicit so no other transitive package can run install code.
@@ -17,9 +16,3 @@ allowBuilds:
 # to receive ecosystem scrutiny before routine upgrades can select them.
 strictDepBuilds: true
 minimumReleaseAge: 1440
-minimumReleaseAgeExclude:
-  # Security patches may bypass the normal one-day observation window.
-  - find-my-way@9.7.0
-  - fast-uri@3.1.5
-  - fast-uri@4.1.2
-  - brace-expansion@5.0.9
