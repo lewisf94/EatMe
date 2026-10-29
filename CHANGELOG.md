@@ -2,6 +2,14 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.10.3
+
+- Security: apply the `auth_token` gate to percent-encoded API paths. Before
+  this fix, a request such as `/%61pi/maintenance/backup` reached the API
+  handler without the token, including database backup and restore.
+- MagTag: quote `EATME_BUTTON_WAKE` in `settings.toml.example`, because
+  CircuitPython settings support only strings and integers.
+
 ## 0.10.2
 
 - Render MagTag text with crisp black/white pixels, larger bold secondary

@@ -1,4 +1,4 @@
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
 import { config } from "./config.js";
 import { registerHealth } from "./routes/health.js";
 import { registerInventory } from "./routes/inventory.js";
@@ -37,6 +37,14 @@ const CONTENT_SECURITY_POLICY = [
   "worker-src 'self' blob:",
   "manifest-src 'self'",
 ].join("; ");
+
+/** The path used for access decisions. Fastify routes on the percent-decoded
+ *  path, so "/%61pi/settings" reaches the "/api/settings" handler while the raw
+ *  req.url does not start with "/api/". Use the matched route pattern instead;
+ *  an unmatched request only reaches a 404 or static handler. */
+function accessPath(req: FastifyRequest): string {
+  return req.routeOptions.url ?? req.url.split("?")[0];
+}
 
 /** Build the Fastify app. Call migrate()/seedIfEmpty() before this so the
  *  repositories' prepared statements bind against existing tables. */
@@ -80,7 +88,7 @@ export function buildApp(): FastifyInstance {
     if (req.protocol === "https") {
       reply.header("Strict-Transport-Security", "max-age=31536000");
     }
-    if (req.url.split("?")[0].startsWith("/api/") && !reply.hasHeader("Cache-Control")) {
+    if (accessPath(req).startsWith("/api/") && !reply.hasHeader("Cache-Control")) {
       reply.header("Cache-Control", "no-store");
     }
     return payload;
@@ -121,7 +129,7 @@ export function buildApp(): FastifyInstance {
   // else on the network, and a single anonymous request must not be able to
   // overwrite the food history.
   app.addHook("onRequest", async (req, reply) => {
-    if (!req.url.split("?")[0].startsWith("/api/maintenance/")) return;
+    if (!accessPath(req).startsWith("/api/maintenance/")) return;
     if (!config.authToken) {
       return reply.code(503).send({
         error: {
@@ -135,7 +143,7 @@ export function buildApp(): FastifyInstance {
   // reachability). Off by default; /api/health stays open for the HA watchdog.
   if (config.authToken) {
     app.addHook("onRequest", async (req, reply) => {
-      const path = req.url.split("?")[0];
+      const path = accessPath(req);
       if (!path.startsWith("/api/") || path === "/api/health") return;
       // The e-ink panel can't send an Authorization header, so display.png
       // carries its own ?token= gate (checked in the route) when one is set.
