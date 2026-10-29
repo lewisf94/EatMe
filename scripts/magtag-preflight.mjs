@@ -20,13 +20,17 @@ Example (PowerShell):
   node .\\scripts\\magtag-preflight.mjs http://homeassistant.local:8099 --full`);
 }
 
-function endpoint(baseUrl, path, token, query = {}) {
+function endpoint(baseUrl, path, query = {}) {
   const url = new URL(path.replace(/^\//, ""), baseUrl);
-  if (token) url.searchParams.set("token", token);
   for (const [key, value] of Object.entries(query)) {
     url.searchParams.set(key, String(value));
   }
   return url;
+}
+
+// The firmware sends the device token in this header, not in the URL.
+function tokenHeaders(token, headers = {}) {
+  return token ? { ...headers, "x-eatme-device-token": token } : headers;
 }
 
 async function fetchWithTimeout(url, options = {}) {
@@ -70,8 +74,8 @@ function inspectBitmap(payload) {
 }
 
 async function checkBitmap(baseUrl, path, token, query) {
-  const url = endpoint(baseUrl, path, token, query);
-  const response = await expectStatus(url, 200);
+  const url = endpoint(baseUrl, path, query);
+  const response = await expectStatus(url, 200, { headers: tokenHeaders(token) });
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("image/bmp")) {
     throw new Error(`${path} returned content-type ${contentType || "(missing)"}`);
@@ -90,9 +94,9 @@ async function checkBitmap(baseUrl, path, token, query) {
 }
 
 async function postJson(baseUrl, path, token, payload, expected = 200) {
-  const response = await expectStatus(endpoint(baseUrl, path, token), expected, {
+  const response = await expectStatus(endpoint(baseUrl, path), expected, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: tokenHeaders(token, { "content-type": "application/json" }),
     body: JSON.stringify(payload),
   });
   if (expected === 200) {
@@ -133,8 +137,10 @@ async function main() {
   console.log(`Checking EatMe MagTag API at ${baseUrl.origin}${baseUrl.pathname}`);
 
   if (full && token) {
-    await expectStatus(endpoint(baseUrl, "/api/magtag/display.bmp", ""), 401);
-    await expectStatus(endpoint(baseUrl, "/api/magtag/display.bmp", "preflight-wrong-token"), 401);
+    await expectStatus(endpoint(baseUrl, "/api/magtag/display.bmp"), 401);
+    await expectStatus(endpoint(baseUrl, "/api/magtag/display.bmp"), 401, {
+      headers: tokenHeaders("preflight-wrong-token"),
+    });
     console.log("[ok] missing and invalid device tokens are rejected");
   } else if (full) {
     console.log("[skip] token rejection (EATME_MAGTAG_TOKEN is not set)");
@@ -146,8 +152,8 @@ async function main() {
     token,
     full ? { battery: 77 } : undefined,
   );
-  await expectStatus(endpoint(baseUrl, "/api/magtag/display.bmp", token), 304, {
-    headers: { "if-none-match": urgentEtag },
+  await expectStatus(endpoint(baseUrl, "/api/magtag/display.bmp"), 304, {
+    headers: tokenHeaders(token, { "if-none-match": urgentEtag }),
   });
   console.log("[ok] unchanged dashboard skips image transfer and panel refresh");
   await checkBitmap(baseUrl, "/api/magtag/page/urgent", token);
@@ -155,7 +161,9 @@ async function main() {
   await checkBitmap(baseUrl, "/api/magtag/page/shopping", token);
   await checkBitmap(baseUrl, "/api/magtag/page/status", token);
 
-  await expectStatus(endpoint(baseUrl, "/api/magtag/page/not-a-page", token), 404);
+  await expectStatus(endpoint(baseUrl, "/api/magtag/page/not-a-page"), 404, {
+    headers: tokenHeaders(token),
+  });
   console.log("[ok] unknown pages are rejected");
 
   if (full) {

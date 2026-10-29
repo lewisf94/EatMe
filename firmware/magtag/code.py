@@ -113,8 +113,15 @@ def add_query(url, name, value):
     )
 
 
-def with_token(url):
-    return add_query(url, "token", TOKEN) if TOKEN else url
+def request_headers(extra=None):
+    """Send the device token in a header, never in the URL.
+
+    A URL can appear in a reverse proxy's access log; this header does not.
+    """
+    headers = {"X-EatMe-Device-Token": TOKEN} if TOKEN else {}
+    if extra:
+        headers.update(extra)
+    return headers
 
 
 def safe_error(error):
@@ -219,19 +226,17 @@ def connect_wifi():
 
 def fetch_dashboard(requests, page, battery, allow_not_modified=True):
     path = DASHBOARD_PATH if page == "urgent" else PAGE_PATH.format(page=page)
-    url = with_token(SERVER + path)
+    url = SERVER + path
     if battery is not None:
         url = add_query(url, "battery", battery)
 
     cached_etag = read_cached_etag(page) if allow_not_modified else None
-    response = (
-        requests.get(
-            url,
-            headers={"If-None-Match": cached_etag},
-            timeout=REQUEST_TIMEOUT,
-        )
-        if cached_etag
-        else requests.get(url, timeout=REQUEST_TIMEOUT)
+    response = requests.get(
+        url,
+        headers=request_headers(
+            {"If-None-Match": cached_etag} if cached_etag else None
+        ),
+        timeout=REQUEST_TIMEOUT,
     )
     try:
         if response.status_code == 304 and cached_etag:
@@ -292,18 +297,18 @@ def wifi_rssi():
 def report_status(requests, action, battery, display_updated, wake_seconds):
     try:
         response = requests.post(
-            with_token(SERVER + STATUS_PATH),
+            SERVER + STATUS_PATH,
             data=json.dumps(
                 {
                     "battery": battery,
                     "wakeReason": "button:{}".format(action) if action else "timer",
-                    "firmware": "eatme-magtag/0.3",
+                    "firmware": "eatme-magtag/0.4",
                     "rssi": wifi_rssi(),
                     "displayUpdated": display_updated,
                     "wakeSeconds": wake_seconds,
                 }
             ),
-            headers={"Content-Type": "application/json"},
+            headers=request_headers({"Content-Type": "application/json"}),
             timeout=REQUEST_TIMEOUT,
         )
         status = response.status_code
@@ -312,9 +317,9 @@ def report_status(requests, action, battery, display_updated, wake_seconds):
             raise RuntimeError("status endpoint returned HTTP {}".format(status))
         if action:
             response = requests.post(
-                with_token(SERVER + BUTTON_PATH),
+                SERVER + BUTTON_PATH,
                 data=json.dumps({"button": action}),
-                headers={"Content-Type": "application/json"},
+                headers=request_headers({"Content-Type": "application/json"}),
                 timeout=REQUEST_TIMEOUT,
             )
             status = response.status_code
