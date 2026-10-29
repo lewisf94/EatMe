@@ -90,6 +90,24 @@ describe("MagTag routes", () => {
     expect(adminOnly.statusCode).toBe(401);
   });
 
+  it("accepts the device token from the header that the firmware sends", async () => {
+    const valid = await app.inject({
+      method: "GET",
+      url: "/api/magtag/page/status",
+      headers: { "x-eatme-device-token": DEVICE_TOKEN },
+    });
+    expect(valid.statusCode).toBe(200);
+    expect(valid.headers["content-type"]).toBe("image/bmp");
+
+    const wrong = await app.inject({
+      method: "POST",
+      url: "/api/magtag/button",
+      headers: { "x-eatme-device-token": "wrong-token" },
+      payload: { button: "status" },
+    });
+    expect(wrong.statusCode).toBe(401);
+  });
+
   it("applies the admin token to percent-encoded API paths", async () => {
     // Fastify routes on the decoded path, so the gate must not read raw req.url.
     for (const url of ["/%61pi/settings", "/%61pi/maintenance/backup", "/api/%6dagtag/health"]) {

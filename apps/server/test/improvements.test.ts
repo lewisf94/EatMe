@@ -185,6 +185,15 @@ describe("backup and database maintenance", () => {
     expect(db.prepare("SELECT 1 FROM _migrations LIMIT 1").get()).toBeTruthy();
   });
 
+  it("exports product names as text, not spreadsheet formulas", () =>
+    withAuthToken(async () => {
+      await intake('=HYPERLINK("http://evil.example","Milk")');
+      const exported = await app.inject({ method: "GET", url: "/api/maintenance/inventory.csv" });
+      expect(exported.statusCode).toBe(200);
+      expect(exported.body).toContain(`"'=HYPERLINK(""http://evil.example"",""Milk"")"`);
+      expect(exported.body).not.toMatch(/(^|,)"=/m);
+    }));
+
   it("round-trips a versioned backup and rejects malformed input atomically", () =>
     withAuthToken(async () => {
       await intake("In backup");

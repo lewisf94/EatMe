@@ -13,8 +13,8 @@
     "magtag:preflight": "node scripts/magtag-preflight.mjs"
   },
   "devDependencies": {
-    "concurrently": "^10.0.4",
-    "prettier": "^3.9.6",
+    "concurrently": "^10.0.6",
+    "prettier": "^3.9.10",
     "typescript": "^7.0.2"
   }
 }
