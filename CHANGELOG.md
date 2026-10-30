@@ -2,6 +2,16 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.11.0
+
+- Swipe a food row left on Today, All food or Use it up. A full swipe marks
+  every pack of that item used up; the drawer also offers "Binned". A toast
+  offers Undo for 5 seconds; swipe it down to dismiss it.
+- Screens fade in when you change page, and buttons respond to a press. Phones
+  with "reduce motion" turned on get no animations.
+- Uses the SwipeRow and SwipeToast components from React Bits, with the
+  `motion` and Hugeicons libraries.
+
 ## 0.10.5
 
 - **Security, action needed:** EatMe now requires an access token by default.

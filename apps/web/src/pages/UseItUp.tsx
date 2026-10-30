@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import type { InventoryRow, UseItUpHit } from "@eatme/shared";
 import { api } from "../api";
 import { today } from "../ui";
-import { ProductRow } from "../ui/freshness";
+import { SwipeProductRow, UndoBar, useSwipeArchive } from "../ui/swipeArchive";
 import { IconLeaf } from "../ui/icons";
 
 export default function UseItUp() {
@@ -14,6 +14,8 @@ export default function UseItUp() {
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const td = today();
+  const swipe = useSwipeArchive();
+  const eatFirst = expiring.filter((r) => !swipe.hidden.has(r.productId));
 
   useEffect(() => {
     api
@@ -37,6 +39,7 @@ export default function UseItUp() {
       </header>
       <div className="screen">
         {error && <p className="alert">{error}</p>}
+        {swipe.error && <p className="alert">{swipe.error}</p>}
         {note && <p className="syncbar">{note}</p>}
 
         {loading ? (
@@ -138,14 +141,20 @@ export default function UseItUp() {
             <section className="sec">
               <div className="sec-head">
                 <span className="eyebrow">Eat these first</span>
-                {expiring.length > 0 && <span className="sec-count">{expiring.length}</span>}
+                {eatFirst.length > 0 && <span className="sec-count">{eatFirst.length}</span>}
               </div>
-              {expiring.length === 0 ? (
+              {eatFirst.length === 0 ? (
                 <p className="empty">Nothing needs using up. Nicely done.</p>
               ) : (
                 <div className="rows">
-                  {expiring.map((r) => (
-                    <ProductRow key={r.productId} row={r} locName={() => ""} today={td} />
+                  {eatFirst.map((r) => (
+                    <SwipeProductRow
+                      key={r.productId}
+                      row={r}
+                      locName={() => ""}
+                      today={td}
+                      onArchive={swipe.archive}
+                    />
                   ))}
                 </div>
               )}
@@ -163,6 +172,7 @@ export default function UseItUp() {
           </>
         )}
       </div>
+      <UndoBar swipe={swipe} />
     </>
   );
 }
