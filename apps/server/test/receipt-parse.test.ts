@@ -80,3 +80,63 @@ describe("parseReceipt on an Aldi-style receipt", () => {
     ]);
   });
 });
+
+describe("parseReceipt on a photographed Aldi receipt", () => {
+  // Real OCR output from an unevenly lit Aldi receipt photo, including stray marks.
+  const photo: OcrResult = {
+    lines: [
+      { text: "ALDI STORES" },
+      { text: "North Road RP" },
+      { text: "4 GBP" },
+      { text: "337432 BISKS WHEATS 2.19 A" },
+      { text: "8 2X 1.99" },
+      { text: ": 880571 NUT BARS 3.98 B" },
+      { text: "Y 384145 NUTS MIXED 1.75 A" },
+      { text: "& <2 xX 0.65" },
+      { text: "S 319760 FRUIT & NUT MIX 1.30 A" },
+      { text: "494905 100% PEANUT BUTTER 3.99 A" },
+      { text: "683160 NATURAL YOGHURT 0.75 A" },
+      { text: "3 xX 1.25" },
+      { text: "688755 GANACHE POTS 3.75 A" },
+      { text: "403915 HOUMOUS 200G 0.95 A" },
+      { text: "27 Items" },
+      { text: "Card Sales GBP 41.89" },
+    ],
+  };
+  const r = parseReceipt(photo);
+
+  it("removes the item codes and stray marks from the names", () => {
+    expect(r.merchant).toBe("Aldi");
+    expect(r.lines.map((l) => l.normalizedText)).toEqual([
+      "bisks wheats",
+      "nut bars",
+      "nuts mixed",
+      "fruit nut mix",
+      "100 peanut butter",
+      "natural yoghurt",
+      "ganache pots",
+      "houmous 200g",
+    ]);
+  });
+
+  it("applies a quantity row printed above the product", () => {
+    const qty = Object.fromEntries(
+      r.lines.map((l) => [l.normalizedText, [l.quantity, l.unitPrice]]),
+    );
+    expect(qty["nut bars"]).toEqual([2, 1.99]);
+    expect(qty["fruit nut mix"]).toEqual([2, 0.65]);
+    expect(qty["ganache pots"]).toEqual([3, 1.25]);
+    expect(qty["bisks wheats"]).toEqual([1, 2.19]);
+    expect(qty["natural yoghurt"]).toEqual([1, 0.75]);
+  });
+
+  it("applies a quantity row printed below the product when the total matches", () => {
+    const lidl = parseReceipt({
+      lines: [{ text: "MILK 1.98 A" }, { text: "2 x 0.99" }, { text: "BREAD 0.85 A" }],
+    });
+    expect(lidl.lines.map((l) => [l.normalizedText, l.quantity, l.unitPrice])).toEqual([
+      ["milk", 2, 0.99],
+      ["bread", 1, 0.85],
+    ]);
+  });
+});

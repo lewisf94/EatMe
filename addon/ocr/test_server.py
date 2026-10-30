@@ -1,10 +1,14 @@
 import unittest
 
+from PIL import Image, ImageDraw
+
 from server import (
     MAX_PREPARED_PIXELS,
     Word,
     candidate_row_counts,
     candidate_score,
+    crop_receipt,
+    flatten_illumination,
     group_words,
     prepared_dimensions,
 )
@@ -96,6 +100,31 @@ class ImageSizingTests(unittest.TestCase):
     def test_extreme_aspect_ratio_cannot_create_an_unbounded_working_image(self) -> None:
         width, height = prepared_dimensions(100, 4000)
         self.assertLessEqual(width * height, MAX_PREPARED_PIXELS)
+
+
+class UnevenLightTests(unittest.TestCase):
+    @staticmethod
+    def unevenly_lit_receipt() -> Image.Image:
+        """Paper on a dark table, bright at the top and darker at the bottom."""
+        image = Image.new("L", (600, 1000), 40)
+        draw = ImageDraw.Draw(image)
+        for y in range(100, 900):
+            draw.line([(150, y), (450, y)], fill=round(220 - (y - 100) * 0.14))
+        for y in range(130, 880, 30):
+            draw.rectangle([(170, y), (400, y + 8)], fill=30)
+        return image
+
+    def test_crop_keeps_the_darker_end_of_the_receipt(self) -> None:
+        cropped = crop_receipt(self.unevenly_lit_receipt())
+        self.assertGreaterEqual(cropped.height, 800)
+        self.assertLess(cropped.width, 600)
+
+    def test_flatten_makes_darker_paper_as_bright_as_bright_paper(self) -> None:
+        flat = flatten_illumination(self.unevenly_lit_receipt())
+        lit = flat.getpixel((430, 115))
+        darker = flat.getpixel((430, 890))
+        self.assertGreater(darker, 200)
+        self.assertLess(abs(lit - darker), 25)
 
 
 if __name__ == "__main__":

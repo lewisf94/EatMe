@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.7
+
+- Fix: a receipt photo that is darker at one end lost the product rows at that
+  end. The eye does not see this change, but the paper on a test photo went
+  from brightness 200 at the top to 110 at the bottom. The crop used a fixed
+  brightness level (170), so it cut away the darker paper. The crop now
+  compares with the brightest paper in the photo.
+- Even out uneven light across the receipt before text recognition. On a test
+  Aldi photo, the app now reads 23 product rows instead of 8.
+
 ## 0.1.6
 
 - Security: do not return exception detail when an image cannot be read.
