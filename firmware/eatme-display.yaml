@@ -16,7 +16,8 @@
 # `4.20inV2`, and `4.20in-bV2` is the three-colour variant — use the plain B/W).
 substitutions:
   server: "http://homeassistant.local:8099"
-  # If the server runs with DISPLAY_TOKEN set, add "&token=YOUR_TOKEN" to both
+  # The app generates DISPLAY_TOKEN on first start (see its log) unless
+  # open_access is on. Add "&token=YOUR_TOKEN" to both
   # URLs below (the panel can't send an Authorization header).
   dashboard_url: "http://homeassistant.local:8099/api/display.png"
 

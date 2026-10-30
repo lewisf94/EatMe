@@ -121,6 +121,13 @@ export type IntakeBody = {
 export const TOKEN_KEY = "eatme_token";
 const authToken = () => localStorage.getItem(TOKEN_KEY) || "";
 
+/** Fired on any 401, so the app can ask for the access token instead of
+ *  showing a broken screen. The server generates a token on first start. */
+export const UNAUTHORIZED_EVENT = "eatme:unauthorized";
+const noteStatus = (res: Response) => {
+  if (res.status === 401) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+};
+
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch("/api" + path, {
     ...opts,
@@ -133,6 +140,7 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
       ...(opts?.headers ?? {}),
     },
   });
+  noteStatus(res);
   const body = (await res.json().catch(() => null)) as {
     data?: T;
     error?: { message?: string };
@@ -148,6 +156,7 @@ async function htmlReq(path: string): Promise<string> {
       ...(authToken() ? { authorization: `Bearer ${authToken()}` } : {}),
     },
   });
+  noteStatus(res);
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as {
       error?: { message?: string };
@@ -163,6 +172,7 @@ async function downloadReq(path: string): Promise<void> {
       ...(authToken() ? { authorization: `Bearer ${authToken()}` } : {}),
     },
   });
+  noteStatus(res);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
   const disposition = res.headers.get("content-disposition") ?? "";

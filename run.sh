@@ -10,6 +10,31 @@ opt() { jq -r ".$1 // empty" "$OPTIONS" 2>/dev/null; }
 export AUTH_TOKEN="$(opt auth_token)"
 export DISPLAY_TOKEN="$(opt display_token)"
 export MAGTAG_TOKEN="$(opt magtag_token)"
+
+# Secure by default: a token left blank in the options is generated once, kept
+# in /data/secrets and reused on every start. The value is printed only on the
+# start that creates it; set the option yourself to replace it. open_access
+# restores the old behaviour of an unauthenticated LAN API.
+SECRETS=/data/secrets
+generated_token() {
+  file="$SECRETS/$1"
+  if [ ! -s "$file" ]; then
+    mkdir -p "$SECRETS"
+    chmod 700 "$SECRETS"
+    (umask 077 && head -c 32 /dev/urandom | base64 | tr '+/' '-_' | tr -d '=\n' > "$file")
+    echo "[eatme] generated $1: $(cat "$file")" >&2
+    echo "[eatme] copy it now; later starts do not print it again" >&2
+  fi
+  cat "$file"
+}
+
+if [ "$(opt open_access)" = "true" ]; then
+  echo "[eatme] open_access is on; the API needs no token on the LAN"
+else
+  [ -z "$AUTH_TOKEN" ] && AUTH_TOKEN="$(generated_token auth_token)" && export AUTH_TOKEN
+  [ -z "$DISPLAY_TOKEN" ] && DISPLAY_TOKEN="$(generated_token display_token)" && export DISPLAY_TOKEN
+  [ -z "$MAGTAG_TOKEN" ] && MAGTAG_TOKEN="$(generated_token magtag_token)" && export MAGTAG_TOKEN
+fi
 export RECEIPT_PROVIDER="$(opt receipt_provider)"
 export OCR_URL="$(opt ocr_url)"
 export ALLOWED_HOSTS="$(opt allowed_hosts)"

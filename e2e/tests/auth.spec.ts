@@ -37,3 +37,16 @@ test("authenticated settings checks the database and creates a recovery snapshot
   await expect(page.getByRole("button", { name: "Download latest" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "Export full backup" })).toBeVisible();
 });
+
+test("a device without the token is asked for it, then works after saving it", async ({ page }) => {
+  await page.goto("/add");
+  await expect(page.getByRole("heading", { name: "Enter your access token" })).toBeVisible();
+
+  await page.getByRole("textbox", { name: "Access token" }).fill("e2e-secret");
+  await page.getByRole("button", { name: "Save" }).click();
+
+  await expect
+    .poll(() => page.locator("#cat > option").count(), { timeout: 8000 })
+    .toBeGreaterThan(1);
+  await expect(page.getByRole("heading", { name: "Enter your access token" })).toHaveCount(0);
+});

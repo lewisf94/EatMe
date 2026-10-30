@@ -34,7 +34,8 @@ unattended on battery power.
    client does not remount or write the device filesystem.
 4. Copy `settings.toml.example` to `CIRCUITPY/settings.toml`, then enter the
    Wi-Fi credentials, the EatMe server's numeric LAN address and `EATME_TOKEN`
-   if the Home Assistant app has `magtag_token` configured.
+   (the `magtag_token` option, or the value the app log printed as
+   `generated magtag_token:` on first start).
 5. Reset the board and watch the serial console. Confirm it receives HTTP 200,
    refreshes once and schedules deep sleep. On the next unchanged timer wake it
    should receive HTTP 304, keep the existing image and return to sleep without

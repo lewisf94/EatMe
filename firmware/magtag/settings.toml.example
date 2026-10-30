@@ -8,7 +8,8 @@ CIRCUITPY_WIFI_PASSWORD = "your-wifi-password"
 # relying on local-name resolution during a short battery-powered wake.
 EATME_SERVER = "http://192.168.1.10:8099"
 
-# Only required if the Home Assistant app has magtag_token configured.
+# The app's magtag_token option, or the value its log printed as
+# "generated magtag_token:" on first start. Empty only with open_access on.
 EATME_TOKEN = ""
 
 # Hours between scheduled wakes. Food expiry moves slowly; twice a day is

@@ -368,8 +368,9 @@ export default function Settings() {
             <span className="eyebrow">Access token</span>
           </div>
           <p className="note left" style={{ marginBottom: 10 }}>
-            Only needed if you set an <code>auth_token</code> in the Home Assistant add-on. Paste
-            the same value here so this device can reach the server.
+            EatMe generates an <code>auth_token</code> on first start and prints it once in the Home
+            Assistant app log, unless you set your own. Paste it here so this device can reach the
+            server.
           </p>
           <div style={{ display: "flex", gap: 8 }}>
             <input
