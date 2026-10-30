@@ -2,6 +2,27 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.10.4
+
+- Security: reject requests whose Host is not a LAN address, a private name
+  (`.local`, `.lan`, `.home.arpa`, `.ts.net`, single-label) or an entry in the
+  new `allowed_hosts` option. This blocks DNS-rebinding attacks, where a
+  malicious web page reaches the API through a household browser.
+- Security: trust `X-Forwarded-*` headers only from loopback (Tailscale Serve).
+  A LAN client can no longer choose the origin printed on QR labels.
+- Security: accept push subscriptions only for browser push services, cap them
+  at 20 devices, and time out each send after 10 seconds. An API client can no
+  longer make the server call internal HTTPS services.
+- Security: after 20 wrong tokens in five minutes, a client receives HTTP 429.
+  Tokens shorter than 20 characters log a startup error.
+- Security: cap the length of names, notes and hints, and accept only
+  `http://` and `https://` recipe and image links. The recipe form adds
+  `https://` to a link typed without a scheme.
+- Security: receipt OCR errors no longer show the private OCR address.
+- Security: pass the Tailscale auth key through a private file, not the
+  command line.
+- CI: run workflows with a read-only repository token.
+
 ## 0.10.3
 
 - Security: apply the `auth_token` gate to percent-encoded API paths. Before

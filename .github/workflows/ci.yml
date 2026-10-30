@@ -5,6 +5,10 @@ on:
     branches: [main, ha-canary]
   pull_request:
 
+# Read-only token: no job here needs to write to the repository.
+permissions:
+  contents: read
+
 jobs:
   check:
     name: check + unit tests (Node ${{ matrix.node }})

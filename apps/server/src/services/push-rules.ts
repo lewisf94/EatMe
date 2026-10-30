@@ -65,3 +65,30 @@ export function isGone(err: unknown): boolean {
   const status = (err as { statusCode?: number } | null)?.statusCode;
   return status === 404 || status === 410;
 }
+
+// Browser push services: Chrome/Edge (FCM), Firefox (autopush), Safari (APNs)
+// and legacy Edge (WNS). A leading dot matches any subdomain.
+const PUSH_SERVICE_HOSTS = [
+  "fcm.googleapis.com",
+  "android.googleapis.com",
+  "updates.push.services.mozilla.com",
+  ".push.services.mozilla.com",
+  "web.push.apple.com",
+  ".push.apple.com",
+  ".notify.windows.com",
+];
+
+/** Whether a subscription endpoint belongs to a real browser push service, on
+ *  the default HTTPS port. `extraHosts` lists further exact host names, for a
+ *  self-hosted push service or the e2e suite. */
+export function isPushServiceEndpoint(value: string, extraHosts: readonly string[] = []): boolean {
+  if (!URL.canParse(value)) return false;
+  const url = new URL(value);
+  if (url.protocol !== "https:" || url.username || url.password) return false;
+  const host = url.hostname.toLowerCase();
+  if (extraHosts.includes(host)) return true;
+  if (url.port) return false;
+  return PUSH_SERVICE_HOSTS.some((allowed) =>
+    allowed.startsWith(".") ? host.endsWith(allowed) : host === allowed,
+  );
+}

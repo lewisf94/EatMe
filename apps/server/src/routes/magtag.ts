@@ -15,7 +15,7 @@ import {
   timezone,
 } from "../repo/settings.js";
 import { recipeMeetsRequirements } from "../data/starterRecipes.js";
-import { secretMatches } from "../services/security.js";
+import { authFailures, secretMatches } from "../services/security.js";
 import { urgencyPhrase, formatRendered } from "../services/display.js";
 import {
   buildMagtagUrgentSvg,
@@ -179,10 +179,15 @@ export async function registerMagtag(app: FastifyInstance): Promise<void> {
   // logs; ?token= stays accepted for boards that still run older firmware.
   function unauthorized(req: FastifyRequest): boolean {
     if (!config.magtagToken) return false;
+    // A blocked client is refused before the comparison, so guessing stops
+    // working even with the right token among the attempts.
+    if (authFailures.blocked(req.ip)) return true;
     const header = req.headers[DEVICE_TOKEN_HEADER];
     const q = req.query as Record<string, string | undefined>;
     const supplied = typeof header === "string" && header ? header : q.token;
-    return !secretMatches(supplied, config.magtagToken);
+    if (secretMatches(supplied, config.magtagToken)) return false;
+    authFailures.fail(req.ip);
+    return true;
   }
 
   // Household/admin view. This route is intentionally outside the device-token

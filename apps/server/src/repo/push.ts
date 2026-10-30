@@ -40,3 +40,7 @@ export function deleteSubscriptionByEndpoint(endpoint: string): boolean {
 export function countSubscriptions(): number {
   return (db.prepare("SELECT COUNT(*) AS n FROM push_subscriptions").get() as { n: number }).n;
 }
+
+export function subscriptionExists(endpoint: string): boolean {
+  return db.prepare("SELECT 1 FROM push_subscriptions WHERE endpoint = ?").get(endpoint) != null;
+}

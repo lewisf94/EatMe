@@ -69,6 +69,7 @@ before stock is added.
 | `auth_token` | Recommended. If set, the API requires this token; paste the same value into the app's **Settings > Access token** on each device. **Required** for the backup/restore section of Settings, which refuses to run without it. |
 | `display_token` | Recommended when using the fallback ESPHome endpoint. Use a long, random device-specific token. |
 | `magtag_token` | Recommended for `/api/magtag/*`. Put the same long, random value in `EATME_TOKEN` on the MagTag; do not reuse the household admin token. |
+| `allowed_hosts` | Leave blank unless you open EatMe through a public domain name, such as a reverse proxy at `eatme.example.com`. LAN addresses and `.local`, `.lan`, `.home.arpa` and `.ts.net` names always work. List extra names separated by commas; a leading dot (`.example.com`) allows every subdomain. Other names receive HTTP 421, which blocks DNS-rebinding attacks from malicious web pages. |
 | `receipt_provider` | `local` for the separate **EatMe OCR** app. `stub` returns fixed demonstration data and is only useful for development. |
 | `ocr_url` | Leave blank to discover EatMe OCR automatically. Set an explicit base URL only when the OCR service is hosted elsewhere. |
 
@@ -144,6 +145,12 @@ EatMe **Settings** now includes:
   value into **EatMe > Settings > Access token** on every device.
 - Set separate long, random `display_token` and `magtag_token` values for any
   e-ink devices. The app logs a startup warning while an API token is unset.
+- Requests must name a LAN address, a private name or an `allowed_hosts` entry,
+  so a malicious web page cannot reach EatMe through DNS rebinding.
+- After 20 wrong tokens in five minutes, a client receives HTTP 429 until the
+  window ends. Tokens shorter than 20 characters log a startup error.
+- Notification subscriptions are accepted only for browser push services
+  (Google, Mozilla, Apple, Microsoft), at most 20 devices.
 - Browser writes are accepted only from EatMe's own origin. The app also sends a
   restrictive content policy, disables framing and unnecessary browser APIs,
   and enables transport security on HTTPS requests.

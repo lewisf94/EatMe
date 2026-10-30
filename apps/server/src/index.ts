@@ -1,6 +1,7 @@
 import { db, migrate } from "./db.js";
 import { seedIfEmpty } from "./seed.js";
 import { config } from "./config.js";
+import { weakToken } from "./services/security.js";
 
 migrate();
 seedIfEmpty();
@@ -57,6 +58,14 @@ try {
     app.log.warn("auth_token is empty; the household API is writable by devices on the LAN");
   if (!config.displayToken) app.log.warn("display_token is empty; the classic display is open");
   if (!config.magtagToken) app.log.warn("magtag_token is empty; MagTag routes are open");
+  for (const [name, value] of [
+    ["auth_token", config.authToken],
+    ["display_token", config.displayToken],
+    ["magtag_token", config.magtagToken],
+  ] as const) {
+    if (weakToken(value))
+      app.log.error(`${name} is shorter than 20 characters; use a long random value`);
+  }
   // Notification schedule (Monday digest, day-before use-by warning). Started
   // after listen so a push problem can never stop the server coming up.
   const { startPushSchedule, runDueJobs } = await import("./services/push.js");

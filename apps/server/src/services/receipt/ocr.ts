@@ -43,9 +43,11 @@ class LocalSidecarProvider implements OcrProvider {
         signal: AbortSignal.timeout(120_000),
       });
     } catch (error) {
-      const detail = error instanceof Error ? `: ${error.message}` : "";
+      // The address and the low-level reason go to the server log only; the
+      // client message must not map the private app network.
+      console.warn(`receipt OCR at ${config.ocrUrl} is unavailable:`, error);
       throw new Error(
-        `Local receipt OCR is unavailable at ${config.ocrUrl}. Install and start the EatMe OCR Home Assistant app${detail}`,
+        "Local receipt OCR is unavailable. Install and start the EatMe OCR Home Assistant app.",
       );
     }
     if (!res.ok) {

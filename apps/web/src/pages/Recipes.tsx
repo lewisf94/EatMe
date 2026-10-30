@@ -154,7 +154,7 @@ function Editor({
             onClick={() =>
               onSave({
                 name: name.trim(),
-                url: url.trim() || null,
+                url: recipeLink(url),
                 notes: notes.trim() || null,
                 ingredients,
                 dietaryTags,
@@ -175,6 +175,13 @@ function Editor({
       </div>
     </section>
   );
+}
+
+/** The server accepts only http(s) links, so treat "bbc.co.uk/food/…" as https. */
+function recipeLink(raw: string): string | null {
+  const link = raw.trim();
+  if (!link) return null;
+  return /^[a-z][a-z0-9+.-]*:/i.test(link) ? link : `https://${link}`;
 }
 
 export default function Recipes() {

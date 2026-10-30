@@ -178,7 +178,7 @@ describe("input validation", () => {
     const rejected = await app.inject({
       method: "POST",
       url: "/api/products",
-      headers: { origin: "https://evil.example", host: "eatme.example" },
+      headers: { origin: "https://evil.example", host: "eatme.local" },
       payload: { name: "Cross-site product", categoryId },
     });
     expect(rejected.statusCode).toBe(403);
@@ -187,10 +187,71 @@ describe("input validation", () => {
     const accepted = await app.inject({
       method: "POST",
       url: "/api/products",
-      headers: { origin: "http://eatme.example", host: "eatme.example" },
+      headers: { origin: "http://eatme.local", host: "eatme.local" },
       payload: { name: "Same-origin product", categoryId },
     });
     expect(accepted.statusCode).toBe(200);
+  });
+
+  it("rejects a DNS-rebinding host even when Origin matches it", async () => {
+    const write = await app.inject({
+      method: "PUT",
+      url: "/api/settings",
+      headers: { origin: "http://evil.example:8099", host: "evil.example:8099" },
+      payload: { backup_retention: 3 },
+    });
+    expect(write.statusCode).toBe(421);
+
+    const read = await app.inject({
+      method: "GET",
+      url: "/api/inventory",
+      headers: { host: "evil.example:8099" },
+    });
+    expect(read.statusCode).toBe(421);
+
+    const lan = await app.inject({
+      method: "GET",
+      url: "/api/inventory",
+      headers: { host: "192.168.1.10:8099" },
+    });
+    expect(lan.statusCode).toBe(200);
+  });
+
+  it("ignores forwarded host headers from untrusted clients", async () => {
+    const spoofed = await app.inject({
+      method: "GET",
+      url: "/api/inventory",
+      // Only loopback (Tailscale Serve) is a trusted proxy; a LAN client is not.
+      remoteAddress: "192.168.1.20",
+      headers: { host: "evil.example", "x-forwarded-host": "eatme.local" },
+    });
+    expect(spoofed.statusCode).toBe(421);
+  });
+
+  it("accepts push subscriptions only for browser push services", async () => {
+    const keys = { p256dh: "key", auth: "secret" };
+    const internal = await app.inject({
+      method: "POST",
+      url: "/api/push/subscribe",
+      payload: { endpoint: "https://10.0.0.1:8443/anything", keys },
+    });
+    expect(internal.statusCode).toBe(400);
+
+    const real = await app.inject({
+      method: "POST",
+      url: "/api/push/subscribe",
+      payload: { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys },
+    });
+    expect(real.statusCode).toBe(201);
+  });
+
+  it("rejects recipe links that are not http(s)", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/recipes",
+      payload: { name: "Script link", url: "javascript:alert(1)" },
+    });
+    expect(response.statusCode).toBe(400);
   });
 });
 

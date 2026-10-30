@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6
+
+- Security: do not return exception detail when an image cannot be read.
+
 ## 0.1.5
 
 - Update the base image from Python 3.12 to Python 3.15.
