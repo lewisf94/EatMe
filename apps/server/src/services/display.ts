@@ -67,6 +67,21 @@ export function urgencyPhrase(row: Pick<InventoryRow, "status" | "pressureKind" 
   return `Best before ${when}`;
 }
 
+/** The MagTag's shorter form of urgencyPhrase. It sits to the right of the
+ *  item name, so it must stay a few words at a size the 2.9" panel shows
+ *  cleanly. A use-by date keeps its "Use by" because it is about safety. */
+export function shortUrgencyPhrase(
+  row: Pick<InventoryRow, "status" | "pressureKind" | "daysLeft">,
+) {
+  const d = row.daysLeft;
+  if (row.status === "past_use_by") return "Use by passed";
+  if (row.status === "past_best") return "Past its best";
+  if (row.status === "quality_declining") return "Check it";
+  const when = d == null ? "Soon" : d <= 0 ? "Today" : d === 1 ? "Tomorrow" : `${d} days`;
+  if (row.pressureKind === "use_by") return `Use by: ${when.toLowerCase()}`;
+  return when;
+}
+
 export function buildDashboardSvg(d: DashboardData): string {
   const parts: string[] = [];
   parts.push(

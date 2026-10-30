@@ -31,6 +31,9 @@ TOKEN = os.getenv("EATME_TOKEN", "")
 REQUEST_TIMEOUT = 15
 ETAG_START = 1
 ETAG_LENGTH = 16
+# Two bytes after the ETag hold where the next press of A starts in the
+# urgent list, so a repeated A press steps through every item due.
+NEXT_START = ETAG_START + ETAG_LENGTH
 # A full e-paper refresh takes a few seconds; this only bounds a stuck panel.
 PANEL_BUSY_TIMEOUT = 30
 
@@ -222,6 +225,30 @@ def clear_page_cache(page="urgent"):
     write_last_page(page)
     for offset in range(ETAG_LENGTH):
         alarm.sleep_memory[ETAG_START + offset] = 0
+    write_next_start(0)
+
+
+def read_next_start():
+    """Return the urgent-list start for the next A press (0 = the top)."""
+    low = alarm.sleep_memory[NEXT_START]
+    return low | (alarm.sleep_memory[NEXT_START + 1] << 8)
+
+
+def write_next_start(value):
+    value = max(0, min(999, int(value or 0)))
+    alarm.sleep_memory[NEXT_START] = value & 0xFF
+    alarm.sleep_memory[NEXT_START + 1] = value >> 8
+
+
+def parse_next_start(response):
+    """Read X-EatMe-Next-Start; a server older than 0.11.4 sends none (= 0)."""
+    raw = response.headers.get("X-EatMe-Next-Start") or response.headers.get(
+        "x-eatme-next-start"
+    )
+    try:
+        return max(0, min(999, int(raw)))
+    except (TypeError, ValueError):
+        return 0
 
 
 def write_page_cache(page, etag):
@@ -269,11 +296,15 @@ def connect_wifi():
         wifi.radio.connect(ssid, password, timeout=REQUEST_TIMEOUT)
 
 
-def fetch_dashboard(requests, page, battery, allow_not_modified=True):
+def fetch_dashboard(
+    requests, page, battery, allow_not_modified=True, start=0
+):
     path = DASHBOARD_PATH if page == "urgent" else PAGE_PATH.format(page=page)
     url = SERVER + path
     if battery is not None:
         url = add_query(url, "battery", battery)
+    if start:
+        url = add_query(url, "start", start)
 
     cached_etag = read_cached_etag(page) if allow_not_modified else None
     response = requests.get(
@@ -284,8 +315,9 @@ def fetch_dashboard(requests, page, battery, allow_not_modified=True):
         timeout=REQUEST_TIMEOUT,
     )
     try:
+        next_start = parse_next_start(response)
         if response.status_code == 304 and cached_etag:
-            return None, None, cached_etag, False
+            return None, None, cached_etag, False, next_start
         if response.status_code != 200:
             raise RuntimeError("EatMe returned HTTP {}".format(response.status_code))
         payload = response.content
@@ -303,7 +335,7 @@ def fetch_dashboard(requests, page, battery, allow_not_modified=True):
     )
     if bitmap.width != 296 or bitmap.height != 128:
         raise RuntimeError("Expected a 296 x 128 MagTag image")
-    return bitmap, palette, etag, True
+    return bitmap, palette, etag, True, next_start
 
 
 def wait_for_refresh_slot(display):
@@ -402,7 +434,7 @@ def report_status(requests, action, battery, display_updated, wake_seconds):
                 {
                     "battery": battery,
                     "wakeReason": "button:{}".format(action) if action else "timer",
-                    "firmware": "eatme-magtag/0.5",
+                    "firmware": "eatme-magtag/0.6",
                     "rssi": wifi_rssi(),
                     "displayUpdated": display_updated,
                     "wakeSeconds": wake_seconds,
@@ -475,6 +507,12 @@ def main():
     # so the ETag cache is only ever used to skip a scheduled, unattended
     # refresh, never one the user just asked for by pressing something.
     page = action or "urgent"
+    # A pressed again while the urgent list is on the panel shows the next
+    # items; after the last ones the server sends 0 and the list starts over.
+    # A timer wake always shows the top of the list.
+    start = 0
+    if action == "urgent" and read_last_page() == "urgent":
+        start = read_next_start()
     if action:
         show_pixel(PIXEL_FOR_PAGE.get(page), PRESS_COLOR)
         if LOADING_SCREEN:
@@ -486,14 +524,19 @@ def main():
         connect_wifi()
         pool = socketpool.SocketPool(wifi.radio)
         requests = adafruit_requests.Session(pool, ssl.create_default_context())
-        bitmap, palette, etag, display_updated = fetch_dashboard(
-            requests, page, battery, allow_not_modified=action is None
+        bitmap, palette, etag, display_updated, next_start = fetch_dashboard(
+            requests,
+            page,
+            battery,
+            allow_not_modified=action is None,
+            start=start,
         )
         if display_updated:
             show_bitmap(bitmap, palette)
             write_page_cache(page, etag)
         else:
             print("Dashboard unchanged; keeping the existing e-paper image")
+        write_next_start(next_start)
         report_status(
             requests,
             action,

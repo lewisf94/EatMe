@@ -8,13 +8,21 @@ import { esc, renderPixels } from "./display.js";
 export const MAGTAG_W = 296;
 export const MAGTAG_H = 128;
 
-/** How many urgent rows fit legibly at this size. */
-export const MAGTAG_ROWS = 2;
-const HEADER_H = 22;
-const FOOTER_H = 16;
-const ROW_H = (MAGTAG_H - HEADER_H - FOOTER_H) / MAGTAG_ROWS;
+/** How many urgent rows fit legibly at this size. Up to two use large text;
+ *  a third row uses a smaller size that is still easy to read. */
+export const MAGTAG_ROWS = 3;
+// On the physical panel, text below about 15 px looked broken, most of all
+// white text in the black bars, so every size here is 15 px or larger.
+const HEADER_H = 24;
+const FOOTER_H = 19;
+const BODY_TOP = HEADER_H;
+const BODY_H = MAGTAG_H - HEADER_H - FOOTER_H;
+const BAR_TEXT = 16;
+const FOOTER_TEXT = 15;
 const PAD_X = 8;
 const CONTENT_W = MAGTAG_W - PAD_X * 2;
+const GAP = 10;
+const MIN_NAME_TEXT = 16;
 
 /**
  * Archivo glyph advances at 1000 px, ordered from ASCII space (32) through
@@ -134,6 +142,8 @@ export type MagtagChrome = { rendered: string };
 export type MagtagUrgentData = MagtagChrome & {
   urgent: { name: string; sub: string }[];
   urgentTotal?: number;
+  /** Position of the first shown item in the full urgent list (0-based). */
+  start?: number;
 };
 export type MagtagRecipeData = MagtagChrome & { recipe?: string; matchedItems: string[] };
 export type MagtagShoppingData = MagtagChrome & { items: string[]; total: number };
@@ -143,63 +153,109 @@ export type MagtagStatusData = MagtagChrome & {
   lastSync: string | null;
 };
 
+function text(
+  x: number,
+  y: number,
+  size: number,
+  value: string,
+  opts: { fill?: string; anchor?: "start" | "middle" | "end"; clip?: boolean } = {},
+): string {
+  const anchor = opts.anchor && opts.anchor !== "start" ? ` text-anchor="${opts.anchor}"` : "";
+  const clip = opts.clip ? ` clip-path="url(#body-clip)"` : "";
+  return `<text x="${x}" y="${y}"${anchor}${clip} font-family="Archivo" font-weight="700" font-size="${size}" fill="${opts.fill ?? "#000"}">${esc(value)}</text>`;
+}
+
+function rule(y: number): string {
+  return `<rect x="${PAD_X}" y="${Math.round(y)}" width="${CONTENT_W}" height="1" fill="#000"/>`;
+}
+
+/** Baseline that centres a line of bold Archivo capitals in a band. */
+function baseline(top: number, height: number, size: number): number {
+  return Math.round(top + height / 2 + size * 0.36);
+}
+
 function chrome(title: string, context?: string): string[] {
+  const y = baseline(0, HEADER_H, BAR_TEXT);
+  const contextW = context ? measureMagtagText(context, BAR_TEXT, 700) : 0;
   const parts = [
-    `<defs><clipPath id="body-clip"><rect x="${PAD_X}" y="${HEADER_H}" width="${CONTENT_W}" height="${MAGTAG_H - HEADER_H - FOOTER_H}"/></clipPath></defs>`,
+    `<defs><clipPath id="body-clip"><rect x="${PAD_X}" y="${BODY_TOP}" width="${CONTENT_W}" height="${BODY_H}"/></clipPath></defs>`,
     `<rect width="${MAGTAG_W}" height="${MAGTAG_H}" fill="#fff"/>`,
     `<rect width="${MAGTAG_W}" height="${HEADER_H}" fill="#000"/>`,
-    `<text x="${PAD_X}" y="16" font-family="Archivo" font-weight="700" font-size="13" fill="#fff">${esc(
-      fitMagtagText(title, 150, 13, 700),
-    )}</text>`,
+    text(PAD_X, y, BAR_TEXT, fitMagtagText(title, CONTENT_W - contextW - GAP, BAR_TEXT, 700), {
+      fill: "#fff",
+    }),
   ];
   if (context)
-    parts.push(
-      `<text x="${MAGTAG_W - PAD_X}" y="16" text-anchor="end" font-family="Archivo" font-weight="700" font-size="12" fill="#fff">${esc(
-        fitMagtagText(context, 126, 12, 700),
-      )}</text>`,
-    );
+    parts.push(text(MAGTAG_W - PAD_X, y, BAR_TEXT, context, { fill: "#fff", anchor: "end" }));
   return parts;
 }
 
-function footer(d: MagtagChrome): string {
+/** "Updated" plus the time only: the date made the line too long for a size
+ *  that stays readable, and the panel is refreshed at least twice a day. */
+function footer(d: MagtagChrome, right?: string): string {
   const top = MAGTAG_H - FOOTER_H;
+  const y = baseline(top, FOOTER_H, FOOTER_TEXT);
+  const time = d.rendered.split(/,\s*/).pop() ?? d.rendered;
+  const rightW = right ? measureMagtagText(right, FOOTER_TEXT, 700) : 0;
   return [
     `<rect x="0" y="${top}" width="${MAGTAG_W}" height="${FOOTER_H}" fill="#000"/>`,
-    `<text x="${PAD_X}" y="${MAGTAG_H - 4}" font-family="Archivo" font-weight="700" font-size="12" fill="#fff">${esc(
-      fitMagtagText(`Updated ${d.rendered}`, CONTENT_W, 12, 700),
-    )}</text>`,
+    text(
+      PAD_X,
+      y,
+      FOOTER_TEXT,
+      fitMagtagText(`Updated ${time}`, CONTENT_W - rightW - GAP, FOOTER_TEXT, 700),
+      { fill: "#fff" },
+    ),
+    right ? text(MAGTAG_W - PAD_X, y, FOOTER_TEXT, right, { fill: "#fff", anchor: "end" }) : "",
   ].join("");
 }
 
+// Anti-aliased glyphs are converted to black and white below; see
+// highContrastGrayIndex for the cutoff that keeps their edges clean.
 function wrap(parts: string[]): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${MAGTAG_W}" height="${MAGTAG_H}" viewBox="0 0 ${MAGTAG_W} ${MAGTAG_H}" text-rendering="optimizeLegibility">${parts.join("")}</svg>`;
 }
 
-/** Button 1: the same urgency list as the classic panel, cut down to two rows. */
+function emptyState(title: string, detail: string): string[] {
+  return [
+    text(MAGTAG_W / 2, BODY_TOP + 38, 20, title, { anchor: "middle" }),
+    text(MAGTAG_W / 2, BODY_TOP + 64, 15, detail, { anchor: "middle" }),
+  ];
+}
+
+/** Button 1: the most urgent items, each with a short "when" on the right. */
 export function buildMagtagUrgentSvg(d: MagtagUrgentData): string {
   const total = d.urgentTotal ?? d.urgent.length;
   const parts = chrome("EAT ME FIRST", total > 0 ? `${total} due` : undefined);
-  if (d.urgent.length === 0) {
-    parts.push(
-      `<text x="${MAGTAG_W / 2}" y="63" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="17">Nothing to use up</text>`,
-      `<text x="${MAGTAG_W / 2}" y="85" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="13">Everything is in good shape</text>`,
-    );
+  const shown = d.urgent.slice(0, MAGTAG_ROWS);
+  if (shown.length === 0) {
+    parts.push(...emptyState("Nothing to use up", "Everything is in good shape"));
   } else {
-    d.urgent.slice(0, MAGTAG_ROWS).forEach((item, i) => {
-      const top = HEADER_H + i * ROW_H;
-      if (i > 0)
-        parts.push(`<rect x="${PAD_X}" y="${top}" width="${CONTENT_W}" height="1" fill="#aaa"/>`);
+    const rowH = BODY_H / Math.max(2, shown.length);
+    const nameSize = shown.length > 2 ? 19 : 22;
+    const whenSize = shown.length > 2 ? 16 : 18;
+    shown.forEach((item, i) => {
+      const top = BODY_TOP + i * rowH;
+      const y = baseline(top, rowH, nameSize);
+      const whenW = measureMagtagText(item.sub, whenSize, 700);
+      const nameW = CONTENT_W - whenW - GAP;
+      // A long name steps down in size before it is cut short, but never below
+      // the smallest size that stays readable on the panel.
+      let size = nameSize;
+      while (size > MIN_NAME_TEXT && measureMagtagText(item.name, size, 700) > nameW) size--;
+      if (i > 0) parts.push(rule(top));
       parts.push(
-        `<text x="${PAD_X}" y="${top + 18}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="16" fill="#000">${esc(
-          fitMagtagText(item.name, CONTENT_W, 16, 700),
-        )}</text>`,
-        `<text x="${PAD_X}" y="${top + 38}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="14" fill="#000">${esc(
-          fitMagtagText(item.sub, CONTENT_W, 14, 700),
-        )}</text>`,
+        text(PAD_X, y, size, fitMagtagText(item.name, nameW, size, 700), { clip: true }),
+        text(MAGTAG_W - PAD_X, y, whenSize, item.sub, { anchor: "end", clip: true }),
       );
     });
   }
-  parts.push(footer(d));
+  // When not every item fits, say which ones these are; pressing A again
+  // shows the next ones.
+  const first = (d.start ?? 0) + 1;
+  const last = first + shown.length - 1;
+  const range = first === last ? `${first} of ${total}` : `${first}-${last} of ${total}`;
+  parts.push(footer(d, total > shown.length ? range : undefined));
   return wrap(parts);
 }
 
@@ -207,27 +263,24 @@ export function buildMagtagUrgentSvg(d: MagtagUrgentData): string {
 export function buildMagtagRecipeSvg(d: MagtagRecipeData): string {
   const parts = chrome("RECIPE");
   if (!d.recipe) {
-    parts.push(
-      `<text x="${MAGTAG_W / 2}" y="63" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="17">No suggestion yet</text>`,
-      `<text x="${MAGTAG_W / 2}" y="85" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="13">Add recipes to find a match</text>`,
-    );
+    parts.push(...emptyState("No suggestion yet", "Add recipes to find a match"));
   } else {
-    const recipeLines = wrapMagtagText(d.recipe, CONTENT_W, 17, 700, 2);
+    const recipeLines = wrapMagtagText(d.recipe, CONTENT_W, 20, 700, 2);
     const uses = d.matchedItems.length
       ? `Uses: ${d.matchedItems.join(", ")}`
       : "Uses what's expiring";
-    const useLines = wrapMagtagText(uses, CONTENT_W, 13, 700, 2);
-    parts.push(
-      ...recipeLines.map(
-        (line, i) =>
-          `<text x="${PAD_X}" y="${HEADER_H + 20 + i * 19}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="17" fill="#000">${esc(line)}</text>`,
-      ),
-      `<rect x="${PAD_X}" y="66" width="${CONTENT_W}" height="1" fill="#aaa"/>`,
-      ...useLines.map(
-        (line, i) =>
-          `<text x="${PAD_X}" y="${84 + i * 18}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="13" fill="#000">${esc(line)}</text>`,
-      ),
-    );
+    const useLines = wrapMagtagText(uses, CONTENT_W, 15, 700, recipeLines.length > 1 ? 1 : 2);
+    let y = BODY_TOP + 23;
+    for (const line of recipeLines) {
+      parts.push(text(PAD_X, y, 20, line, { clip: true }));
+      y += 22;
+    }
+    parts.push(rule(y - 13));
+    y += 8;
+    for (const line of useLines) {
+      parts.push(text(PAD_X, y, 15, line, { clip: true }));
+      y += 19;
+    }
   }
   parts.push(footer(d));
   return wrap(parts);
@@ -237,23 +290,17 @@ export function buildMagtagRecipeSvg(d: MagtagRecipeData): string {
 export function buildMagtagShoppingSvg(d: MagtagShoppingData): string {
   const parts = chrome("SHOPPING");
   if (d.total === 0) {
-    parts.push(
-      `<text x="${MAGTAG_W / 2}" y="63" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="17">List is empty</text>`,
-      `<text x="${MAGTAG_W / 2}" y="85" text-anchor="middle" font-family="Archivo" font-weight="700" font-size="13">Nothing to pick up</text>`,
-    );
+    parts.push(...emptyState("List is empty", "Nothing to pick up"));
   } else {
     const shown = d.items.slice(0, 4);
     const remaining = Math.max(0, d.total - shown.length);
     const preview = `${shown.join(", ")}${remaining ? `; +${remaining} more` : ""}`;
-    const previewLines = wrapMagtagText(preview, CONTENT_W, 14, 700, 2);
+    const previewLines = wrapMagtagText(preview, CONTENT_W, 16, 700, 2);
     parts.push(
-      `<text x="${PAD_X}" y="44" font-family="Archivo" font-weight="700" font-size="18" fill="#000">${d.total} item${
-        d.total === 1 ? "" : "s"
-      } to buy</text>`,
-      `<rect x="${PAD_X}" y="55" width="${CONTENT_W}" height="1" fill="#aaa"/>`,
-      ...previewLines.map(
-        (line, i) =>
-          `<text x="${PAD_X}" y="${75 + i * 20}" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="14" fill="#000">${esc(line)}</text>`,
+      text(PAD_X, BODY_TOP + 25, 22, `${d.total} item${d.total === 1 ? "" : "s"} to buy`),
+      rule(BODY_TOP + 34),
+      ...previewLines.map((line, i) =>
+        text(PAD_X, BODY_TOP + 55 + i * 20, 16, line, { clip: true }),
       ),
     );
   }
@@ -271,16 +318,10 @@ export function buildMagtagStatusSvg(d: MagtagStatusData): string {
   const signal = d.rssi == null ? "Wi-Fi unknown" : `Wi-Fi ${Math.round(d.rssi)} dBm`;
   const lastSync = `Last sync ${d.lastSync ?? "never"}`;
   parts.push(
-    `<text x="${PAD_X}" y="44" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="18" fill="#000">${esc(
-      fitMagtagText(battery, CONTENT_W, 18, 700),
-    )}</text>`,
-    `<text x="${PAD_X}" y="70" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="14" fill="#000">${esc(
-      fitMagtagText(signal, CONTENT_W, 14, 700),
-    )}</text>`,
-    `<rect x="${PAD_X}" y="80" width="${CONTENT_W}" height="1" fill="#aaa"/>`,
-    `<text x="${PAD_X}" y="101" clip-path="url(#body-clip)" font-family="Archivo" font-weight="700" font-size="13" fill="#000">${esc(
-      fitMagtagText(lastSync, CONTENT_W, 13, 700),
-    )}</text>`,
+    text(PAD_X, BODY_TOP + 25, 22, fitMagtagText(battery, CONTENT_W, 22, 700), { clip: true }),
+    text(PAD_X, BODY_TOP + 50, 17, fitMagtagText(signal, CONTENT_W, 17, 700), { clip: true }),
+    rule(BODY_TOP + 58),
+    text(PAD_X, BODY_TOP + 78, 15, fitMagtagText(lastSync, CONTENT_W, 15, 700), { clip: true }),
   );
   parts.push(footer(d));
   return wrap(parts);
