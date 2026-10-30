@@ -2,6 +2,17 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.11.5
+
+- On a computer or another wide screen (1024 px or wider), the web app looks
+  like a desktop app. A dark side bar holds every screen: Today, Use it up,
+  Recipes, All food, Shopping, Scan a receipt, Labels, History and Settings,
+  with an "Add item" button at the top.
+- Food and recipes show as cards in two or three columns. Forms, Settings and
+  lists keep a comfortable reading width. Swipe to mark food used up still
+  works with the mouse, and the Undo bar shows at the bottom of the page.
+- The phone layout does not change.
+
 ## 0.11.4
 
 - MagTag pages use bigger text: food names up to 22 px, at least 15 px for

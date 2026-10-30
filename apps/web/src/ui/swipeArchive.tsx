@@ -102,7 +102,7 @@ export function SwipeProductRow({
       onCommit={(a) => onArchive(row, a.id as ArchiveReason)}
       actionColor="#5c7742"
       drawerColor="#6a6152"
-      rowColor="#f4f1e8"
+      rowColor="var(--row-bg)"
       textColor="#16130d"
       radius={0}
       actionWidth={80}

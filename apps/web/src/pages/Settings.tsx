@@ -216,7 +216,7 @@ export default function Settings() {
       <header className="appbar">
         <div className="bar-left">
           <WarmTooltip content="Back">
-            <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
+            <button className="iconbtn phone-only" onClick={() => nav(-1)} aria-label="Back">
               <IconBack />
             </button>
           </WarmTooltip>
