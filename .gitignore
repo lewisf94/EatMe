@@ -21,3 +21,7 @@ firmware/secrets.yaml
 # MagTag Wi-Fi + device token (copy firmware/magtag/settings.toml.example)
 firmware/magtag/settings.toml
 ~$*
+
+# Third-party CAD reference files (Adafruit MagTag case). Not licensed for
+# redistribution here; keep them on your own computer only.
+CAD/
