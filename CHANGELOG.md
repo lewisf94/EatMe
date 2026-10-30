@@ -2,6 +2,15 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.11.6
+
+- Receipt scan: remove the Aldi item code from each product name, for example
+  "337432 BISKS WHEATS" becomes "Bisks Wheats".
+- Receipt scan: use a quantity row such as "2 x 1.99" for the product next to
+  it. Aldi prints this row above the product, and Lidl prints it below. The
+  quantity applies only when it explains the product's total price.
+- Install EatMe OCR 0.1.7 too. It reads receipt photos that have a shadow.
+
 ## 0.11.4
 
 - MagTag pages use bigger text: food names up to 22 px, at least 15 px for
