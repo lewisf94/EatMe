@@ -15,8 +15,10 @@ import board
 import digitalio
 import displayio
 import microcontroller
+import neopixel_write
 import socketpool
 import ssl
+import terminalio
 import wifi
 from analogio import AnalogIn
 
@@ -62,6 +64,10 @@ def _setting_enabled(name, default):
 
 
 BUTTON_WAKE = _setting_enabled("EATME_BUTTON_WAKE", "true")
+# A button press first draws a short "Loading" screen, so the panel answers
+# within about two seconds instead of after Wi-Fi and the download. It costs
+# one extra e-paper refresh per press, never on a scheduled wake.
+LOADING_SCREEN = _setting_enabled("EATME_LOADING_SCREEN", "true")
 
 DASHBOARD_PATH = "/api/magtag/display.bmp"
 PAGE_PATH = "/api/magtag/page/{page}"
@@ -73,6 +79,12 @@ BUTTON_ACTIONS = {
     board.BUTTON_B: "recipe",
     board.BUTTON_C: "shopping",
     board.BUTTON_D: "status",
+}
+PAGE_TITLES = {
+    "urgent": "Use soon",
+    "recipe": "Recipe",
+    "shopping": "Shopping",
+    "status": "Status",
 }
 PAGE_IDS = {"urgent": 0, "recipe": 1, "shopping": 2, "status": 3}
 ID_PAGES = {value: key for key, value in PAGE_IDS.items()}
@@ -89,12 +101,45 @@ def _hold_output(pin_name, value):
         output.direction = digitalio.Direction.OUTPUT
         output.value = value
         _power_controls.append(output)
+        return output
     except ValueError:
-        pass
+        return None
 
 
 _hold_output("SPEAKER_ENABLE", False)
-_hold_output("NEOPIXEL_POWER", True)
+_pixel_power = _hold_output("NEOPIXEL_POWER", True)
+
+# The four NeoPixels sit along the top edge, one above each button. A press
+# lights its own pixel at once, because Wi-Fi, the download and the e-paper
+# refresh take several seconds before the panel changes. Pixel 0 is assumed to
+# be the rightmost (above D); swap this mapping if the wrong pixel lights.
+PIXEL_FOR_PAGE = {"urgent": 3, "recipe": 2, "shopping": 1, "status": 0}
+PIXEL_COUNT = 4
+PRESS_COLOR = (0, 0, 24)  # dim blue (R, G, B)
+FAILURE_COLOR = (24, 0, 0)  # dim red
+FAILURE_FLASH_SECONDS = 1.5
+_pixel_pin = None
+
+
+def show_pixel(index, color):
+    """Light one pixel (or none for index None); best-effort, never fatal."""
+    global _pixel_pin
+    if not hasattr(board, "NEOPIXEL"):
+        return
+    try:
+        if _pixel_pin is None:
+            _pixel_pin = digitalio.DigitalInOut(board.NEOPIXEL)
+            _pixel_pin.direction = digitalio.Direction.OUTPUT
+        buffer = bytearray(PIXEL_COUNT * 3)
+        if index is not None:
+            red, green, blue = color
+            buffer[index * 3 : index * 3 + 3] = bytes((green, red, blue))
+        # The rail is active low: False powers the pixels, True turns them off.
+        if _pixel_power is not None:
+            _pixel_power.value = index is None
+        neopixel_write.neopixel_write(_pixel_pin, buffer)
+    except Exception as error:
+        print("NeoPixel feedback unavailable:", error)
 
 
 def quote_query(value):
@@ -261,21 +306,15 @@ def fetch_dashboard(requests, page, battery, allow_not_modified=True):
     return bitmap, palette, etag, True
 
 
-def show_bitmap(bitmap, palette):
-    display = board.DISPLAY
-    display.rotation = 270
-    group = displayio.Group()
-    group.append(displayio.TileGrid(bitmap, pixel_shader=palette))
-    display.root_group = group
+def wait_for_refresh_slot(display):
+    # The panel refuses a new refresh until its minimum interval has passed;
+    # wait that out rather than spend the retries on it.
+    wait = getattr(display, "time_to_refresh", 0)
+    if 0 < wait <= PANEL_BUSY_TIMEOUT:
+        time.sleep(wait)
 
-    for attempt in range(3):
-        try:
-            display.refresh()
-            break
-        except RuntimeError:
-            if attempt == 2:
-                raise
-            time.sleep(2)
+
+def wait_while_busy(display):
     # Bounded: a panel whose busy line never clears must not hold the board
     # awake, because skipping deep sleep costs orders of magnitude more energy
     # than a partially refreshed image does.
@@ -285,6 +324,67 @@ def show_bitmap(bitmap, palette):
             print("Panel stayed busy; continuing to deep sleep")
             break
         time.sleep(0.1)
+
+
+def show_message(title, note, finish=False):
+    """Draw a two-line text screen for button feedback.
+
+    Without finish, the refresh only starts: Wi-Fi and the download run while
+    the panel is still busy, and show_bitmap honours the refresh interval.
+    """
+    try:
+        from adafruit_display_text import label
+    except ImportError:
+        print("adafruit_display_text missing; no message screen")
+        return
+    try:
+        display = board.DISPLAY
+        display.rotation = 270
+        palette = displayio.Palette(1)
+        palette[0] = 0xFFFFFF
+        group = displayio.Group()
+        group.append(
+            displayio.TileGrid(
+                displayio.Bitmap(display.width, display.height, 1),
+                pixel_shader=palette,
+            )
+        )
+        title = label.Label(terminalio.FONT, text=title, color=0x000000, scale=3)
+        title.anchor_point = (0.5, 0.5)
+        title.anchored_position = (display.width // 2, display.height // 2 - 14)
+        group.append(title)
+        note = label.Label(terminalio.FONT, text=note, color=0x000000, scale=2)
+        note.anchor_point = (0.5, 0.5)
+        note.anchored_position = (display.width // 2, display.height // 2 + 26)
+        group.append(note)
+        display.root_group = group
+        if finish:
+            wait_for_refresh_slot(display)
+        display.refresh()
+        if finish:
+            wait_while_busy(display)
+    except Exception as error:
+        # Feedback is optional; it must never stop the wake from sleeping.
+        print("Message screen failed:", safe_error(error))
+
+
+def show_bitmap(bitmap, palette):
+    display = board.DISPLAY
+    display.rotation = 270
+    group = displayio.Group()
+    group.append(displayio.TileGrid(bitmap, pixel_shader=palette))
+    display.root_group = group
+
+    wait_for_refresh_slot(display)
+    for attempt in range(3):
+        try:
+            display.refresh()
+            break
+        except RuntimeError:
+            if attempt == 2:
+                raise
+            time.sleep(2)
+    wait_while_busy(display)
 
 
 def wifi_rssi():
@@ -302,7 +402,7 @@ def report_status(requests, action, battery, display_updated, wake_seconds):
                 {
                     "battery": battery,
                     "wakeReason": "button:{}".format(action) if action else "timer",
-                    "firmware": "eatme-magtag/0.4",
+                    "firmware": "eatme-magtag/0.5",
                     "rssi": wifi_rssi(),
                     "displayUpdated": display_updated,
                     "wakeSeconds": wake_seconds,
@@ -375,6 +475,10 @@ def main():
     # so the ETag cache is only ever used to skip a scheduled, unattended
     # refresh, never one the user just asked for by pressing something.
     page = action or "urgent"
+    if action:
+        show_pixel(PIXEL_FOR_PAGE.get(page), PRESS_COLOR)
+        if LOADING_SCREEN:
+            show_message(PAGE_TITLES.get(page, page), "Loading...")
     battery = read_battery_percent()
     success = False
 
@@ -400,6 +504,16 @@ def main():
         success = True
     except Exception as error:
         print("Wake cycle failed:", safe_error(error))
+        if action:
+            # Tell the person standing at the panel that the press did not work.
+            show_pixel(PIXEL_FOR_PAGE.get(page), FAILURE_COLOR)
+            if LOADING_SCREEN:
+                # Never leave "Loading..." on the panel until the next wake.
+                show_message("Not loaded", "Press again later", finish=True)
+            else:
+                time.sleep(FAILURE_FLASH_SECONDS)
+
+    show_pixel(None, None)
 
     sleep_seconds = SLEEP_HOURS * 3600 if success else FAILURE_SLEEP_MINUTES * 60
     try:
