@@ -2,6 +2,12 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.11.3
+
+- MagTag pages no longer show a small dot under round letters such as c, e, o
+  and s. The black-and-white conversion turned the faint edge under those
+  letters into a black pixel.
+
 ## 0.11.2
 
 - A barcode that is not in Open Food Facts now shows "Not in Open Food Facts —

@@ -208,3 +208,26 @@ describe("magtag bmp render", () => {
     expect([...used].sort()).toEqual([0, 3]);
   });
 });
+
+describe("MagTag glyph rendering", () => {
+  it("leaves no stray dot below the baseline of round letters", () => {
+    // Anti-aliased rendering left a faint overshoot under c, e, o and s, which
+    // the black-and-white conversion turned into a visible dot.
+    const bmp = renderMagtagBmp(
+      buildMagtagUrgentSvg({ ...chrome, urgent: [{ name: "occo cose", sub: "ooo" }] }),
+    );
+    const dataOffset = bmp.readUInt32LE(10);
+    const rowSize = Math.ceil(MAGTAG_W / 2 / 4) * 4;
+    const isBlack = (x: number, y: number) => {
+      const byte = bmp[dataOffset + (MAGTAG_H - 1 - y) * rowSize + (x >> 1)];
+      return ((x & 1 ? byte : byte >> 4) & 0x0f) === 0;
+    };
+    // The name's baseline is y = 40 and the sub line's is y = 60; the next row
+    // starts below y = 66.
+    const strays: string[] = [];
+    for (const y of [40, 41, 42, 43, 44, 45, 46, 47, 60, 61, 62, 63, 64]) {
+      for (let x = 0; x < MAGTAG_W; x++) if (isBlack(x, y)) strays.push(`${x},${y}`);
+    }
+    expect(strays).toEqual([]);
+  });
+});
