@@ -657,6 +657,19 @@
   font: inherit;
   font-size: 15px;
 }
+/* iOS Safari gives a date input an intrinsic minimum width and height, so an
+   empty one overflows its grid cell and stands taller than the select beside it. */
+.field[type="date"] {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.75rem;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.field[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
 .field:focus {
   outline: none;
   border-color: var(--color-butter-deep);

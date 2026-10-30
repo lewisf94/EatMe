@@ -291,4 +291,22 @@ describe("bounded external lookups", () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it("reports an unknown barcode as not found when Open Food Facts answers 404", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ status: 0, status_verbose: "product not found" }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const response = await app.inject({ method: "GET", url: "/api/lookup/8088002272689" });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ data: { found: false, barcode: "8088002272689" } });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
