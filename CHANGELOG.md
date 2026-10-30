@@ -2,6 +2,21 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.11.1
+
+- The access-token screen now checks the token with EatMe before it saves it.
+  A wrong token shows a message; a correct token shows a "Connected" card.
+- Settings uses on/off switches for dietary requirements and the Home
+  Assistant shopping mirror.
+- Icon-only buttons (Back, Settings, New recipe, Add) show a label on hover or
+  keyboard focus, or on a long press on a phone.
+- The History period and a pack's date type and location use a new picker.
+  The long timezone list keeps the phone's own picker.
+- Recipes have an optional 1 to 5 star rating. Backups made before this
+  version still restore; their recipes have no rating.
+- Uses the SquishSwitch, WarmTooltip, GlideSelect and PeekRating components
+  and the card-stack pattern from React Bits.
+
 ## 0.11.0
 
 - Swipe a food row left on Today, All food or Use it up. A full swipe marks
