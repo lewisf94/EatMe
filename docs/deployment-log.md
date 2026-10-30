@@ -15,6 +15,15 @@ in Home Assistant, the router and the MagTag's own `settings.toml`.
   so set "Always use this IP address" for the wired entry on the BT Smart Hub
   too, or the address can change after a router restart.
 - The phone app updated itself to the new EatMe version.
+- The three generated tokens are stored in the password manager. The MagTag
+  has the `magtag_token` value in `EATME_TOKEN`.
+
+**MagTag**
+
+- The screen stopped changing. The cause was the Wi-Fi network: the MagTag
+  used the extender network (the name that ends in `_EXT`). It now uses the
+  main router network and is placed nearer the router, and the screen
+  updates again.
 - The dropped Wi-Fi may explain some MagTag `ETIMEDOUT` failures. Buttons
   B and D always failed while A and C always worked, so test all four
   buttons again on the wired connection before looking for another cause.
