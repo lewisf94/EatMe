@@ -10,10 +10,11 @@ in Home Assistant, the router and the MagTag's own `settings.toml`.
 **Home Assistant**
 
 - The Wi-Fi connection (`wlan0`) kept dropping, so Home Assistant is back on
-  a network cable. The cable uses a different MAC address from Wi-Fi, so the
-  router can give it a different IP address. Still to do: set "Always use
-  this IP address" for the wired entry on the BT Smart Hub, and update
-  `EATME_SERVER` on the MagTag if the address changed.
+  a network cable. It kept the same IP address, so `EATME_SERVER` on the
+  MagTag does not change. The cable uses a different MAC address from Wi-Fi,
+  so set "Always use this IP address" for the wired entry on the BT Smart Hub
+  too, or the address can change after a router restart.
+- The phone app updated itself to the new EatMe version.
 - The dropped Wi-Fi may explain some MagTag `ETIMEDOUT` failures. Buttons
   B and D always failed while A and C always worked, so test all four
   buttons again on the wired connection before looking for another cause.
