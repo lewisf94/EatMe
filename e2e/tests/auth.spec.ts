@@ -42,8 +42,15 @@ test("a device without the token is asked for it, then works after saving it", a
   await page.goto("/add");
   await expect(page.getByRole("heading", { name: "Enter your access token" })).toBeVisible();
 
+  // A wrong token is checked first and never saved.
+  await page.getByRole("textbox", { name: "Access token" }).fill("not-the-token");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("alert")).toContainText("did not accept that token");
+  expect(await page.evaluate(() => localStorage.getItem("eatme_token"))).toBeNull();
+
   await page.getByRole("textbox", { name: "Access token" }).fill("e2e-secret");
   await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("heading", { name: "Connected" })).toBeVisible();
 
   await expect
     .poll(() => page.locator("#cat > option").count(), { timeout: 8000 })

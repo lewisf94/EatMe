@@ -60,7 +60,7 @@ const TABLE_COLUMNS = {
   ],
   containers: ["id", "qr_uid", "name", "product_id", "location_id", "current_stock_lot_id"],
   usage_events: ["id", "stock_lot_id", "event", "fraction_after", "reason", "at"],
-  recipes: ["id", "name", "url", "notes", "created_at", "dietary_tags", "starter_key"],
+  recipes: ["id", "name", "url", "notes", "created_at", "dietary_tags", "starter_key", "rating"],
   recipe_ingredients: ["id", "recipe_id", "match_text", "required"],
   shopping_list: ["id", "product_id", "name", "added_at", "done_at"],
   purchases: ["id", "merchant", "purchased_at", "source", "image_hash", "status", "created_at"],
@@ -90,6 +90,12 @@ const TABLE_COLUMNS = {
   ],
   settings: ["key", "value"],
 } as const;
+
+/** Columns added after backup version 1 shipped. A backup made before them
+ *  still restores; the missing cell becomes NULL. */
+const LATER_COLUMNS: Partial<Record<keyof typeof TABLE_COLUMNS, readonly string[]>> = {
+  recipes: ["rating"],
+};
 
 const TABLES = Object.keys(TABLE_COLUMNS) as Array<keyof typeof TABLE_COLUMNS>;
 const MAX_ROWS = 100_000;
@@ -141,13 +147,17 @@ function validatedBackup(value: unknown): EatMeBackup {
     total += rawRows.length;
     if (total > MAX_ROWS) throw new Error("backup contains too many rows");
     const expected = [...TABLE_COLUMNS[table]].sort();
+    const later = LATER_COLUMNS[table] ?? [];
     tables[table] = rawRows.map((raw) => {
-      if (!isRecord(raw) || Object.keys(raw).sort().join("\0") !== expected.join("\0")) {
+      const keys = isRecord(raw)
+        ? [...new Set([...Object.keys(raw), ...later])].sort().join("\0")
+        : null;
+      if (!isRecord(raw) || keys !== expected.join("\0")) {
         throw new Error(`backup row in ${table} has unexpected columns`);
       }
       const row: BackupRow = {};
       for (const column of expected) {
-        const cell = raw[column];
+        const cell = raw[column] ?? null;
         if (
           cell !== null &&
           typeof cell !== "string" &&

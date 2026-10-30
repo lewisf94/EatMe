@@ -11,6 +11,7 @@ const recipe = (name: string, ingredients: string[]): Recipe => ({
   ingredients,
   dietaryTags: [],
   starterKey: null,
+  rating: null,
 });
 const row = (name: string, status: Status): RankRow => ({ productId: name, name, status });
 

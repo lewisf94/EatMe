@@ -8,6 +8,7 @@ import {
   type MagtagHealth,
   type Settings,
 } from "../api";
+import SquishSwitch from "../ui/SquishSwitch";
 
 function MagtagSection() {
   const [health, setHealth] = useState<MagtagHealth | null>(null);
@@ -203,15 +204,15 @@ function HomeAssistantSection() {
           <span className="grow">App API</span>
           <strong>{status?.available ? "Connected" : "Unavailable outside HA"}</strong>
         </div>
-        <label className="srow">
-          <input
-            type="checkbox"
+        <div className="srow">
+          <span className="grow">Mirror shopping changes</span>
+          <SquishSwitch
             checked={enabled}
             disabled={!status?.available}
             onChange={() => void toggle()}
+            ariaLabel="Mirror shopping changes"
           />
-          <span className="grow">Mirror shopping changes</span>
-        </label>
+        </div>
       </div>
       <button
         className="btn btn-line"
