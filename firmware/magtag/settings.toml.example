@@ -25,3 +25,7 @@ EATME_FAILURE_SLEEP_MINUTES = "30"
 # when scheduled updates are all you need.
 # Quote the value: settings.toml supports only strings and integers.
 EATME_BUTTON_WAKE = "true"
+
+# Draw a short "Loading..." screen at once after a button press. It costs one
+# extra e-paper refresh per press. Set "false" to keep only the LED feedback.
+EATME_LOADING_SCREEN = "true"
