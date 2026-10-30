@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from statistics import median
 
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageEnhance, ImageFilter, ImageMath, ImageOps
 
 MAX_IMAGE_BYTES = 15 * 1024 * 1024
 MAX_IMAGE_PIXELS = 40_000_000
@@ -76,13 +76,45 @@ class TextLine:
         return self.centre - self.height / 2
 
 
+def paper_light(image: Image.Image) -> Image.Image:
+    """Estimate how brightly the paper is lit, as a small smooth image.
+
+    The maximum filter removes the dark text and keeps the paper. The blur
+    smooths the estimate so letters do not leave holes in it.
+    """
+    small = image.copy()
+    small.thumbnail((256, 256), Image.Resampling.BILINEAR)
+    light = small.filter(ImageFilter.MaxFilter(5))
+    return light.filter(ImageFilter.GaussianBlur(max(2, min(small.size) // 24)))
+
+
+def flatten_illumination(image: Image.Image) -> Image.Image:
+    """Remove a shadow or a lighting gradient across the receipt.
+
+    A phone held over a receipt often shades one end of it, and one global
+    contrast setting cannot suit both ends. Divide each pixel by the local
+    paper brightness so the whole page is white again.
+    """
+    light = paper_light(image).resize(image.size, Image.Resampling.BILINEAR)
+    return ImageMath.lambda_eval(
+        lambda args: args["convert"](
+            args["min"](args["page"] * 255 / (args["light"] + 1), 255), "L"
+        ),
+        page=image,
+        light=light,
+    )
+
+
 def crop_receipt(image: Image.Image) -> Image.Image:
     """Trim a dark table or worktop using the receipt's bright page area."""
-    sample = image.copy()
-    sample.thumbnail((320, 320), Image.Resampling.BILINEAR)
+    sample = paper_light(image)
     pixels = list(sample.get_flattened_data())
     width, height = sample.size
-    bright = 170
+    # Compare with the brightest paper, not a fixed level. A shadow can make
+    # the far end of the paper half as bright as the near end; a fixed level
+    # then cut those product rows away.
+    brightest = sorted(pixels)[int(len(pixels) * 0.99)]
+    bright = max(40, brightest * 0.45)
     min_column_fill = 0.28
     min_row_fill = 0.28
 
@@ -131,6 +163,7 @@ def prepare_image(image_bytes: bytes) -> bytes:
             raise ValueError("receipt image dimensions are too small")
         image = ImageOps.exif_transpose(source).convert("L")
         image = crop_receipt(image)
+        image = flatten_illumination(image)
         prepared_size = prepared_dimensions(image.width, image.height)
         if prepared_size != image.size:
             image = image.resize(prepared_size, Image.Resampling.LANCZOS)
