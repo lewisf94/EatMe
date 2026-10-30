@@ -27,6 +27,7 @@ unattended on battery power.
 2. From the CircuitPython Community Bundle matching that major version, copy
    these libraries into `CIRCUITPY/lib/`:
    - `adafruit_connection_manager.mpy`
+   - `adafruit_display_text/` (only for the button loading screen)
    - `adafruit_imageload/`
    - `adafruit_requests.mpy`
 3. Copy `code.py` to the root of `CIRCUITPY`. If upgrading from the earlier
@@ -58,7 +59,7 @@ If `circup` is installed, the libraries can instead be added while the board is
 mounted with:
 
 ```sh
-circup install adafruit_connection_manager adafruit_imageload adafruit_requests
+circup install adafruit_connection_manager adafruit_display_text adafruit_imageload adafruit_requests
 ```
 
 ## Buttons and battery life
@@ -75,7 +76,26 @@ either figure as a battery-life guarantee.
 Deep sleep is simulated while connected to a computer over USB. Measure current
 with the USB data connection removed and the board powered from its battery.
 
+### Feedback on a button press
+
+A press lights the NeoPixel above that button in dim blue at once, then draws
+a short "Loading..." screen with the page name, so the panel answers in about
+two seconds rather than after Wi-Fi, the download and the final refresh. A
+failed press lights the pixel red and replaces the loading screen with "Not
+loaded", so the panel never keeps "Loading..." until the next wake. The
+pixels turn off before deep sleep.
+
+The loading screen costs one extra e-paper refresh per press, and the panel's
+minimum interval between refreshes can add a second or two before the real
+page appears. Set `EATME_LOADING_SCREEN = "false"` to keep only the light.
+Scheduled timer wakes never use either.
+
 ## Verification checklist
+
+- [ ] A button press lights the pixel above that same button. If another
+      pixel lights, reverse `PIXEL_FOR_PAGE` in `code.py`.
+- [ ] A button press shows the "Loading..." screen within about two seconds,
+      then the real page, and every pixel is off when the board sleeps.
 
 - [ ] Buttons A–D open urgent / recipe / shopping / status respectively when
       button wake is enabled, and each press redraws the panel even if its

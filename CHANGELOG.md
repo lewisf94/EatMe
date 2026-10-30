@@ -2,6 +2,16 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.11.2
+
+- A barcode that is not in Open Food Facts now shows "Not in Open Food Facts —
+  enter the details manually" instead of "Lookup unavailable (HTTP 404)". The
+  Open Food Facts API answers an unknown barcode with HTTP 404.
+- The barcode scanner shows a taller guide box and a hint to hold the phone
+  close. The scanner reads the whole camera picture, not only the box.
+- The printed date field on Add food no longer runs off the right edge of the
+  screen on iPhone.
+
 ## 0.11.1
 
 - The access-token screen now checks the token with EatMe before it saves it.

@@ -89,8 +89,11 @@ async function lookupOnce(barcode: string): Promise<OffResult> {
       signal: AbortSignal.timeout(OFF_TIMEOUT_MS),
     });
     if (res.status === 503) throw new Error("Open Food Facts rate-limited; try again shortly");
-    if (!res.ok) throw new Error(`Open Food Facts returned HTTP ${res.status}`);
-    json = await res.json();
+    // API v2 answers an unknown barcode with 404 and a `status: 0` body. That is
+    // "not in the database", not an outage, so it is cached like any other miss.
+    if (res.status === 404) json = { status: 0 };
+    else if (!res.ok) throw new Error(`Open Food Facts returned HTTP ${res.status}`);
+    else json = await res.json();
   } catch (err) {
     // Network/parse failure: fall back to a stale cache entry if we have one.
     if (cachedResult) return cachedResult;
