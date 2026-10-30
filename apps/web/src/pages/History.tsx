@@ -3,6 +3,14 @@ import { Link, useNavigate } from "react-router";
 import type { ActivityEntry, UsageInsights } from "@eatme/shared";
 import { api } from "../api";
 import { IconBack } from "../ui/icons";
+import WarmTooltip from "../ui/WarmTooltip";
+import GlideSelect from "../ui/GlideSelect";
+
+const PERIODS = [
+  { value: "30", label: "30 days" },
+  { value: "90", label: "90 days" },
+  { value: "365", label: "12 months" },
+];
 
 const EVENT_LABELS: Record<string, string> = {
   added: "Added a pack",
@@ -57,9 +65,11 @@ export default function History() {
     <>
       <header className="appbar">
         <div className="bar-left">
-          <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
-            <IconBack />
-          </button>
+          <WarmTooltip content="Back">
+            <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
+              <IconBack />
+            </button>
+          </WarmTooltip>
           <h1>History & insights</h1>
         </div>
       </header>
@@ -69,17 +79,14 @@ export default function History() {
         <section className="sec">
           <div className="sec-head">
             <span className="eyebrow">Last</span>
-            <select
-              className="field"
-              style={{ width: "auto" }}
-              value={days}
-              aria-label="Insight period"
-              onChange={(event) => setDays(Number(event.target.value))}
-            >
-              <option value={30}>30 days</option>
-              <option value={90}>90 days</option>
-              <option value={365}>12 months</option>
-            </select>
+            <GlideSelect
+              options={PERIODS}
+              value={String(days)}
+              ariaLabel="Insight period"
+              menuWidth={150}
+              align="right"
+              onChange={(value) => setDays(Number(value))}
+            />
           </div>
           {insights && (
             <div className="rgroup">

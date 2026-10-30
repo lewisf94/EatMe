@@ -145,6 +145,38 @@ describe("recipe actions", () => {
     const lot = db.prepare("SELECT fraction_left FROM stock_lots WHERE id = ?").get(food.lot.id);
     expect(lot).toEqual({ fraction_left: 1 });
   });
+
+  it("stores an optional 1 to 5 star rating and can clear it", async () => {
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/recipes",
+      payload: { name: "Rated stew", ingredients: [], dietaryTags: [], rating: 4 },
+    });
+    expect(created.statusCode).toBe(201);
+    const id = created.json().data.id as string;
+    expect(created.json().data.rating).toBe(4);
+
+    const tooHigh = await app.inject({
+      method: "PATCH",
+      url: `/api/recipes/${id}`,
+      payload: { rating: 6 },
+    });
+    expect(tooHigh.statusCode).toBe(400);
+
+    const cleared = await app.inject({
+      method: "PATCH",
+      url: `/api/recipes/${id}`,
+      payload: { rating: null },
+    });
+    expect(cleared.json().data.rating).toBeNull();
+
+    const unrated = await app.inject({
+      method: "POST",
+      url: "/api/recipes",
+      payload: { name: "Unrated soup", ingredients: [], dietaryTags: [] },
+    });
+    expect(unrated.json().data.rating).toBeNull();
+  });
 });
 
 describe("backup and database maintenance", () => {
@@ -226,6 +258,28 @@ describe("backup and database maintenance", () => {
       ).toBeUndefined();
       const integrity = await app.inject({ method: "GET", url: "/api/maintenance/integrity" });
       expect(integrity.json().data).toEqual({ ok: true, quickCheck: "ok", foreignKeyErrors: 0 });
+    }));
+
+  it("restores a backup made before recipes had a rating", () =>
+    withAuthToken(async () => {
+      await app.inject({
+        method: "POST",
+        url: "/api/recipes",
+        payload: { name: "Old backup pie", ingredients: [], dietaryTags: [], rating: 5 },
+      });
+      const exported = await app.inject({ method: "GET", url: "/api/maintenance/backup" });
+      const backup = exported.json() as { tables: Record<string, Array<Record<string, unknown>>> };
+      for (const row of backup.tables.recipes) delete row.rating;
+
+      const restored = await app.inject({
+        method: "POST",
+        url: "/api/maintenance/restore",
+        payload: backup,
+      });
+      expect(restored.statusCode).toBe(200);
+      expect(db.prepare("SELECT rating FROM recipes WHERE name='Old backup pie'").get()).toEqual({
+        rating: null,
+      });
     }));
 
   it("writes atomic automatic snapshots and prunes the oldest copies", () =>

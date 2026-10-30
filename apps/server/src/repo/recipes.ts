@@ -16,9 +16,10 @@ type RecipeRow = {
   created_at: string;
   dietary_tags: string;
   starter_key: string | null;
+  rating: number | null;
 };
 
-const RECIPE_COLS = "id, name, url, notes, created_at, dietary_tags, starter_key";
+const RECIPE_COLS = "id, name, url, notes, created_at, dietary_tags, starter_key, rating";
 const listStmt = db.prepare(`SELECT ${RECIPE_COLS} FROM recipes ORDER BY name`);
 const byIdStmt = db.prepare(`SELECT ${RECIPE_COLS} FROM recipes WHERE id = ?`);
 const ingStmt = db.prepare("SELECT recipe_id, match_text FROM recipe_ingredients ORDER BY rowid");
@@ -42,6 +43,7 @@ const toRecipe = (r: RecipeRow, ingredients: string[]): Recipe => ({
   ingredients,
   dietaryTags: parseDietaryTags(r.dietary_tags),
   starterKey: r.starter_key,
+  rating: r.rating,
 });
 
 function parseDietaryTags(value: string): DietaryRequirement[] {
@@ -89,7 +91,7 @@ function replaceIngredients(recipeId: string, ingredients: string[]): void {
 export function createRecipe(input: RecipeInput, starterKey: string | null = null): Recipe {
   const id = newId();
   db.prepare(
-    "INSERT INTO recipes (id, name, url, notes, created_at, dietary_tags, starter_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO recipes (id, name, url, notes, created_at, dietary_tags, starter_key, rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   ).run(
     id,
     input.name,
@@ -98,6 +100,7 @@ export function createRecipe(input: RecipeInput, starterKey: string | null = nul
     new Date().toISOString(),
     JSON.stringify(input.dietaryTags),
     starterKey,
+    input.rating ?? null,
   );
   replaceIngredients(id, input.ingredients);
   return getRecipe(id) as Recipe;
@@ -106,10 +109,11 @@ export function createRecipe(input: RecipeInput, starterKey: string | null = nul
 export function updateRecipe(id: string, patch: RecipePatch): Recipe | undefined {
   if (!getRecipe(id)) return undefined;
   const sets: string[] = [];
-  const vals: Array<string | null> = [];
+  const vals: Array<string | number | null> = [];
   if (patch.name !== undefined) (sets.push("name = ?"), vals.push(patch.name));
   if (patch.url !== undefined) (sets.push("url = ?"), vals.push(patch.url ?? null));
   if (patch.notes !== undefined) (sets.push("notes = ?"), vals.push(patch.notes ?? null));
+  if (patch.rating !== undefined) (sets.push("rating = ?"), vals.push(patch.rating ?? null));
   if (patch.dietaryTags !== undefined)
     (sets.push("dietary_tags = ?"), vals.push(JSON.stringify(patch.dietaryTags)));
   if (sets.length)

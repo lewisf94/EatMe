@@ -104,7 +104,13 @@ jobs:
           container="eatme-ci-${{ matrix.ha_arch }}"
           ocr_container="eatme-ocr-ci-${{ matrix.ha_arch }}"
           data_dir="$(mktemp -d)"
-          printf '{}\n' > "${data_dir}/options.json"
+          # The app requires tokens by default; give it fixed CI-only values
+          # (at least 20 characters) so the smoke test can authenticate.
+          auth="ci-auth-token-0123456789abcdef"
+          display="ci-display-token-0123456789abcdef"
+          magtag="ci-magtag-token-0123456789abcdef"
+          printf '{"auth_token":"%s","display_token":"%s","magtag_token":"%s"}\n' \
+            "${auth}" "${display}" "${magtag}" > "${data_dir}/options.json"
 
           cleanup() {
             docker logs "${container}" || true
@@ -175,24 +181,32 @@ jobs:
           done
           test "${ready}" = true
 
+          # The API refuses a request without the token.
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            "http://127.0.0.1:18099/api/guidance?name=milk")" = 401
+
           # Force-load the bundled food data and native resvg renderer.
           curl --fail --silent \
+            --header "authorization: Bearer ${auth}" \
             "http://127.0.0.1:18099/api/guidance?name=milk" \
             | grep -F '"data"'
           curl --fail --silent \
             --output /tmp/eatme-display.png \
-            "http://127.0.0.1:18099/api/display.png"
+            "http://127.0.0.1:18099/api/display.png?token=${display}"
           file /tmp/eatme-display.png | grep -F "PNG image data"
           curl --fail --silent \
+            --header "x-eatme-device-token: ${magtag}" \
             --output /tmp/eatme-magtag.bmp \
             "http://127.0.0.1:18099/api/magtag/display.bmp?battery=77"
           python3 -c "import struct; p=open('/tmp/eatme-magtag.bmp','rb').read(); assert p[:2] == b'BM'; assert struct.unpack_from('<I',p,2)[0] == len(p); assert struct.unpack_from('<ii',p,18) == (296,128); assert struct.unpack_from('<H',p,28)[0] == 4"
           curl --fail --silent \
+            --header "x-eatme-device-token: ${magtag}" \
             --header "content-type: application/json" \
             --data '{"battery":77,"wakeReason":"ci","firmware":"ci","rssi":-50}' \
             http://127.0.0.1:18099/api/magtag/status \
             | grep -F '"ok":true'
           curl --fail --silent \
+            --header "x-eatme-device-token: ${magtag}" \
             --header "content-type: application/json" \
             --data '{"button":"status"}' \
             http://127.0.0.1:18099/api/magtag/button \
