@@ -82,7 +82,7 @@ describe("parseReceipt on an Aldi-style receipt", () => {
 });
 
 describe("parseReceipt on a photographed Aldi receipt", () => {
-  // Real OCR output from a shaded Aldi receipt photo, including stray marks.
+  // Real OCR output from an unevenly lit Aldi receipt photo, including stray marks.
   const photo: OcrResult = {
     lines: [
       { text: "ALDI STORES" },
