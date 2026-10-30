@@ -89,10 +89,11 @@ def paper_light(image: Image.Image) -> Image.Image:
 
 
 def flatten_illumination(image: Image.Image) -> Image.Image:
-    """Remove a shadow or a lighting gradient across the receipt.
+    """Remove uneven light across the receipt.
 
-    A phone held over a receipt often shades one end of it, and one global
-    contrast setting cannot suit both ends. Divide each pixel by the local
+    A receipt photo is often brighter at one end than the other, even when
+    the eye sees no shadow, and one global contrast setting cannot suit both
+    ends. Divide each pixel by the local
     paper brightness so the whole page is white again.
     """
     light = paper_light(image).resize(image.size, Image.Resampling.BILINEAR)
@@ -110,9 +111,9 @@ def crop_receipt(image: Image.Image) -> Image.Image:
     sample = paper_light(image)
     pixels = list(sample.get_flattened_data())
     width, height = sample.size
-    # Compare with the brightest paper, not a fixed level. A shadow can make
-    # the far end of the paper half as bright as the near end; a fixed level
-    # then cut those product rows away.
+    # Compare with the brightest paper, not a fixed level. Uneven light can make
+    # one end of the paper half as bright as the other end; a fixed level then
+    # cut those product rows away.
     brightest = sorted(pixels)[int(len(pixels) * 0.99)]
     bright = max(40, brightest * 0.45)
     min_column_fill = 0.28

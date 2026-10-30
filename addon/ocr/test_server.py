@@ -102,10 +102,10 @@ class ImageSizingTests(unittest.TestCase):
         self.assertLessEqual(width * height, MAX_PREPARED_PIXELS)
 
 
-class ShadowTests(unittest.TestCase):
+class UnevenLightTests(unittest.TestCase):
     @staticmethod
-    def shaded_receipt() -> Image.Image:
-        """Paper on a dark table, lit at the top and shaded at the bottom."""
+    def unevenly_lit_receipt() -> Image.Image:
+        """Paper on a dark table, bright at the top and darker at the bottom."""
         image = Image.new("L", (600, 1000), 40)
         draw = ImageDraw.Draw(image)
         for y in range(100, 900):
@@ -114,17 +114,17 @@ class ShadowTests(unittest.TestCase):
             draw.rectangle([(170, y), (400, y + 8)], fill=30)
         return image
 
-    def test_crop_keeps_the_shaded_end_of_the_receipt(self) -> None:
-        cropped = crop_receipt(self.shaded_receipt())
+    def test_crop_keeps_the_darker_end_of_the_receipt(self) -> None:
+        cropped = crop_receipt(self.unevenly_lit_receipt())
         self.assertGreaterEqual(cropped.height, 800)
         self.assertLess(cropped.width, 600)
 
-    def test_flatten_makes_shaded_paper_as_bright_as_lit_paper(self) -> None:
-        flat = flatten_illumination(self.shaded_receipt())
+    def test_flatten_makes_darker_paper_as_bright_as_bright_paper(self) -> None:
+        flat = flatten_illumination(self.unevenly_lit_receipt())
         lit = flat.getpixel((430, 115))
-        shaded = flat.getpixel((430, 890))
-        self.assertGreater(shaded, 200)
-        self.assertLess(abs(lit - shaded), 25)
+        darker = flat.getpixel((430, 890))
+        self.assertGreater(darker, 200)
+        self.assertLess(abs(lit - darker), 25)
 
 
 if __name__ == "__main__":

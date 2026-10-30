@@ -9,7 +9,7 @@ Notable Home Assistant app changes are recorded here.
 - Receipt scan: use a quantity row such as "2 x 1.99" for the product next to
   it. Aldi prints this row above the product, and Lidl prints it below. The
   quantity applies only when it explains the product's total price.
-- Install EatMe OCR 0.1.7 too. It reads receipt photos that have a shadow.
+- Install EatMe OCR 0.1.7 too. It reads receipt photos that are darker at one end.
 
 ## 0.11.4
 
