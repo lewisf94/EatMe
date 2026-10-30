@@ -461,6 +461,8 @@ export type Recipe = {
   ingredients: string[];
   dietaryTags: DietaryRequirement[];
   starterKey: string | null;
+  /** Household rating, 1 to 5 stars; null when not rated. */
+  rating: number | null;
 };
 
 export const RecipeInput = z.object({
@@ -470,6 +472,7 @@ export const RecipeInput = z.object({
   // The whole ingredient list is sent on every save (the UI edits them as chips).
   ingredients: z.array(z.string().min(1).max(200)).max(100).default([]),
   dietaryTags: z.array(DietaryRequirement).default([]),
+  rating: z.number().int().min(1).max(5).nullable().optional(),
 });
 export type RecipeInput = z.infer<typeof RecipeInput>;
 export const RecipePatch = RecipeInput.partial();

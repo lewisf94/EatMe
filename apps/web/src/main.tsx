@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router";
 import { MotionConfig } from "motion/react";
 import App from "./App";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { WarmTooltipGroup } from "./ui/WarmTooltip";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -11,7 +12,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
       <MotionConfig reducedMotion="user">
         <BrowserRouter>
-          <App />
+          <WarmTooltipGroup>
+            <App />
+          </WarmTooltipGroup>
         </BrowserRouter>
       </MotionConfig>
     </ErrorBoundary>

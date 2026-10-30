@@ -8,6 +8,7 @@ import { FreshnessTimeline, freshOf, ClockIcon, qtyLabel } from "../ui/freshness
 import { SyncStatus } from "../ui/SyncStatus";
 import { SwipeProductRow, UndoBar, useSwipeArchive } from "../ui/swipeArchive";
 import { IconMenu } from "../ui/icons";
+import WarmTooltip from "../ui/WarmTooltip";
 
 const isPast = (s: InventoryRow["status"]) =>
   s === "past_use_by" || s === "past_best" || s === "quality_declining";
@@ -63,9 +64,11 @@ export default function Today() {
         <span className="wm">
           Eat<span className="u">Me</span>
         </span>
-        <Link className="iconbtn" to="/settings" aria-label="Settings">
-          <IconMenu />
-        </Link>
+        <WarmTooltip content="Settings">
+          <Link className="iconbtn" to="/settings" aria-label="Settings">
+            <IconMenu />
+          </Link>
+        </WarmTooltip>
       </header>
 
       <div className="screen">
