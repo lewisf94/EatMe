@@ -61,11 +61,13 @@ export default function Today() {
   return (
     <>
       <header className="appbar">
-        <span className="wm">
+        {/* On a desktop the side navigation carries the wordmark and Settings. */}
+        <span className="wm phone-only">
           Eat<span className="u">Me</span>
         </span>
+        <h1 className="desk-only">Today</h1>
         <WarmTooltip content="Settings">
-          <Link className="iconbtn" to="/settings" aria-label="Settings">
+          <Link className="iconbtn phone-only" to="/settings" aria-label="Settings">
             <IconMenu />
           </Link>
         </WarmTooltip>

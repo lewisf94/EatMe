@@ -1,7 +1,18 @@
 import { NavLink, Routes, Route, useLocation } from "react-router";
 import { motion } from "motion/react";
 import { lazy, Suspense, type ReactNode } from "react";
-import { IconHome, IconList, IconPlus, IconLeaf, IconCart } from "./ui/icons";
+import {
+  IconHome,
+  IconList,
+  IconPlus,
+  IconLeaf,
+  IconCart,
+  IconBook,
+  IconReceipt,
+  IconQr,
+  IconClock,
+  IconGear,
+} from "./ui/icons";
 import TokenGate from "./ui/TokenGate";
 import WarmTooltip from "./ui/WarmTooltip";
 
@@ -47,6 +58,64 @@ function BottomNav() {
   );
 }
 
+// Desktop navigation (≥1024px wide, see index.css). It shows every screen at
+// once, so the screens a phone reaches through Settings or a link are one click
+// away. The phone keeps the bottom bar above; CSS shows only one of the two.
+function SideNav() {
+  const on = ({ isActive }: { isActive: boolean }) => (isActive ? "on" : undefined);
+  return (
+    <aside className="sidenav" aria-label="Main">
+      <NavLink to="/" className="sidenav-wm">
+        Eat<span className="u">Me</span>
+      </NavLink>
+      <NavLink to="/add" className="sidenav-add">
+        <IconPlus />
+        Add item
+      </NavLink>
+      <nav className="sidenav-group">
+        <NavLink to="/" end className={on}>
+          <IconHome />
+          Today
+        </NavLink>
+        <NavLink to="/use-it-up" className={on}>
+          <IconLeaf />
+          Use it up
+        </NavLink>
+        <NavLink to="/recipes" className={on}>
+          <IconBook />
+          Recipes
+        </NavLink>
+        <NavLink to="/food" className={on}>
+          <IconList />
+          All food
+        </NavLink>
+        <NavLink to="/shopping" className={on}>
+          <IconCart />
+          Shopping
+        </NavLink>
+      </nav>
+      <nav className="sidenav-group sidenav-more" aria-label="More">
+        <NavLink to="/receipt" className={on}>
+          <IconReceipt />
+          Scan a receipt
+        </NavLink>
+        <NavLink to="/labels" className={on}>
+          <IconQr />
+          Labels
+        </NavLink>
+        <NavLink to="/history" className={on}>
+          <IconClock />
+          History
+        </NavLink>
+        <NavLink to="/settings" className={on}>
+          <IconGear />
+          Settings
+        </NavLink>
+      </nav>
+    </aside>
+  );
+}
+
 // Screens not yet ported to the new language still need padding + nav clearance.
 const wrap = (el: ReactNode) => <div className="screen">{el}</div>;
 
@@ -54,11 +123,13 @@ export default function App() {
   const { pathname } = useLocation();
   return (
     <div className="eatme">
+      <SideNav />
       {/* Each screen fades up on arrival; MotionConfig in main.tsx turns this
           off when the phone asks for reduced motion. */}
       <motion.div
         key={pathname}
         className="page"
+        data-route={pathname.split("/")[1] || "today"}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
