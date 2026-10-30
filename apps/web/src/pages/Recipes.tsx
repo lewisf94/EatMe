@@ -3,6 +3,10 @@ import { Link, useNavigate } from "react-router";
 import { DIETARY_REQUIREMENTS, type DietaryRequirement, type Recipe } from "@eatme/shared";
 import { api, type StarterRecipe } from "../api";
 import { IconBack, IconPlus } from "../ui/icons";
+import WarmTooltip from "../ui/WarmTooltip";
+import PeekRating from "../ui/PeekRating";
+
+const RATING_LABELS = ["Not again", "OK", "Good", "Great", "A favourite"];
 
 const DIETARY_LABELS: Record<DietaryRequirement, string> = {
   vegetarian: "Vegetarian",
@@ -29,6 +33,7 @@ function Editor({
     notes: string | null;
     ingredients: string[];
     dietaryTags: DietaryRequirement[];
+    rating: number | null;
   }) => void;
   onCancel: () => void;
   onDelete?: () => void;
@@ -38,6 +43,7 @@ function Editor({
   const [notes, setNotes] = useState(recipe?.notes ?? "");
   const [ingredients, setIngredients] = useState<string[]>(recipe?.ingredients ?? []);
   const [dietaryTags, setDietaryTags] = useState<DietaryRequirement[]>(recipe?.dietaryTags ?? []);
+  const [rating, setRating] = useState(recipe?.rating ?? 0);
   const [draft, setDraft] = useState("");
 
   const addChip = () => {
@@ -147,6 +153,16 @@ function Editor({
             ))}
           </div>
         </div>
+        <div>
+          <span className="label">How much do you like it?</span>
+          <PeekRating
+            value={rating}
+            onChange={setRating}
+            labels={RATING_LABELS}
+            ariaLabel="Recipe rating"
+            size={30}
+          />
+        </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button
             className="btn btn-primary"
@@ -158,6 +174,7 @@ function Editor({
                 notes: notes.trim() || null,
                 ingredients,
                 dietaryTags,
+                rating: rating || null,
               })
             }
           >
@@ -220,15 +237,19 @@ export default function Recipes() {
     <>
       <header className="appbar">
         <div className="bar-left">
-          <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
-            <IconBack />
-          </button>
+          <WarmTooltip content="Back">
+            <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
+              <IconBack />
+            </button>
+          </WarmTooltip>
           <h1>Recipes</h1>
         </div>
         {editing === null && (
-          <button className="iconbtn" onClick={() => setEditing("new")} aria-label="New recipe">
-            <IconPlus />
-          </button>
+          <WarmTooltip content="New recipe">
+            <button className="iconbtn" onClick={() => setEditing("new")} aria-label="New recipe">
+              <IconPlus />
+            </button>
+          </WarmTooltip>
         )}
       </header>
       <div className="screen">
@@ -324,6 +345,9 @@ export default function Recipes() {
                     <span className="srow-sub" style={{ display: "block" }}>
                       {r.ingredients.join(" · ") || "no ingredients yet"}
                     </span>
+                    {r.rating !== null && (
+                      <PeekRating value={r.rating} readOnly size={14} className="recipe-stars" />
+                    )}
                     {r.dietaryTags.length > 0 && (
                       <span className="srow-sub" style={{ display: "block" }}>
                         {r.dietaryTags.map((tag) => DIETARY_LABELS[tag]).join(" · ")}

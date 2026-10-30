@@ -127,3 +127,37 @@ test("no console or page errors during a normal session", async ({ page }) => {
   await page.goto("/settings");
   expect(errors).toEqual([]);
 });
+
+test("swipe left marks an item used up, and Undo brings it back", async ({ page }) => {
+  await addItem(page, "Swipeable Sorrel");
+  await page.goto("/food");
+  await page.locator('input[aria-label="Search"]').fill("sorrel");
+  const row = page.getByRole("group", { name: "Swipeable Sorrel" });
+  await expect(row).toBeVisible();
+
+  // A mouse drag past the commit point stands in for a finger swipe.
+  const box = (await row.boundingBox())!;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width - 10, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 20; i++) await page.mouse.move(box.x + box.width - 10 - i * 25, y);
+  await page.mouse.up();
+
+  await expect(page.locator(".undobar")).toContainText("Swipeable Sorrel used up");
+  await expect(row).toHaveCount(0);
+  // The drag must not open the product page.
+  expect(page.url()).toContain("/food");
+
+  await page.locator(".undobar").getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByRole("group", { name: "Swipeable Sorrel" })).toBeVisible();
+  await page.reload();
+  await page.locator('input[aria-label="Search"]').fill("sorrel");
+  await expect(page.getByText("Swipeable Sorrel")).toBeVisible();
+});
+
+test("a plain tap on a swipe row still opens the product", async ({ page }) => {
+  await addItem(page, "Tappable Tarragon");
+  await page.goto("/food");
+  await page.getByText("Tappable Tarragon").click();
+  await page.waitForURL("**/product/**");
+});

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { api, type LabelContainer } from "../api";
 import { printLabelSheet } from "../labels";
 import { IconBack, IconQr } from "../ui/icons";
+import WarmTooltip from "../ui/WarmTooltip";
 
 export default function Labels() {
   const nav = useNavigate();
@@ -56,9 +57,11 @@ export default function Labels() {
     <>
       <header className="appbar">
         <div className="bar-left">
-          <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
-            <IconBack />
-          </button>
+          <WarmTooltip content="Back">
+            <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
+              <IconBack />
+            </button>
+          </WarmTooltip>
           <h1>Labels</h1>
         </div>
       </header>

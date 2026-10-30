@@ -18,6 +18,7 @@ import {
   IconPlus,
   IconMinus,
 } from "../ui/icons";
+import WarmTooltip from "../ui/WarmTooltip";
 
 type Decision = {
   value: string; // `p:<productId>` add existing · "new" · "ignore" · "not_tracked"
@@ -175,9 +176,11 @@ export default function ReceiptImport() {
   const bar = (title: string) => (
     <header className="appbar">
       <div className="bar-left">
-        <button className="iconbtn" onClick={() => nav("/add")} aria-label="Back">
-          <IconBack />
-        </button>
+        <WarmTooltip content="Back">
+          <button className="iconbtn" onClick={() => nav("/add")} aria-label="Back">
+            <IconBack />
+          </button>
+        </WarmTooltip>
         <h1>{title}</h1>
       </div>
     </header>

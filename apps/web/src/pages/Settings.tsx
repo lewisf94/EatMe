@@ -10,6 +10,8 @@ import { api, TOKEN_KEY } from "../api";
 import { enablePush, disablePush, pushState, type PushState } from "../push";
 import { IconBack, IconQr } from "../ui/icons";
 import SystemSettings from "./SystemSettings";
+import WarmTooltip from "../ui/WarmTooltip";
+import SquishSwitch from "../ui/SquishSwitch";
 
 /** Sparse by design: a Monday digest of what to use, and a day-before warning
  *  for anything with a use-by. */
@@ -213,9 +215,11 @@ export default function Settings() {
     <>
       <header className="appbar">
         <div className="bar-left">
-          <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
-            <IconBack />
-          </button>
+          <WarmTooltip content="Back">
+            <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
+              <IconBack />
+            </button>
+          </WarmTooltip>
           <h1>Settings</h1>
         </div>
       </header>
@@ -261,14 +265,14 @@ export default function Settings() {
           </p>
           <div className="rgroup">
             {DIETARY_REQUIREMENTS.map((requirement) => (
-              <label key={requirement} className="srow">
-                <input
-                  type="checkbox"
+              <div key={requirement} className="srow">
+                <span className="grow">{DIETARY_LABELS[requirement]}</span>
+                <SquishSwitch
                   checked={dietary.includes(requirement)}
                   onChange={() => void toggleDietary(requirement)}
+                  ariaLabel={DIETARY_LABELS[requirement]}
                 />
-                <span className="grow">{DIETARY_LABELS[requirement]}</span>
-              </label>
+              </div>
             ))}
           </div>
         </section>

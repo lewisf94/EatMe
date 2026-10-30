@@ -1,0 +1,70 @@
+/* The token screen's two stacked cards. */
+.tg-stack {
+  position: relative;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.tg-card {
+  padding: 22px 20px;
+  border: 1.5px solid var(--color-line);
+  border-radius: 20px;
+  background: var(--color-paper);
+  box-shadow:
+    0 4px 14px -10px rgb(22 19 13 / 0.4),
+    0 8px 28px -10px rgb(22 19 13 / 0.12);
+  transform-origin: top center;
+}
+
+.tg-card--over {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-height: 100%;
+  align-content: center;
+  text-align: center;
+}
+
+.tg-card--over h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.tg-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  transition: background-color 200ms ease;
+}
+
+.tg-mark[data-ok] {
+  background: var(--color-butter);
+}
+
+.tg-mark svg {
+  width: 22px;
+  height: 22px;
+}
+
+.tg-spin {
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid var(--color-line-2);
+  border-top-color: var(--color-ink);
+  border-radius: 50%;
+  animation: tg-spin 800ms linear infinite;
+}
+
+@keyframes tg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,7 +1,9 @@
-import { NavLink, Routes, Route } from "react-router";
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { NavLink, Routes, Route, useLocation } from "react-router";
+import { motion } from "motion/react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { IconHome, IconList, IconPlus, IconLeaf, IconCart } from "./ui/icons";
-import { TOKEN_KEY, UNAUTHORIZED_EVENT } from "./api";
+import TokenGate from "./ui/TokenGate";
+import WarmTooltip from "./ui/WarmTooltip";
 
 const Today = lazy(() => import("./pages/Today"));
 const Inventory = lazy(() => import("./pages/Inventory"));
@@ -28,9 +30,11 @@ function BottomNav() {
         <IconLeaf />
         Cook
       </NavLink>
-      <NavLink to="/add" className="add" aria-label="Add item">
-        <IconPlus />
-      </NavLink>
+      <WarmTooltip content="Add item" side="top">
+        <NavLink to="/add" className="add" aria-label="Add item">
+          <IconPlus />
+        </NavLink>
+      </WarmTooltip>
       <NavLink to="/food" className={on}>
         <IconList />
         Food
@@ -43,87 +47,45 @@ function BottomNav() {
   );
 }
 
-/** Shown over the app when the server answers 401: the add-on generates an
- *  access token on first start, so a new device must be given it once. */
-function TokenGate() {
-  const [locked, setLocked] = useState(false);
-  const [token, setToken] = useState("");
-  useEffect(() => {
-    const lock = () => setLocked(true);
-    window.addEventListener(UNAUTHORIZED_EVENT, lock);
-    return () => window.removeEventListener(UNAUTHORIZED_EVENT, lock);
-  }, []);
-  if (!locked) return null;
-
-  const save = () => {
-    if (!token.trim()) return;
-    try {
-      localStorage.setItem(TOKEN_KEY, token.trim());
-    } catch {
-      // Private mode can refuse storage; the reload then asks again.
-    }
-    window.location.reload();
-  };
-
-  return (
-    <div className="screen token-gate" role="dialog" aria-labelledby="token-gate-title">
-      <h1 id="token-gate-title">Enter your access token</h1>
-      <p className="note left" style={{ marginBottom: 10 }}>
-        EatMe needs its access token on each new device. Find it in the EatMe app log in Home
-        Assistant (the line that starts &ldquo;generated auth_token&rdquo;), or in the{" "}
-        <code>auth_token</code> option if you set one.
-      </p>
-      <form
-        style={{ display: "flex", gap: 8 }}
-        onSubmit={(event) => {
-          event.preventDefault();
-          save();
-        }}
-      >
-        <input
-          className="field"
-          type="password"
-          autoComplete="current-password"
-          aria-label="Access token"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-        />
-        <button className="btn btn-primary" style={{ flex: "none" }} type="submit">
-          Save
-        </button>
-      </form>
-    </div>
-  );
-}
-
 // Screens not yet ported to the new language still need padding + nav clearance.
 const wrap = (el: ReactNode) => <div className="screen">{el}</div>;
 
 export default function App() {
+  const { pathname } = useLocation();
   return (
     <div className="eatme">
-      <Suspense
-        fallback={
-          <div className="screen">
-            <p className="empty">Loading…</p>
-          </div>
-        }
+      {/* Each screen fades up on arrival; MotionConfig in main.tsx turns this
+          off when the phone asks for reduced motion. */}
+      <motion.div
+        key={pathname}
+        className="page"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
       >
-        <Routes>
-          <Route path="/" element={<Today />} />
-          <Route path="/food" element={<Inventory />} />
-          <Route path="/use-it-up" element={<UseItUp />} />
-          <Route path="/recipes" element={<Recipes />} />
-          <Route path="/shopping" element={<Shopping />} />
-          <Route path="/add" element={<AddItem />} />
-          <Route path="/receipt" element={<ReceiptImport />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/i/:qrUid" element={wrap(<QrRedirect />)} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/labels" element={<Labels />} />
-          <Route path="/history" element={<History />} />
-        </Routes>
-      </Suspense>
+        <Suspense
+          fallback={
+            <div className="screen">
+              <p className="empty">Loading…</p>
+            </div>
+          }
+        >
+          <Routes>
+            <Route path="/" element={<Today />} />
+            <Route path="/food" element={<Inventory />} />
+            <Route path="/use-it-up" element={<UseItUp />} />
+            <Route path="/recipes" element={<Recipes />} />
+            <Route path="/shopping" element={<Shopping />} />
+            <Route path="/add" element={<AddItem />} />
+            <Route path="/receipt" element={<ReceiptImport />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/i/:qrUid" element={wrap(<QrRedirect />)} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/labels" element={<Labels />} />
+            <Route path="/history" element={<History />} />
+          </Routes>
+        </Suspense>
+      </motion.div>
       <BottomNav />
       <TokenGate />
     </div>

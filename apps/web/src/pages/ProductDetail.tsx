@@ -17,6 +17,13 @@ import { today, fractionLabel } from "../ui";
 import { FreshnessTimeline, freshOf, lotFreshInput, clockLabel, ClockIcon } from "../ui/freshness";
 import { SyncStatus } from "../ui/SyncStatus";
 import { IconBack, IconLock, IconQr } from "../ui/icons";
+import WarmTooltip from "../ui/WarmTooltip";
+import GlideSelect from "../ui/GlideSelect";
+
+const DATE_TYPES: Array<{ value: "best_before" | "use_by"; label: string; tag: string }> = [
+  { value: "best_before", label: "Best before", tag: "Quality" },
+  { value: "use_by", label: "Use by", tag: "Safety" },
+];
 
 const REASON_LABELS: Record<ArchiveReason, string> = {
   finished: "Finished it",
@@ -83,9 +90,11 @@ export default function ProductDetail() {
 
   const back = (
     <header className="appbar">
-      <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
-        <IconBack />
-      </button>
+      <WarmTooltip content="Back">
+        <button className="iconbtn" onClick={() => nav(-1)} aria-label="Back">
+          <IconBack />
+        </button>
+      </WarmTooltip>
     </header>
   );
 
@@ -262,19 +271,15 @@ function LotCard({
         <div className="fact">
           <span className="k">Location</span>
           <span className="v">
-            <select
-              className="field"
-              style={{ width: 160 }}
-              aria-label="Location"
+            <GlideSelect
+              className="glide-fixed"
+              options={locs.map((l) => ({ value: l.id, label: l.name }))}
+              ariaLabel="Location"
               value={lot.locationId}
-              onChange={(e) => onPatch({ locationId: e.target.value })}
-            >
-              {locs.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
+              menuWidth={180}
+              align="right"
+              onChange={(value) => onPatch({ locationId: value })}
+            />
           </span>
         </div>
       </div>
@@ -284,16 +289,14 @@ function LotCard({
           {lot.dateEstimated ? "Estimated best-quality date" : "Date on the pack"}
         </label>
         <div style={{ display: "flex", gap: 8 }}>
-          <select
-            className="field"
-            style={{ maxWidth: 150 }}
-            aria-label="Date type"
+          <GlideSelect
+            className="glide-fixed"
+            options={DATE_TYPES}
+            ariaLabel="Date type"
             value={lot.dateType ?? "best_before"}
-            onChange={(e) => onPatch({ dateType: e.target.value as "use_by" | "best_before" })}
-          >
-            <option value="best_before">Best before</option>
-            <option value="use_by">Use by</option>
-          </select>
+            menuWidth={180}
+            onChange={(value) => onPatch({ dateType: value })}
+          />
           <input
             className="field"
             type="date"
