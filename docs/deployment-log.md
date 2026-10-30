@@ -5,6 +5,21 @@ What is installed where, and what changed. Newest entry first.
 Do not record Wi-Fi names, passwords, tokens or IP addresses here. Those stay
 in Home Assistant, the router and the MagTag's own `settings.toml`.
 
+## 2026-10-30
+
+**Home Assistant**
+
+- The Wi-Fi connection (`wlan0`) kept dropping, so Home Assistant is back on
+  a network cable. The cable uses a different MAC address from Wi-Fi, so the
+  router can give it a different IP address. Still to do: set "Always use
+  this IP address" for the wired entry on the BT Smart Hub, and update
+  `EATME_SERVER` on the MagTag if the address changed.
+- The dropped Wi-Fi may explain some MagTag `ETIMEDOUT` failures. Buttons
+  B and D always failed while A and C always worked, so test all four
+  buttons again on the wired connection before looking for another cause.
+- From EatMe 0.10.5, tokens are required by default. Copy the generated
+  `magtag_token` from the app log into `EATME_TOKEN` on the MagTag.
+
 ## 2026-10-29
 
 **Home Assistant**
