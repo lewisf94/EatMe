@@ -2,6 +2,12 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.11.7
+
+- Receipt scan: a quantity row with a short OCR mark before it, for example
+  "ge 2x 0.65", is no longer shown as a product. The quantity now goes to the
+  product next to it.
+
 ## 0.11.6
 
 - Receipt scan: remove the Aldi item code from each product name, for example

@@ -92,7 +92,7 @@ describe("parseReceipt on a photographed Aldi receipt", () => {
       { text: "8 2X 1.99" },
       { text: ": 880571 NUT BARS 3.98 B" },
       { text: "Y 384145 NUTS MIXED 1.75 A" },
-      { text: "& <2 xX 0.65" },
+      { text: "ge 2x 0.65" },
       { text: "S 319760 FRUIT & NUT MIX 1.30 A" },
       { text: "494905 100% PEANUT BUTTER 3.99 A" },
       { text: "683160 NATURAL YOGHURT 0.75 A" },

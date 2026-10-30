@@ -101,7 +101,9 @@ export function parseReceipt(ocr: OcrResult): ParsedReceipt {
     if (SKIP.test(raw) || BAG.test(raw)) return;
 
     const multiple = QTY_ONLY.exec(raw);
-    if (multiple && raw.slice(0, multiple.index).replace(/[^a-z]/gi, "").length < 2) {
+    // OCR can add a short stray mark before the quantity ("ge 2x 0.65"). A
+    // word of three or more letters means the row is a product, not a quantity.
+    if (multiple && !/[a-z]{3}/i.test(raw.slice(0, multiple.index))) {
       multiples.push({
         at,
         quantity: Number(multiple[1]),
