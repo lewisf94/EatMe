@@ -293,10 +293,13 @@ const GRAY_LEVELS = [0x00, 0x55, 0xaa, 0xff] as const;
 /** Keep the four-entry indexed palette required by the panel decoder, but use
  * only its strongest black and white endpoints for this text-first UI. Small
  * anti-aliased glyph edges rendered as intermediate gray were visibly faint
- * on the physical 2.9-inch panel. A generous cutoff slightly strengthens the
- * edge pixels instead of letting them disappear into the white background. */
+ * on the physical 2.9-inch panel. A cutoff above mid-gray slightly strengthens
+ * the edge pixels instead of letting them disappear into the white background.
+ * It stays below about 190, though: the faint overshoot under the baseline of
+ * round letters (c, e, o, s) renders at about 190-225, and a higher cutoff
+ * turned it into a stray black dot under each of those letters. */
 function highContrastGrayIndex(v: number): number {
-  return v < 192 ? 0 : GRAY_LEVELS.length - 1;
+  return v < 160 ? 0 : GRAY_LEVELS.length - 1;
 }
 
 /** Minimal 4-bit indexed BMP encoder (4 of the format's 16 possible palette
