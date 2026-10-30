@@ -47,6 +47,9 @@
 
 :root {
   color-scheme: light;
+  /* Swipe-row surface (ui/swipeArchive). Desktop rows are lighter cards. */
+  --row-bg: var(--color-paper);
+  --side-w: 248px;
 }
 
 /* ---------------------------------------------------------------- shell --- */
@@ -1209,6 +1212,224 @@
   outline-offset: 2px;
   border-radius: 4px;
 }
+/* -------------------------------------------------------------- desktop --- */
+/* From 1024px wide (a laptop, a desktop or a landscape tablet) EatMe becomes a
+   desktop app: a fixed side navigation in place of the bottom bar, a wider page
+   with a larger title, and food rows as a grid of cards. Phones never reach
+   this width, so the phone layout above is unchanged. */
+.sidenav,
+.desk-only {
+  display: none;
+}
+@media (min-width: 1024px) {
+  body {
+    background: var(--color-paper);
+  }
+  .eatme {
+    max-width: none;
+    margin: 0;
+    padding-left: var(--side-w);
+  }
+  .botnav,
+  .phone-only,
+  .warm-tooltip__trigger:has(> .phone-only) {
+    display: none !important;
+  }
+  .desk-only {
+    display: block;
+  }
+
+  .sidenav {
+    position: fixed;
+    inset-block: 0;
+    left: 0;
+    z-index: 10;
+    width: var(--side-w);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 22px 14px 18px;
+    overflow-y: auto;
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .sidenav-wm {
+    margin: 0 10px 20px;
+    color: var(--color-paper);
+    text-decoration: none;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+  }
+  .sidenav-wm .u {
+    box-shadow: inset 0 -0.26em 0 var(--color-butter);
+    color: var(--color-paper);
+  }
+  .sidenav-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    margin-bottom: 18px;
+    border-radius: 10px;
+    background: var(--color-butter);
+    color: #17130a;
+    text-decoration: none;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 15px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    transition: background-color 120ms ease;
+  }
+  .sidenav-add:hover {
+    background: var(--color-butter-deep);
+  }
+  .sidenav-add svg {
+    width: 20px;
+    height: 20px;
+  }
+  .sidenav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sidenav-more {
+    margin-top: auto;
+    padding-top: 14px;
+    border-top: 1px solid rgba(244, 241, 232, 0.12);
+  }
+  .sidenav-group a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 8px;
+    color: rgba(244, 241, 232, 0.66);
+    text-decoration: none;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14.5px;
+    transition:
+      background-color 120ms ease,
+      color 120ms ease;
+  }
+  .sidenav-group a svg {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+  .sidenav-group a:hover {
+    background: rgba(244, 241, 232, 0.07);
+    color: var(--color-paper);
+  }
+  .sidenav-group a.on {
+    background: rgba(244, 241, 232, 0.12);
+    color: var(--color-paper);
+    box-shadow: inset 3px 0 0 var(--color-butter);
+  }
+
+  /* The page: a centred column. Screens of food cards and recipe cards are
+     wide enough for two or three columns; forms, settings and plain lists
+     keep a comfortable reading width. */
+  .page {
+    width: 100%;
+    max-width: 840px;
+    margin: 0 auto;
+  }
+  .page:is(
+      [data-route="today"],
+      [data-route="food"],
+      [data-route="use-it-up"],
+      [data-route="recipes"]
+    ) {
+    max-width: 1160px;
+  }
+  .appbar {
+    padding: 30px 40px 14px;
+  }
+  .appbar h1 {
+    font-size: 32px;
+  }
+  .screen {
+    padding: 4px 40px 64px; /* no bottom bar to clear */
+  }
+  .sec {
+    margin-top: 30px;
+  }
+
+  /* Food rows become cards in a responsive grid. */
+  :root {
+    --row-bg: #fbf9f3;
+  }
+  .rows {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+  }
+  .rows > .row,
+  .rows > .swipe-product {
+    border: 1.5px solid var(--color-line);
+    border-radius: var(--radius-eat-lg);
+    background: var(--row-bg);
+    overflow: hidden;
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+  .rows > .swipe-product + .swipe-product {
+    border-top: 1.5px solid var(--color-line);
+  }
+  .rows > .row:hover,
+  .rows > .swipe-product:hover {
+    border-color: var(--color-line-2);
+    box-shadow: 0 4px 14px rgba(22, 19, 13, 0.07);
+  }
+  .rows .row {
+    padding: 15px 16px;
+    border-top: 0;
+  }
+
+  /* The recipe list becomes a grid of cards, like the food rows. */
+  .rgroup:has(> .recipe-row) {
+    display: grid;
+    margin-top: 22px;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+  }
+  .rgroup > .recipe-row {
+    align-items: flex-start;
+    height: 100%;
+    padding: 15px 16px;
+    border: 1.5px solid var(--color-line);
+    border-radius: var(--radius-eat-lg);
+    background: var(--row-bg);
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+  .rgroup > .recipe-row:hover {
+    border-color: var(--color-line-2);
+    box-shadow: 0 4px 14px rgba(22, 19, 13, 0.07);
+  }
+
+  .hero {
+    padding: 22px 24px 20px;
+  }
+  .hero h3 {
+    font-size: 34px;
+  }
+
+  /* The Undo toast sits bottom-centre of the page, clear of the side bar. */
+  .swipe-toast.undobar[data-inline="false"] {
+    left: calc(var(--side-w) + 24px);
+    right: 24px;
+    bottom: 24px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
