@@ -105,6 +105,15 @@
   padding: 6px 18px 100px; /* bottom padding clears the fixed nav */
 }
 
+/* Covers the app (and the fixed nav) until a valid access token is saved. */
+.token-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  padding-top: 48px;
+  background: var(--color-paper);
+}
+
 /* ------------------------------------------------------------- sections --- */
 .sec {
   margin-top: 22px;

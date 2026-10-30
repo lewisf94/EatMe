@@ -2,6 +2,19 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.10.5
+
+- **Security, action needed:** EatMe now requires an access token by default.
+  On the first start after this update, a blank `auth_token`, `display_token`
+  or `magtag_token` is generated, stored in `/data/secrets`, and printed once
+  in the app log (`[eatme] generated auth_token: …`). Copy the values from the
+  log. Each phone or browser asks for the access token once. Put the
+  `magtag_token` value in `EATME_TOKEN` on the MagTag, and add the
+  `display_token` value to the ESPHome display URL. Turn on the new
+  `open_access` option only to keep the old unauthenticated LAN behaviour.
+- The web app shows an access-token screen when the server answers 401,
+  instead of empty pages.
+
 ## 0.10.4
 
 - Security: reject requests whose Host is not a LAN address, a private name

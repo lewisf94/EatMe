@@ -66,9 +66,10 @@ before stock is added.
 |---|---|
 | `tailscale_authkey` | Paste a Tailscale **auth key** for the first connection. Once the app has joined successfully, clear this field; EatMe reuses its saved Tailscale identity. |
 | `tailscale_hostname` | The device name on your tailnet (default `eatme`). |
-| `auth_token` | Recommended. If set, the API requires this token; paste the same value into the app's **Settings > Access token** on each device. **Required** for the backup/restore section of Settings, which refuses to run without it. |
-| `display_token` | Recommended when using the fallback ESPHome endpoint. Use a long, random device-specific token. |
-| `magtag_token` | Recommended for `/api/magtag/*`. Put the same long, random value in `EATME_TOKEN` on the MagTag; do not reuse the household admin token. |
+| `auth_token` | The access token for the web app and API. Leave blank to let EatMe generate one on first start: the app log shows it once, on a line that starts `[eatme] generated auth_token:`. Each phone or browser asks for it once. Set your own long random value to replace it. |
+| `display_token` | The device token for the fallback ESPHome display. Generated like `auth_token` when blank (`generated display_token:` in the log). |
+| `magtag_token` | The device token for `/api/magtag/*`. Generated like `auth_token` when blank (`generated magtag_token:` in the log). Put the same value in `EATME_TOKEN` on the MagTag; never use the household admin token there. |
+| `open_access` | Off by default. Turn it on only to run without tokens, as versions before 0.10.5 did; then any device on your network can read and change EatMe. Backups and restore still need `auth_token`. |
 | `allowed_hosts` | Leave blank unless you open EatMe through a public domain name, such as a reverse proxy at `eatme.example.com`. LAN addresses and `.local`, `.lan`, `.home.arpa` and `.ts.net` names always work. List extra names separated by commas; a leading dot (`.example.com`) allows every subdomain. Other names receive HTTP 421, which blocks DNS-rebinding attacks from malicious web pages. |
 | `receipt_provider` | `local` for the separate **EatMe OCR** app. `stub` returns fixed demonstration data and is only useful for development. |
 | `ocr_url` | Leave blank to discover EatMe OCR automatically. Set an explicit base URL only when the OCR service is hosted elsewhere. |
@@ -140,11 +141,12 @@ EatMe **Settings** now includes:
 - An enforced AppArmor profile limits executable files, writable paths and
   Linux capabilities. Home Assistant applies the profile when the app is
   installed.
-- Tailscale limits the HTTPS URL to signed-in devices on your tailnet. For
-  another layer of protection, set a long random `auth_token` and paste the same
-  value into **EatMe > Settings > Access token** on every device.
-- Set separate long, random `display_token` and `magtag_token` values for any
-  e-ink devices. The app logs a startup warning while an API token is unset.
+- Tailscale limits the HTTPS URL to signed-in devices on your tailnet. The
+  access token adds a second layer and also protects the LAN port.
+- EatMe generates `auth_token`, `display_token` and `magtag_token` on first
+  start unless you set them, and keeps them in `/data/secrets` (included in
+  Home Assistant backups). The log shows each value only on the start that
+  creates it. If you lose one, set the option to a new long random value.
 - Requests must name a LAN address, a private name or an `allowed_hosts` entry,
   so a malicious web page cannot reach EatMe through DNS rebinding.
 - After 20 wrong tokens in five minutes, a client receives HTTP 429 until the
@@ -172,11 +174,11 @@ EatMe **Settings** now includes:
   Home Assistant log after an update and do not mean the current version is
   still failing.
 - **e-ink display (P6)**: it talks to this app over plain LAN HTTP on
-  `8099`, so it needs no Tailscale. Set the `display_token` app option if you
-  want the fallback display endpoint gated even with `auth_token` off.
+  `8099`, so it needs no Tailscale. Add `&token=` with the `display_token`
+  value to its image URL.
 - **MagTag display**: the Adafruit MagTag talks to `/api/magtag/*` over the
-  same plain LAN HTTP port. Set the `magtag_token` app option to gate it, then
-  put the same value in `EATME_TOKEN` on the device. Use a separate, URL-safe
+  same plain LAN HTTP port. Put the `magtag_token` value in `EATME_TOKEN` on
+  the device. Use a separate, URL-safe
   value from `auth_token` so the MagTag never carries the household's admin
   credential.
 - This app **bundles its own Tailscale** because the official Home Assistant
