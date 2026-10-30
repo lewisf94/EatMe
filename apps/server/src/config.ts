@@ -44,6 +44,19 @@ export const config = {
   /** When set, /api/magtag/* needs ?token= — a device-scoped credential so the
    *  MagTag never carries a Home Assistant administrator token. */
   magtagToken: process.env.MAGTAG_TOKEN ?? "",
+  /** Extra public host names the app may be reached by (comma-separated). A
+   *  leading dot allows every subdomain. LAN addresses, .local and .ts.net
+   *  names are always allowed; see hostAllowed() in services/security.ts. */
+  allowedHosts: (process.env.ALLOWED_HOSTS ?? "")
+    .split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean),
+  /** Extra push service host names to accept subscriptions for (comma-separated,
+   *  exact names). Empty in production; the e2e suite sets "localhost". */
+  extraPushHosts: (process.env.EXTRA_PUSH_HOSTS ?? "")
+    .split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean),
   /** Contact address pushed to the VAPID service (spec wants a mailto/URL). */
   vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:eatme@localhost",
 };

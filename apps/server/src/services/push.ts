@@ -45,6 +45,9 @@ export async function sendToAll(payload: PushPayload): Promise<SendResult> {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: sub.keys },
         JSON.stringify(payload),
+        // Sends run one after another, so one slow endpoint must not hold
+        // up the digest for every other device.
+        { timeout: 10_000 },
       );
       result.sent++;
     } catch (err) {

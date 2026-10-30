@@ -11,7 +11,7 @@ import {
   timezone,
 } from "../repo/settings.js";
 import { recipeMeetsRequirements } from "../data/starterRecipes.js";
-import { secretMatches } from "../services/security.js";
+import { authFailures, secretMatches } from "../services/security.js";
 import {
   buildDashboardSvg,
   renderPng,
@@ -52,8 +52,14 @@ export async function registerDisplay(app: FastifyInstance): Promise<void> {
   // (app.ts exempts this route from the bearer gate in that case).
   app.get("/display.png", async (req, reply) => {
     const q = req.query as Record<string, string | undefined>;
-    if (config.displayToken && !secretMatches(q.token, config.displayToken))
-      return reply.code(401).send({ error: { message: "unauthorized" } });
+    if (config.displayToken) {
+      if (authFailures.blocked(req.ip))
+        return reply.code(429).send({ error: { message: "too many failed attempts" } });
+      if (!secretMatches(q.token, config.displayToken)) {
+        authFailures.fail(req.ip);
+        return reply.code(401).send({ error: { message: "unauthorized" } });
+      }
+    }
 
     // The device reports its LiPo level on the same call that fetches the image.
     recordDisplayBattery(q.battery);

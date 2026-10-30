@@ -16,31 +16,47 @@ export const FRACTIONS = [1, 0.75, 0.5, 0.25, 0.1, 0] as const;
 
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
 
+// Length caps for user text. The body limit already bounds a request, but a
+// single 250 KB name would still be stored and then re-sent to every list,
+// display render and push message.
+const NAME = z.string().min(1).max(200);
+const SHORT_TEXT = z.string().max(200);
+const LONG_TEXT = z.string().max(5000);
+const HINTS = z.array(z.string().max(200)).max(50);
+
+/** Links are rendered as hrefs and images, so only web schemes are allowed. */
+export function isHttpUrl(value: string): boolean {
+  if (!URL.canParse(value)) return false;
+  const { protocol } = new URL(value);
+  return protocol === "http:" || protocol === "https:";
+}
+const HTTP_URL = z.string().max(2048).refine(isHttpUrl, "must be an http:// or https:// URL");
+
 // --- products ----------------------------------------------------------
 // Reusable identity ("Tesco chickpeas 400 g"). Receipts and barcodes resolve to
 // a product; the physical packs you own are stock lots (below).
 export const ProductInput = z.object({
-  name: z.string().min(1),
-  brand: z.string().optional(),
-  barcode: z.string().optional(),
+  name: NAME,
+  brand: SHORT_TEXT.optional(),
+  barcode: z.string().max(64).optional(),
   categoryId: z.string().min(1),
   defaultLocationId: z.string().optional(),
   guidanceRuleId: z.string().optional(),
   packageQuantity: z.number().positive().optional(),
-  packageUnit: z.string().optional(),
-  imageUrl: z.string().optional(),
+  packageUnit: z.string().max(40).optional(),
+  imageUrl: HTTP_URL.optional(),
 });
 export type ProductInput = z.infer<typeof ProductInput>;
 
 // null clears an optional field (JSON drops undefined, so a cleared value is null)
 export const ProductPatch = ProductInput.partial().extend({
-  brand: z.string().nullable().optional(),
-  barcode: z.string().nullable().optional(),
+  brand: SHORT_TEXT.nullable().optional(),
+  barcode: z.string().max(64).nullable().optional(),
   defaultLocationId: z.string().nullable().optional(),
   guidanceRuleId: z.string().nullable().optional(),
   packageQuantity: z.number().positive().nullable().optional(),
-  packageUnit: z.string().nullable().optional(),
-  imageUrl: z.string().nullable().optional(),
+  packageUnit: z.string().max(40).nullable().optional(),
+  imageUrl: HTTP_URL.nullable().optional(),
 });
 export type ProductPatch = z.infer<typeof ProductPatch>;
 
@@ -163,7 +179,7 @@ export const Category = z.object({
 export type Category = z.infer<typeof Category>;
 
 export const CategoryInput = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).max(100),
   openLifeDays: z.number().int().positive().nullable().optional(),
   warnDays: z.number().int().nonnegative().default(14),
 });
@@ -180,7 +196,7 @@ export const Location = z.object({
 export type Location = z.infer<typeof Location>;
 
 export const LocationInput = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).max(100),
   sortOrder: z.number().int().default(0),
 });
 export type LocationInput = z.infer<typeof LocationInput>;
@@ -339,7 +355,7 @@ export function byUrgency(
 export const IntakeInput = ProductInput.omit({ categoryId: true, defaultLocationId: true }).extend({
   categoryId: z.string().min(1).optional(),
   locationId: z.string().min(1).optional(),
-  categoryHints: z.array(z.string()).optional(),
+  categoryHints: HINTS.optional(),
   count: z.number().int().positive().default(1),
   fractionLeft: z.number().min(0).max(1).default(1),
   dateType: DateType.optional(),
@@ -403,10 +419,10 @@ export const ReceiptLineDecision = z.object({
   productId: z.string().optional(), // an existing product to add to
   newProduct: z
     .object({
-      name: z.string().min(1),
+      name: NAME,
       categoryId: z.string().min(1).optional(),
-      brand: z.string().optional(),
-      categoryHints: z.array(z.string()).optional(),
+      brand: SHORT_TEXT.optional(),
+      categoryHints: HINTS.optional(),
     })
     .optional(), // …or create this product
   quantity: z.number().int().positive().default(1),
@@ -448,11 +464,11 @@ export type Recipe = {
 };
 
 export const RecipeInput = z.object({
-  name: z.string().min(1),
-  url: z.string().nullable().optional(),
-  notes: z.string().nullable().optional(),
+  name: NAME,
+  url: HTTP_URL.nullable().optional(),
+  notes: LONG_TEXT.nullable().optional(),
   // The whole ingredient list is sent on every save (the UI edits them as chips).
-  ingredients: z.array(z.string().min(1)).default([]),
+  ingredients: z.array(z.string().min(1).max(200)).max(100).default([]),
   dietaryTags: z.array(DietaryRequirement).default([]),
 });
 export type RecipeInput = z.infer<typeof RecipeInput>;
@@ -507,7 +523,7 @@ export type UsageInsights = {
 };
 
 export const ShoppingInput = z.object({
-  name: z.string().min(1).optional(), // defaults to the product's name
+  name: NAME.optional(), // defaults to the product's name
   productId: z.string().optional(),
 });
 export type ShoppingInput = z.infer<typeof ShoppingInput>;

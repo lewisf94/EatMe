@@ -12,6 +12,7 @@ export DISPLAY_TOKEN="$(opt display_token)"
 export MAGTAG_TOKEN="$(opt magtag_token)"
 export RECEIPT_PROVIDER="$(opt receipt_provider)"
 export OCR_URL="$(opt ocr_url)"
+export ALLOWED_HOSTS="$(opt allowed_hosts)"
 
 [ -z "$RECEIPT_PROVIDER" ] && export RECEIPT_PROVIDER="local"
 
@@ -46,6 +47,17 @@ if [ -n "$TS_AUTHKEY" ] || [ -s "$TS_STATE" ]; then
     --state="$TS_STATE" \
     --socket=/var/run/tailscale/tailscaled.sock &
 
+  # Pass the auth key through a private file rather than the command line,
+  # where every process in the container could read it from /proc.
+  tailscale_up_with_key() {
+    TS_KEYFILE=/data/tailscale/authkey
+    (umask 077 && printf '%s' "$TS_AUTHKEY" > "$TS_KEYFILE")
+    status=0
+    tailscale up --authkey="file:$TS_KEYFILE" --hostname="$TS_HOSTNAME" || status=$?
+    rm -f "$TS_KEYFILE"
+    return "$status"
+  }
+
   # wait for the control socket
   i=0
   while [ ! -S /var/run/tailscale/tailscaled.sock ] && [ "$i" -lt 30 ]; do
@@ -58,7 +70,7 @@ if [ -n "$TS_AUTHKEY" ] || [ -s "$TS_STATE" ]; then
     if ! tailscale up --hostname="$TS_HOSTNAME"; then
       if [ -n "$TS_AUTHKEY" ]; then
         echo "[eatme] saved identity needs re-enrolling"
-        tailscale up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME"
+        tailscale_up_with_key
       else
         echo "[eatme] saved tailscale identity could not connect; add a new auth key"
         exit 1
@@ -66,7 +78,7 @@ if [ -n "$TS_AUTHKEY" ] || [ -s "$TS_STATE" ]; then
     fi
   else
     echo "[eatme] enrolling this app with tailscale"
-    tailscale up --authkey="$TS_AUTHKEY" --hostname="$TS_HOSTNAME"
+    tailscale_up_with_key
   fi
 
   echo "[eatme] enabling HTTPS with tailscale serve"

@@ -16,6 +16,8 @@ function startServer(port: number, dataSub: string, extra: Record<string, string
       PORT: String(port),
       DATA_DIR: path.join(here, ".e2e-tmp", dataSub),
       WEB_DIST: webDist,
+      // The push spec subscribes an undeliverable localhost endpoint.
+      EXTRA_PUSH_HOSTS: "localhost",
       ...extra,
     },
     stdio: ["ignore", "ignore", "inherit"],

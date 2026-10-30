@@ -342,7 +342,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(504, {"error": "receipt recognition timed out"})
             return
         except (subprocess.CalledProcessError, OSError, ValueError) as error:
-            self.send_json(400, {"error": f"could not read image: {error}"})
+            # Keep exception detail (paths, decoder internals) out of the reply.
+            print(f"[eatme-ocr] could not read image: {type(error).__name__}", flush=True)
+            self.send_json(400, {"error": "could not read image"})
             return
         finally:
             OCR_SLOTS.release()

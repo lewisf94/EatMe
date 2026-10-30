@@ -20,7 +20,13 @@ import { registerActivity } from "./routes/activity.js";
 import { registerMaintenance } from "./routes/maintenance.js";
 import { registerHomeAssistant } from "./routes/homeAssistant.js";
 import { redactRequestUrl } from "./services/logging.js";
-import { bearerCredential, browserOriginMatches, secretMatches } from "./services/security.js";
+import {
+  authFailures,
+  bearerCredential,
+  browserOriginMatches,
+  hostAllowed,
+  secretMatches,
+} from "./services/security.js";
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -63,9 +69,11 @@ export function buildApp(): FastifyInstance {
     bodyLimit: 262_144,
     requestTimeout: 120_000,
     forceCloseConnections: "idle",
-    // Home Assistant and reverse proxies provide the public scheme/host here.
+    // Tailscale Serve proxies from loopback and provides the public scheme/host.
     // Printed QR codes must use that external HTTPS origin, not the container's.
-    trustProxy: true,
+    // Trust forwarded headers only from loopback: any LAN client could
+    // otherwise choose the origin, client address and HTTPS state.
+    trustProxy: "127.0.0.1,::1",
   });
 
   // Accept a raw image body for receipt upload (no multipart dependency needed).
@@ -94,16 +102,20 @@ export function buildApp(): FastifyInstance {
     return payload;
   });
 
+  // Runs first: a DNS-rebinding page sends its own name as both Host and
+  // Origin, so only a Host allowlist tells it apart from the real app.
+  app.addHook("onRequest", async (req, reply) => {
+    if (!hostAllowed(req.host, config.allowedHosts)) {
+      return reply.code(421).send({
+        error: { message: "unknown host name; add it to allowed_hosts in the EatMe app options" },
+      });
+    }
+  });
+
   app.addHook("onRequest", async (req, reply) => {
     if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return;
     const origin = req.headers.origin;
-    if (
-      origin &&
-      !browserOriginMatches(origin, req.protocol, [
-        req.headers["x-forwarded-host"],
-        req.headers.host,
-      ])
-    ) {
+    if (origin && !browserOriginMatches(origin, req.protocol, [req.host])) {
       return reply.code(403).send({ error: { message: "cross-origin write rejected" } });
     }
   });
@@ -152,7 +164,13 @@ export function buildApp(): FastifyInstance {
       // admin token — MAGTAG_TOKEN is its own device-scoped credential.
       if (path.startsWith("/api/magtag/") && path !== "/api/magtag/health" && config.magtagToken)
         return;
+      if (authFailures.blocked(req.ip)) {
+        return reply
+          .code(429)
+          .send({ error: { message: "too many failed attempts; wait a few minutes" } });
+      }
       if (!secretMatches(bearerCredential(req.headers.authorization), config.authToken)) {
+        authFailures.fail(req.ip);
         return reply.code(401).send({ error: { message: "unauthorized" } });
       }
     });
