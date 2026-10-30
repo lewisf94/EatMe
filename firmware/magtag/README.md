@@ -81,7 +81,9 @@ with the USB data connection removed and the board powered from its battery.
 A press lights the NeoPixel above that button in dim blue at once, then draws
 a short "Loading..." screen with the page name, so the panel answers in about
 two seconds rather than after Wi-Fi, the download and the final refresh. A
-failed press flashes the pixel red. The pixels turn off before deep sleep.
+failed press lights the pixel red and replaces the loading screen with "Not
+loaded", so the panel never keeps "Loading..." until the next wake. The
+pixels turn off before deep sleep.
 
 The loading screen costs one extra e-paper refresh per press, and the panel's
 minimum interval between refreshes can add a second or two before the real
