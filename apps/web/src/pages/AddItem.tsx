@@ -233,7 +233,7 @@ export default function AddItem() {
                 <option value="use_by">Use by</option>
               </select>
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="label" htmlFor="bb">
                 Printed date (optional)
               </label>

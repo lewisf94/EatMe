@@ -99,7 +99,13 @@ export function BarcodeScanner({
       ) : (
         <div className="relative min-h-0 flex-1">
           <video ref={videoRef} className="h-full w-full object-cover" autoPlay playsInline muted />
-          <div className="pointer-events-none absolute inset-x-8 top-1/2 h-24 -translate-y-1/2 rounded-lg border-2 border-white/80" />
+          {/* A guide only: the detector reads the whole frame. A tall box invites the
+              phone close, where a pack barcode has enough pixels to decode. */}
+          <div className="pointer-events-none absolute inset-x-8 top-1/2 aspect-[4/3] max-h-[60%] -translate-y-1/2 rounded-lg border-2 border-white/80" />
+          <p className="pointer-events-none absolute inset-x-4 bottom-6 text-center text-sm text-white/90">
+            Hold the phone close, about a hand-width away. The barcode can be anywhere in the
+            picture.
+          </p>
         </div>
       )}
     </div>
