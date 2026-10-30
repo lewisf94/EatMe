@@ -1,4 +1,5 @@
-import { NavLink, Routes, Route } from "react-router";
+import { NavLink, Routes, Route, useLocation } from "react-router";
+import { motion } from "motion/react";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { IconHome, IconList, IconPlus, IconLeaf, IconCart } from "./ui/icons";
 import { TOKEN_KEY, UNAUTHORIZED_EVENT } from "./api";
@@ -100,30 +101,41 @@ function TokenGate() {
 const wrap = (el: ReactNode) => <div className="screen">{el}</div>;
 
 export default function App() {
+  const { pathname } = useLocation();
   return (
     <div className="eatme">
-      <Suspense
-        fallback={
-          <div className="screen">
-            <p className="empty">Loading…</p>
-          </div>
-        }
+      {/* Each screen fades up on arrival; MotionConfig in main.tsx turns this
+          off when the phone asks for reduced motion. */}
+      <motion.div
+        key={pathname}
+        className="page"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
       >
-        <Routes>
-          <Route path="/" element={<Today />} />
-          <Route path="/food" element={<Inventory />} />
-          <Route path="/use-it-up" element={<UseItUp />} />
-          <Route path="/recipes" element={<Recipes />} />
-          <Route path="/shopping" element={<Shopping />} />
-          <Route path="/add" element={<AddItem />} />
-          <Route path="/receipt" element={<ReceiptImport />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/i/:qrUid" element={wrap(<QrRedirect />)} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/labels" element={<Labels />} />
-          <Route path="/history" element={<History />} />
-        </Routes>
-      </Suspense>
+        <Suspense
+          fallback={
+            <div className="screen">
+              <p className="empty">Loading…</p>
+            </div>
+          }
+        >
+          <Routes>
+            <Route path="/" element={<Today />} />
+            <Route path="/food" element={<Inventory />} />
+            <Route path="/use-it-up" element={<UseItUp />} />
+            <Route path="/recipes" element={<Recipes />} />
+            <Route path="/shopping" element={<Shopping />} />
+            <Route path="/add" element={<AddItem />} />
+            <Route path="/receipt" element={<ReceiptImport />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/i/:qrUid" element={wrap(<QrRedirect />)} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/labels" element={<Labels />} />
+            <Route path="/history" element={<History />} />
+          </Routes>
+        </Suspense>
+      </motion.div>
       <BottomNav />
       <TokenGate />
     </div>

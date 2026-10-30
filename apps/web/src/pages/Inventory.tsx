@@ -3,7 +3,7 @@ import type { InventoryRow, Location } from "@eatme/shared";
 import { api, isAbort } from "../api";
 import { loadInventory } from "../offline";
 import { today } from "../ui";
-import { ProductRow } from "../ui/freshness";
+import { SwipeProductRow, UndoBar, useSwipeArchive } from "../ui/swipeArchive";
 import { SyncStatus } from "../ui/SyncStatus";
 import { IconSearch } from "../ui/icons";
 
@@ -19,6 +19,7 @@ export default function Inventory() {
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
   const [offline, setOffline] = useState(false);
   const td = today();
+  const swipe = useSwipeArchive();
 
   useEffect(() => {
     void api.locations().then(setLocs);
@@ -64,8 +65,9 @@ export default function Inventory() {
   }, [load]);
 
   const locName = (id: string | null) => locs.find((l) => l.id === id)?.name ?? "";
-  const useFirst = rows.filter((r) => r.status !== "ok");
-  const plenty = rows.filter((r) => r.status === "ok");
+  const shown = rows.filter((r) => !swipe.hidden.has(r.productId));
+  const useFirst = shown.filter((r) => r.status !== "ok");
+  const plenty = shown.filter((r) => r.status === "ok");
 
   const chips = [
     { key: "", label: "All" },
@@ -81,7 +83,13 @@ export default function Inventory() {
         </div>
         <div className="rows">
           {list.map((r) => (
-            <ProductRow key={r.productId} row={r} locName={locName} today={td} />
+            <SwipeProductRow
+              key={r.productId}
+              row={r}
+              locName={locName}
+              today={td}
+              onArchive={swipe.archive}
+            />
           ))}
         </div>
       </section>
@@ -118,10 +126,11 @@ export default function Inventory() {
 
         <SyncStatus syncedAt={syncedAt} offline={offline} />
         {error && <p className="alert">{error}</p>}
+        {swipe.error && <p className="alert">{swipe.error}</p>}
 
-        {loading && rows.length === 0 ? (
+        {loading && shown.length === 0 ? (
           <p className="empty">Loading…</p>
-        ) : rows.length === 0 ? (
+        ) : shown.length === 0 ? (
           <p className="empty">Nothing here{q || chip ? " matches" : " yet"}.</p>
         ) : (
           <>
@@ -130,6 +139,7 @@ export default function Inventory() {
           </>
         )}
       </div>
+      <UndoBar swipe={swipe} />
     </>
   );
 }

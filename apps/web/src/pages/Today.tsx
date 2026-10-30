@@ -4,8 +4,9 @@ import type { InventoryRow, Location } from "@eatme/shared";
 import { api, isAbort } from "../api";
 import { loadInventory } from "../offline";
 import { today } from "../ui";
-import { ProductRow, FreshnessTimeline, freshOf, ClockIcon, qtyLabel } from "../ui/freshness";
+import { FreshnessTimeline, freshOf, ClockIcon, qtyLabel } from "../ui/freshness";
 import { SyncStatus } from "../ui/SyncStatus";
+import { SwipeProductRow, UndoBar, useSwipeArchive } from "../ui/swipeArchive";
 import { IconMenu } from "../ui/icons";
 
 const isPast = (s: InventoryRow["status"]) =>
@@ -19,6 +20,7 @@ export default function Today() {
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
   const [offline, setOffline] = useState(false);
   const td = today();
+  const swipe = useSwipeArchive();
 
   useEffect(() => {
     void api.locations().then(setLocs);
@@ -48,8 +50,10 @@ export default function Today() {
     );
   const past = rows.filter((r) => isPast(r.status));
   const hero = soon[0] ?? past[0] ?? null;
-  const alsoSoon = soon.filter((r) => r.productId !== hero?.productId);
-  const pastList = past.filter((r) => r.productId !== hero?.productId);
+  const keep = (r: InventoryRow) =>
+    r.productId !== hero?.productId && !swipe.hidden.has(r.productId);
+  const alsoSoon = soon.filter(keep);
+  const pastList = past.filter(keep);
   const urgent = hero != null;
   const hf = hero ? freshOf(hero, td) : null;
 
@@ -67,6 +71,7 @@ export default function Today() {
       <div className="screen">
         <SyncStatus syncedAt={syncedAt} offline={offline} />
         {error && <p className="alert">{error}</p>}
+        {swipe.error && <p className="alert">{swipe.error}</p>}
 
         {loading && rows.length === 0 ? (
           <p className="empty">Loading…</p>
@@ -120,7 +125,13 @@ export default function Today() {
                 </div>
                 <div className="rows">
                   {alsoSoon.map((r) => (
-                    <ProductRow key={r.productId} row={r} locName={locName} today={td} />
+                    <SwipeProductRow
+                      key={r.productId}
+                      row={r}
+                      locName={locName}
+                      today={td}
+                      onArchive={swipe.archive}
+                    />
                   ))}
                 </div>
               </section>
@@ -134,7 +145,13 @@ export default function Today() {
                 </div>
                 <div className="rows">
                   {pastList.map((r) => (
-                    <ProductRow key={r.productId} row={r} locName={locName} today={td} />
+                    <SwipeProductRow
+                      key={r.productId}
+                      row={r}
+                      locName={locName}
+                      today={td}
+                      onArchive={swipe.archive}
+                    />
                   ))}
                 </div>
               </section>
@@ -142,6 +159,7 @@ export default function Today() {
           </>
         )}
       </div>
+      <UndoBar swipe={swipe} />
     </>
   );
 }
