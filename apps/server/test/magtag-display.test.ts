@@ -31,10 +31,10 @@ describe("magtag urgent page", () => {
   it("escapes names so a stray & or < can't break the document", () => {
     const svg = buildMagtagUrgentSvg({
       ...chrome,
-      urgent: [{ name: 'Bill & Ben"s <chutney>', sub: "Use by today" }],
+      urgent: [{ name: 'B&B "s <jam>', sub: "Today" }],
     } satisfies MagtagUrgentData);
-    expect(svg).toContain("Bill &amp; Ben&quot;s &lt;chutney&gt;");
-    expect(svg).not.toMatch(/<chutney>/);
+    expect(svg).toContain("B&amp;B &quot;s &lt;jam&gt;");
+    expect(svg).not.toMatch(/<jam>/);
   });
 
   it("shows a reassuring empty state rather than a blank panel", () => {
@@ -57,22 +57,44 @@ describe("magtag urgent page", () => {
   });
 
   it("uses the available pixel width instead of clipping names by character count", () => {
-    const name = "Reduced T W Some Price Rolls";
-    const svg = buildMagtagUrgentSvg({
-      ...chrome,
-      urgent: [{ name, sub: "Use by today" }],
-    });
-    expect(svg).toContain(name);
-    expect(svg).not.toContain("Reduced T W Some Price Ro…");
+    // 30 characters, but narrow ones: a character-count limit would cut it.
+    const name = "Little lilies fill till it lit";
+    const svg = buildMagtagUrgentSvg({ ...chrome, urgent: [{ name, sub: "Today" }] });
+    expect(svg).toContain(`>${name}</text>`);
   });
 
-  it("keeps secondary body text black, bold and large for e-paper contrast", () => {
-    const svg = buildMagtagUrgentSvg({
-      ...chrome,
-      urgent: [{ name: "Milk", sub: "Use by today" }],
-    });
-    expect(svg).toContain('font-weight="700" font-size="14" fill="#000">Use by today</text>');
-    expect(svg).not.toContain('fill="#555"');
+  it("shrinks a long name before it cuts it short", () => {
+    const name = "Reduced Price Rolls";
+    const svg = buildMagtagUrgentSvg({ ...chrome, urgent: [{ name, sub: "Tomorrow" }] });
+    expect(svg).toContain(`>${name}</text>`);
+    expect(svg).not.toContain('font-size="22" fill="#000">Reduced');
+  });
+
+  it("keeps every text black or white, bold and at least 15 px for e-paper contrast", () => {
+    // Text below about 15 px looked broken on the physical panel, most of all
+    // white text in the black bars.
+    for (const urgent of [
+      [{ name: "Milk", sub: "Use by: today" }],
+      [
+        { name: "Milk", sub: "Use by: today" },
+        { name: "Eggs", sub: "2 days" },
+        { name: "Bread", sub: "Tomorrow" },
+      ],
+    ]) {
+      const svg = buildMagtagUrgentSvg({ ...chrome, urgentTotal: 5, urgent });
+      expect(svg).toContain(">Use by: today</text>");
+      const sizes = [...svg.matchAll(/font-size="(\d+)"/g)].map((m) => Number(m[1]));
+      expect(Math.min(...sizes)).toBeGreaterThanOrEqual(15);
+      expect(svg).not.toMatch(/fill="#(?!000"|fff")/);
+    }
+  });
+
+  it("numbers the items when not all of them fit", () => {
+    const urgent = ["Milk", "Eggs", "Bread"].map((name) => ({ name, sub: "Today" }));
+    const svg = buildMagtagUrgentSvg({ ...chrome, urgentTotal: 4, urgent });
+    expect(svg).toContain("4 due");
+    expect(svg).toContain("1-3 of 4");
+    expect(svg).toContain("Updated 08:00");
   });
 
   it("shows the total urgent count without reducing the item line width", () => {
@@ -222,10 +244,10 @@ describe("MagTag glyph rendering", () => {
       const byte = bmp[dataOffset + (MAGTAG_H - 1 - y) * rowSize + (x >> 1)];
       return ((x & 1 ? byte : byte >> 4) & 0x0f) === 0;
     };
-    // The name's baseline is y = 40 and the sub line's is y = 60; the next row
-    // starts below y = 66.
+    // The single row's baseline is y = 53; nothing else is drawn above the
+    // footer bar at y = 109.
     const strays: string[] = [];
-    for (const y of [40, 41, 42, 43, 44, 45, 46, 47, 60, 61, 62, 63, 64]) {
+    for (let y = 53; y < 66; y++) {
       for (let x = 0; x < MAGTAG_W; x++) if (isBlack(x, y)) strays.push(`${x},${y}`);
     }
     expect(strays).toEqual([]);

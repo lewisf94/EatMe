@@ -2,6 +2,18 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.11.4
+
+- MagTag pages use bigger text: food names up to 22 px, at least 15 px for
+  every text. A black bar at the top holds the page name, and a black bar at
+  the bottom holds the update time.
+- The urgent MagTag page shows up to three items with a short "when" on the
+  right, for example "Tomorrow" or "Use by passed". A long name gets smaller
+  before it is cut short.
+- With more than three items due, the bottom bar shows which ones are on the
+  panel, for example "1-3 of 7". With MagTag firmware 0.6, a second press of
+  A shows the next items, and after the last items it starts again.
+
 ## 0.11.3
 
 - MagTag pages no longer show a small dot under round letters such as c, e, o

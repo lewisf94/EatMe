@@ -203,6 +203,53 @@ describe("MagTag routes", () => {
     expectMagTagBitmap(after.rawPayload);
   });
 
+  it("pages through the urgent items on a repeated A press", async () => {
+    // Four past-use-by items guarantee at least two pages of three.
+    const { createProduct } = await import("../src/repo/products.js");
+    const { createLot } = await import("../src/repo/stockLots.js");
+    const categoryId = (db.prepare("SELECT id FROM categories LIMIT 1").get() as { id: string }).id;
+    const locationId = (db.prepare("SELECT id FROM locations LIMIT 1").get() as { id: string }).id;
+    for (const name of ["Paging milk", "Paging ham", "Paging cream", "Paging soup"]) {
+      const product = createProduct({ name, categoryId });
+      createLot({
+        productId: product.id,
+        locationId,
+        count: 1,
+        fractionLeft: 1,
+        dateType: "use_by",
+        dateValue: "2020-01-01",
+      });
+    }
+
+    const get = (start: string) =>
+      app.inject({
+        method: "GET",
+        url: `/api/magtag/page/urgent?token=${DEVICE_TOKEN}&start=${start}`,
+      });
+
+    const first = await get("0");
+    expect(first.statusCode).toBe(200);
+    const seen = [0];
+    let next = Number(first.headers["x-eatme-next-start"]);
+    while (next !== 0) {
+      expect(next).toBe(seen[seen.length - 1] + 3);
+      seen.push(next);
+      const page = await get(String(next));
+      expect(page.statusCode).toBe(200);
+      expect(page.headers.etag).not.toBe(first.headers.etag);
+      expectMagTagBitmap(page.rawPayload);
+      next = Number(page.headers["x-eatme-next-start"]);
+      expect(seen.length).toBeLessThan(50);
+    }
+    expect(seen.length).toBeGreaterThan(1);
+
+    // Past the end, or a value that is not a number, starts over at the top.
+    for (const start of ["999", "abc", "-3"]) {
+      const again = await get(start);
+      expect(again.headers.etag).toBe(first.headers.etag);
+    }
+  });
+
   it("returns 404 for an unknown page", async () => {
     const response = await app.inject({
       method: "GET",
