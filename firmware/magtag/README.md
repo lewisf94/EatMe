@@ -76,6 +76,15 @@ either figure as a battery-life guarantee.
 Deep sleep is simulated while connected to a computer over USB. Measure current
 with the USB data connection removed and the board powered from its battery.
 
+### More items: press A again
+
+The urgent page shows up to three items, and its bottom bar says which ones,
+for example "1-3 of 7". Press A again to show the next three ("4-6 of 7").
+After the last items, the next press of A goes back to the start. A timer
+wake always shows the first items. This needs firmware 0.6 or later and EatMe
+0.11.4 or later; an older server ignores the request and shows the first
+items each time.
+
 ### Feedback on a button press
 
 A press lights the NeoPixel above that button in dim blue at once, then draws
@@ -96,6 +105,8 @@ Scheduled timer wakes never use either.
       pixel lights, reverse `PIXEL_FOR_PAGE` in `code.py`.
 - [ ] A button press shows the "Loading..." screen within about two seconds,
       then the real page, and every pixel is off when the board sleeps.
+- [ ] With four or more items due, a second press of A shows the next items
+      ("4-6 of N"), and a press after the last items shows "1-3 of N" again.
 
 - [ ] Buttons A–D open urgent / recipe / shopping / status respectively when
       button wake is enabled, and each press redraws the panel even if its

@@ -16,7 +16,7 @@ import {
 } from "../repo/settings.js";
 import { recipeMeetsRequirements } from "../data/starterRecipes.js";
 import { authFailures, secretMatches } from "../services/security.js";
-import { urgencyPhrase, formatRendered } from "../services/display.js";
+import { shortUrgencyPhrase, formatRendered } from "../services/display.js";
 import {
   buildMagtagUrgentSvg,
   buildMagtagRecipeSvg,
@@ -57,12 +57,17 @@ function jsonSetting<T>(key: string): T | null {
   }
 }
 
-function gatherUrgent(now = new Date()): MagtagUrgentData {
+function gatherUrgent(start = 0, now = new Date()): MagtagUrgentData {
   const tz = timezone();
   const rows = listInventory({}, civilToday(tz, now)).sort(byUrgency);
   const urgent = rows.filter((r) => r.status !== "ok");
+  // Pressing A again asks for the next items; past the end it starts over.
+  const first = start < urgent.length ? start : 0;
   return {
-    urgent: urgent.slice(0, MAGTAG_ROWS).map((r) => ({ name: r.name, sub: urgencyPhrase(r) })),
+    start: first,
+    urgent: urgent
+      .slice(first, first + MAGTAG_ROWS)
+      .map((r) => ({ name: r.name, sub: shortUrgencyPhrase(r) })),
     urgentTotal: urgent.length,
     rendered: formatRendered(tz, now),
   };
@@ -110,13 +115,20 @@ function gatherStatus(now = new Date()): MagtagStatusData {
 
 type PageData = MagtagUrgentData | MagtagRecipeData | MagtagShoppingData | MagtagStatusData;
 type CachedPage = { semantic: string; payload: Buffer; etag: string };
-const pageCache = new Map<Page, CachedPage>();
+const pageCache = new Map<string, CachedPage & { nextStart: number }>();
 
-function gatherPage(page: Page): PageData {
+function gatherPage(page: Page, start: number): PageData {
   if (page === "recipe") return gatherRecipe();
   if (page === "shopping") return gatherShopping();
   if (page === "status") return gatherStatus();
-  return gatherUrgent();
+  return gatherUrgent(start);
+}
+
+/** Where the next press of A starts: after the items shown, or back at 0. */
+function nextStart(data: PageData): number {
+  if (!("urgent" in data)) return 0;
+  const end = (data.start ?? 0) + data.urgent.length;
+  return end < (data.urgentTotal ?? data.urgent.length) ? end : 0;
 }
 
 function semanticPage(page: Page, data: PageData): string {
@@ -128,10 +140,11 @@ function semanticPage(page: Page, data: PageData): string {
   return JSON.stringify({ page, content });
 }
 
-function renderPage(page: Page): CachedPage {
-  const data = gatherPage(page);
+function renderPage(page: Page, start = 0): CachedPage & { nextStart: number } {
+  const data = gatherPage(page, start);
   const semantic = semanticPage(page, data);
-  const cached = pageCache.get(page);
+  const key = `${page}:${"start" in data ? (data.start ?? 0) : 0}`;
+  const cached = pageCache.get(key);
   if (cached?.semantic === semantic) return cached;
 
   const payload =
@@ -145,9 +158,10 @@ function renderPage(page: Page): CachedPage {
   const next = {
     semantic,
     payload,
+    nextStart: nextStart(data),
     etag: `"${createHash("sha256").update(payload).digest("hex").slice(0, 16)}"`,
   };
-  pageCache.set(page, next);
+  pageCache.set(key, next);
   return next;
 }
 
@@ -159,8 +173,15 @@ function etagMatches(raw: string | undefined, etag: string): boolean {
     .some((value) => value === "*" || value === etag || value === `W/${etag}`);
 }
 
+/** `?start=` from firmware 0.6 or later; anything else means the first items. */
+function startParam(req: FastifyRequest): number {
+  const raw = (req.query as Record<string, string | undefined>).start;
+  return raw && /^\d{1,3}$/.test(raw) ? Number(raw) : 0;
+}
+
 function sendPage(page: Page, req: FastifyRequest, reply: FastifyReply) {
-  const rendered = renderPage(page);
+  const rendered = renderPage(page, page === "urgent" ? startParam(req) : 0);
+  reply.header("X-EatMe-Next-Start", String(rendered.nextStart));
   // no-cache, not no-store: the device is *expected* to keep the last validator
   // and revalidate on the next wake, which is what makes the 304 path (and the
   // skipped e-paper refresh) possible. no-store would forbid retaining it.

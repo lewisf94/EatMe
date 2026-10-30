@@ -23,6 +23,10 @@ in Home Assistant, the router and the MagTag's own `settings.toml`.
 - Firmware 0.5 installed by copying `code.py` onto CIRCUITPY. The button
   light and the loading screen work, and the light is above the pressed
   button (pixel 0 is on the right, above D).
+- EatMe 0.11.3 removed the small dots under round letters (checked on the
+  panel). EatMe 0.11.4 makes the text bigger, with a black bar at the top and
+  bottom. Firmware 0.6 makes a second press of A show the next urgent items;
+  install it by copying the new `code.py` onto CIRCUITPY.
 - The screen stopped changing. The cause was the Wi-Fi network: the MagTag
   used the extender network (the name that ends in `_EXT`). It now uses the
   main router network and is placed nearer the router, and the screen
