@@ -65,7 +65,11 @@ function subscribe(cb: () => void) {
 
 /** React hook: true, false, or null (not checked yet). */
 export function useReachable(): boolean | null {
-  return useSyncExternalStore(subscribe, () => reachable, () => reachable);
+  return useSyncExternalStore(
+    subscribe,
+    () => reachable,
+    () => reachable,
+  );
 }
 
 /** Subscribe to the moment the server becomes reachable again. */
@@ -82,7 +86,11 @@ export function onReconnect(cb: () => void): () => void {
 /** React hook: a number that goes up each time the server comes back. Put it
  *  in a load effect's dependencies to reload fresh data after reconnecting. */
 export function useReconnectCount(): number {
-  return useSyncExternalStore(subscribe, () => reconnects, () => reconnects);
+  return useSyncExternalStore(
+    subscribe,
+    () => reconnects,
+    () => reconnects,
+  );
 }
 
 if (typeof window !== "undefined") {
