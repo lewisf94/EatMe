@@ -9,6 +9,7 @@ import { useSyncExternalStore } from "react";
 import type { InventoryRow, EventInput, Product, StockLot } from "@eatme/shared";
 import { STATUS_SEVERITY } from "@eatme/shared";
 import { api, isAbort } from "./api";
+import { noteReachable, onReconnect } from "./connection";
 
 // ---------------------------------------------------------------- IndexedDB ---
 const DB_NAME = "eatme";
@@ -134,9 +135,11 @@ export async function loadInventory(
       await kvSet("inventory", rows);
       await kvSet("syncedAt", Date.now());
     }
+    noteReachable(true);
     return { rows, offline: false, syncedAt: (await kvGet<number>("syncedAt")) ?? null };
   } catch (e) {
     if (isAbort(e) || !(e instanceof TypeError)) throw e; // abort or real server error
+    noteReachable(false);
     const cached = (await kvGet<InventoryRow[]>("inventory")) ?? [];
     return {
       rows: filterSort(cached, query),
@@ -154,9 +157,11 @@ export async function loadProduct(id: string): Promise<Loaded<ProductBundle> | n
   try {
     const bundle = await api.getProduct(id);
     await kvSet(`product:${id}`, bundle);
+    noteReachable(true);
     return { ...bundle, offline: false, syncedAt: (await kvGet<number>("syncedAt")) ?? null };
   } catch (e) {
     if (!(e instanceof TypeError)) throw e;
+    noteReachable(false);
     const cached = await kvGet<ProductBundle>(`product:${id}`);
     if (!cached) return null;
     return {
@@ -257,6 +262,9 @@ export async function replayOutbox(): Promise<number> {
 // Auto-replay when connectivity returns, and prime the pending mirror on boot.
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => void replayOutbox());
+  // Tailscale turned back on does not fire "online", so also replay when the
+  // reachability check sees the server again.
+  onReconnect(() => void replayOutbox());
   void refreshPending().then(() => {
     if (navigator.onLine) void replayOutbox();
   });

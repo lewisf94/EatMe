@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import type { InventoryRow, Location } from "@eatme/shared";
 import { api, isAbort } from "../api";
 import { loadInventory } from "../offline";
+import { useReconnectCount } from "../connection";
 import { today } from "../ui";
 import { FreshnessTimeline, freshOf, ClockIcon, qtyLabel } from "../ui/freshness";
 import { SyncStatus } from "../ui/SyncStatus";
@@ -22,6 +23,8 @@ export default function Today() {
   const [offline, setOffline] = useState(false);
   const td = today();
   const swipe = useSwipeArchive();
+  // Goes up when the server is reachable again, so the list reloads fresh.
+  const back = useReconnectCount();
 
   useEffect(() => {
     void api.locations().then(setLocs);
@@ -36,7 +39,7 @@ export default function Today() {
       .catch((e) => !isAbort(e) && setError(e instanceof Error ? e.message : "Couldn’t load"))
       .finally(() => setLoading(false));
     return () => ctrl.abort();
-  }, []);
+  }, [back]);
 
   const locName = (id: string | null) => locs.find((l) => l.id === id)?.name ?? "";
 
