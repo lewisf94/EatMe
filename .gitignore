@@ -24,4 +24,4 @@ firmware/magtag/settings.toml
 
 # Third-party CAD reference files (Adafruit MagTag case). Not licensed for
 # redistribution here; keep them on your own computer only.
-CAD/
+CAD/Reference Models/
