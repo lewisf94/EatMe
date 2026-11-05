@@ -2,7 +2,7 @@
 
 Notable Home Assistant app changes are recorded here.
 
-## 0.11.8
+## 0.11.9
 
 - Receipt scan: a row with only a unit price, for example "0.39" when OCR
   lost the "2 x", now sets the quantity of the product next to it. This
