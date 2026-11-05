@@ -47,6 +47,9 @@ const ITEM_CODE = /^\s*(?:\S{1,2}\s+)?\d{5,7}\s+(?=.*[a-z]{2})/i;
 // A line with only a quantity and a unit price ("2 x 1.99"). Aldi prints it
 // above the product line and Lidl below it; Tesseract often reads x as "xX".
 const QTY_ONLY = /(?:^|[^\d])(\d{1,2})\s*[x×@]{1,2}\s*£?\s*(\d{1,3})[.,](\d{2})\s*$/i;
+// A line with only a unit price ("0.39"), when OCR lost the "2 x" before it.
+// Tesseract can read the leading 0 as O or Q.
+const UNIT_ONLY = /^[^a-z0-9]*([0-9OQ]{1,3})[.,](\d{2})\s*$/i;
 // A UK date on the receipt (dd/mm/yy or dd/mm/yyyy).
 const DATE = /\b([0-3]?\d)[/.-]([01]?\d)[/.-](\d{2}|\d{4})\b/;
 
@@ -112,6 +115,14 @@ export function parseReceipt(ocr: OcrResult): ParsedReceipt {
       return;
     }
 
+    // The quantity is worked out later from the neighbouring product's total.
+    const unit = UNIT_ONLY.exec(raw);
+    if (unit) {
+      const pounds = Number(unit[1].replace(/[OQ]/gi, "0"));
+      multiples.push({ at, quantity: 0, unitPrice: Number(`${pounds}.${unit[2]}`) });
+      return;
+    }
+
     const priceM = PRICE.exec(raw);
     const negative = priceM?.[1] === "-";
     const price = priceM ? Number(`${priceM[2]}.${priceM[3]}`) : null;
@@ -136,14 +147,38 @@ export function parseReceipt(ocr: OcrResult): ParsedReceipt {
     });
   });
 
+  // A receipt total in a spaced-out font ("T o t a l") can fail the SKIP
+  // check. Drop a line with no real word whose price is the sum of all the
+  // lines before it.
+  let running = 0;
+  for (const [at, index] of [...productAt]) {
+    const line = lines[index];
+    const noWord = !/[a-z]{3}/.test(line.normalizedText);
+    if (index >= 2 && noWord && Math.abs((line.lineTotal ?? 0) - running) < 0.005) {
+      productAt.delete(at);
+      lines.splice(index, 1);
+      for (const [other, i] of productAt) if (i > index) productAt.set(other, i - 1);
+      break;
+    }
+    running += line.lineTotal ?? 0;
+  }
+
   // Give each "2 x 1.99" row to the neighbouring product whose total it
-  // explains: the next line (Aldi) first, then the previous line (Lidl).
+  // explains: the next product (Aldi) first, then the previous one (Lidl).
+  // Stray marks between the rows ("3", ":") do not count as rows. A lone
+  // unit price gives the quantity only when the total is 2 to 20 times it.
+  const rows = [...new Set([...productAt.keys(), ...multiples.map((m) => m.at)])].sort(
+    (a, b) => a - b,
+  );
   for (const m of multiples) {
-    for (const at of [m.at + 1, m.at - 1]) {
+    const here = rows.indexOf(m.at);
+    for (const at of [rows[here + 1], rows[here - 1]]) {
       const line = lines[productAt.get(at) ?? -1];
-      if (!line || line.quantity > 1 || line.lineTotal == null) continue;
-      if (Math.abs(m.quantity * m.unitPrice - line.lineTotal) > 0.011) continue;
-      line.quantity = m.quantity;
+      if (!line || line.quantity > 1 || line.lineTotal == null || m.unitPrice <= 0) continue;
+      const quantity = m.quantity || Math.round(line.lineTotal / m.unitPrice);
+      if (quantity < 2 || quantity > 20) continue;
+      if (Math.abs(quantity * m.unitPrice - line.lineTotal) > 0.011) continue;
+      line.quantity = quantity;
       line.unitPrice = m.unitPrice;
       break;
     }

@@ -140,3 +140,43 @@ describe("parseReceipt on a photographed Aldi receipt", () => {
     ]);
   });
 });
+
+describe("parseReceipt on OCR rows that lost part of the text", () => {
+  it("uses a lone unit price for the quantity when the total is a multiple", () => {
+    const r = parseReceipt({
+      lines: [
+        { text: "660363 EXTRA FINE BEANS 1.55 A" },
+        { text: "0.39" },
+        { text: "618715 XL GARLIC EACH 0.78 A" },
+        { text: "CHICKEN FILLET 1KG 6.69 A" },
+        { text: "\u201d Q.69" },
+        { text: "726862 RTH LIME / COCONUT 1.38 A" },
+      ],
+    });
+    expect(r.lines.map((l) => [l.normalizedText, l.quantity, l.unitPrice])).toEqual([
+      ["extra fine beans", 1, 1.55],
+      ["xl garlic each", 2, 0.39],
+      ["chicken fillet 1kg", 1, 6.69],
+      ["rth lime coconut", 2, 0.69],
+    ]);
+  });
+
+  it("skips a stray mark between a quantity row and its product", () => {
+    const r = parseReceipt({
+      lines: [{ text: "4 2x 1.99" }, { text: "3" }, { text: ": 580571 NUT BARS 3.98 B" }],
+    });
+    expect(r.lines.map((l) => [l.normalizedText, l.quantity])).toEqual([["nut bars", 2]]);
+  });
+
+  it("drops a spaced-out total that equals the sum of the lines", () => {
+    const r = parseReceipt({
+      lines: [
+        { text: "BAKED BEANS 1.00 A" },
+        { text: "PESTO 1.00 A" },
+        { text: "BREAD 2.00 A" },
+        { text: "T \u00a9 a 1 4.00" },
+      ],
+    });
+    expect(r.lines.map((l) => l.normalizedText)).toEqual(["baked beans", "pesto", "bread"]);
+  });
+});

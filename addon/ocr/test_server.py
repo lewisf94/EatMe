@@ -9,6 +9,7 @@ from server import (
     candidate_score,
     crop_receipt,
     flatten_illumination,
+    fuse_words,
     group_words,
     prepared_dimensions,
 )
@@ -125,6 +126,29 @@ class UnevenLightTests(unittest.TestCase):
         darker = flat.getpixel((430, 890))
         self.assertGreater(darker, 200)
         self.assertLess(abs(lit - darker), 25)
+
+
+class FuseWordsTests(unittest.TestCase):
+    def test_clean_words_from_another_pass_replace_a_merged_tall_word(self) -> None:
+        merged = [Word(250, 1379, 120, 112, "ees", 26), Word(534, 1376, 150, 48, "EXTRA", 96)]
+        clean = [
+            Word(250, 1379, 130, 48, "660363", 90),
+            Word(720, 1379, 120, 49, "FINE", 96),
+            Word(874, 1382, 150, 48, "BEANS", 96),
+            Word(843, 1442, 100, 48, "0.39", 89),
+        ]
+        texts = sorted(word.text for word in fuse_words([merged, clean]))
+        self.assertEqual(texts, ["0.39", "660363", "BEANS", "EXTRA", "FINE"])
+
+    def test_a_longer_reading_replaces_a_part_of_it(self) -> None:
+        part = [Word(1316, 1328, 50, 48, "19", 95)]
+        whole = [Word(1250, 1326, 116, 50, "1.19", 88)]
+        self.assertEqual([word.text for word in fuse_words([part, whole])], ["1.19"])
+
+    def test_the_same_word_at_a_small_offset_is_kept_once(self) -> None:
+        first = [Word(1414, 1331, 27, 48, "A", 95)]
+        second = [Word(1440, 1331, 29, 48, "A", 96)]
+        self.assertEqual(len(fuse_words([first, second])), 1)
 
 
 if __name__ == "__main__":

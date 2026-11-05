@@ -270,6 +270,45 @@ def group_words(words: list[Word]) -> list[dict[str, object]]:
     return output
 
 
+def fuse_words(passes: list[list[Word]], min_confidence: float = 60) -> list[Word]:
+    """Keep the most confident reading of each spot across all OCR passes.
+
+    One pass can join two receipt rows into one tall, unreadable word (for
+    example an item code with the "2 x" row under it) where another pass reads
+    both rows cleanly. Words are taken in order of confidence, and a word is
+    dropped when it covers much of a word that is already kept. A longer
+    reading that contains a kept word ("1.19" over "19") replaces it.
+    """
+
+    def overlaps(a: Word, b: Word) -> bool:
+        shared = max(0, min(a.right, b.right) - max(a.left, b.left)) * max(
+            0, min(a.bottom, b.bottom) - max(a.top, b.top)
+        )
+        # The same word read twice at a small offset is one word.
+        if a.text == b.text and shared > 0:
+            return True
+        return shared > 0.3 * min(a.width * a.height, b.width * b.height)
+
+    words = [w for p in passes for w in p if w.confidence >= min_confidence]
+    if not words:
+        return []
+    # A word much taller than the printed text is a background logo or two
+    # rows read as one.
+    usual = median(word.height for word in words)
+    words = [word for word in words if word.height <= usual * 1.3]
+    kept: list[Word] = []
+    for word in sorted(words, key=lambda w: -w.confidence):
+        clashes = [k for k in kept if overlaps(word, k)]
+        if not clashes:
+            kept.append(word)
+        elif all(
+            k.text in word.text and len(word.text) > len(k.text) and word.height < k.height * 1.5
+            for k in clashes
+        ):
+            kept = [k for k in kept if k not in clashes] + [word]
+    return kept
+
+
 def candidate_row_counts(lines: list[dict[str, object]]) -> tuple[int, int]:
     """Count complete product rows separately from isolated price fragments."""
     complete = 0
@@ -302,11 +341,19 @@ def extract_lines(image_bytes: bytes) -> tuple[list[dict[str, object]], dict[str
     # PSM 11 independently finds sparse text and often recovers faint product
     # rows missed by the column- and block-oriented modes.
     strategies = ((4, 0), (4, 2), (6, 0), (11, 0))
+    passes = [tesseract_words(prepared, psm, threshold) for psm, threshold in strategies]
     candidates = [
-        (psm, threshold, group_words(tesseract_words(prepared, psm, threshold)))
-        for psm, threshold in strategies
+        (psm, threshold, group_words(words))
+        for (psm, threshold), words in zip(strategies, passes)
     ]
+    # A fused reading (psm and threshold 0 in the diagnostics) combines the
+    # best words of every pass.
+    candidates.append((0, 0, group_words(fuse_words(passes))))
     psm, threshold, lines = max(candidates, key=lambda candidate: candidate_score(candidate[2]))
+    # The fused reading has the clearest names. Use it unless it finds fewer
+    # product rows than the best single pass.
+    if candidate_row_counts(candidates[-1][2])[0] >= candidate_row_counts(lines)[0]:
+        psm, threshold, lines = candidates[-1]
     complete, isolated_prices = candidate_row_counts(lines)
     mean_confidence = (
         sum(float(line["confidence"]) for line in lines) / len(lines) if lines else 0

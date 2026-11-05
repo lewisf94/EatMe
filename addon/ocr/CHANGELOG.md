@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.8
+
+- Combine the most confident words from all four recognition passes into one
+  extra reading. One pass can join two receipt rows into one unreadable word
+  where another pass reads both rows. Words much taller than the printed
+  text, such as a background logo, are ignored. The app uses this combined
+  reading unless it finds fewer product rows than the best single pass.
+- On a test Aldi photo with grey printing behind the text, "Extra Fine Beans"
+  and "Chicken Fillet" are now read correctly.
+
 ## 0.1.7
 
 - Fix: a receipt photo that is darker at one end lost the product rows at that

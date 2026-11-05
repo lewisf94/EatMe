@@ -2,6 +2,21 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.11.8
+
+- Receipt scan: a row with only a unit price, for example "0.39" when OCR
+  lost the "2 x", now sets the quantity of the product next to it. This
+  happens only when the product total is 2 to 20 times the unit price.
+- Receipt scan: a stray mark between a "2 x" row and its product no longer
+  stops the quantity.
+- Receipt scan: a spaced-out "T o t a l" line is no longer added as a
+  product.
+- New developer check: `pnpm --filter @eatme/server receipt:check` runs real
+  receipt photos through the OCR app and the parser, and compares the result
+  with an expected item list. Put the photos in `test-receipts/`. Git ignores
+  this folder.
+- Install EatMe OCR 0.1.8 too.
+
 ## 0.11.7
 
 - Receipt scan: a quantity row with a short OCR mark before it, for example
