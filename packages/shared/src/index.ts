@@ -368,7 +368,12 @@ export type IntakeInput = z.infer<typeof IntakeInput>;
 
 // --- receipts ----------------------------------------------------------
 // What a local OCR engine returns (docTR/PaddleOCR/Tesseract all fit this shape).
-export type OcrLine = { text: string; confidence?: number };
+export type OcrLine = {
+  text: string;
+  confidence?: number;
+  /** Other OCR readings of the price at the end of the row, from other passes. */
+  priceAlternatives?: string[];
+};
 export type OcrResult = {
   merchant?: string;
   purchasedAt?: string;

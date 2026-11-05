@@ -15,7 +15,7 @@ import re
 import subprocess
 import threading
 from math import sqrt
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from statistics import median
 
@@ -27,7 +27,12 @@ MAX_PREPARED_PIXELS = 20_000_000
 OCR_TIMEOUT_SECONDS = 25
 REQUEST_READ_TIMEOUT_SECONDS = 20
 OCR_SLOTS = threading.BoundedSemaphore(1)
-PRICE_LIKE = re.compile(r"(?:£\s*)?\d{1,3}\s*(?:[.,]|\s)\s*\d{2}\s*[A-Za-z*]?\s*$")
+# A price at the end of a row, maybe followed by a VAT letter or OCR marks
+# ("1.25 ||").
+PRICE_LIKE = re.compile(
+    r"(?:£\s*)?\d{1,3}\s*(?:[.,]|\s)\s*\d{2}\s*[A-Za-z*]?(?:\s+[^A-Za-z0-9\s]{1,3})*\s*$"
+)
+PRICE_WORD = re.compile(r"[-£€]{0,2}\d{1,3}[.,]\d{2}")
 NON_PRODUCT_LIKE = re.compile(
     r"\b(sub-?total|total|balance|change|cash|card|saving[s]?|multibuy|"
     r"offer|voucher|discount|reduced\s*price|receipt|vat)\b",
@@ -43,6 +48,11 @@ class Word:
     height: int
     text: str
     confidence: float
+    # The OCR pass and Tesseract's own block, paragraph and line numbers.
+    # Empty when unknown.
+    line: tuple[object, ...] = ()
+    # Other readings of a price at the same spot, from other OCR passes.
+    alternatives: tuple[str, ...] = ()
 
     @property
     def bottom(self) -> int:
@@ -55,6 +65,10 @@ class Word:
     @property
     def centre(self) -> float:
         return self.top + self.height / 2
+
+    @property
+    def middle(self) -> float:
+        return self.left + self.width / 2
 
 
 @dataclass
@@ -190,7 +204,9 @@ def prepare_image(image_bytes: bytes) -> bytes:
         return output.getvalue()
 
 
-def tesseract_words(image_bytes: bytes, psm: int, thresholding_method: int) -> list[Word]:
+def tesseract_words(
+    image_bytes: bytes, psm: int, thresholding_method: int, label: object = None
+) -> list[Word]:
     """Return positioned words without writing the receipt to disk."""
     completed = subprocess.run(
         [
@@ -220,10 +236,13 @@ def tesseract_words(image_bytes: bytes, psm: int, thresholding_method: int) -> l
         check=True,
         timeout=OCR_TIMEOUT_SECONDS,
     )
-    return parse_tsv(completed.stdout.decode("utf-8", errors="replace"))
+    return parse_tsv(
+        completed.stdout.decode("utf-8", errors="replace"),
+        (psm, thresholding_method) if label is None else label,
+    )
 
 
-def parse_tsv(tsv: str) -> list[Word]:
+def parse_tsv(tsv: str, label: object = None) -> list[Word]:
     """Read Tesseract's TSV output into positioned words."""
     rows = csv.DictReader(
         io.StringIO(tsv),
@@ -247,13 +266,16 @@ def parse_tsv(tsv: str) -> list[Word]:
             continue
         if confidence < 0 or width <= 0 or height <= 0:
             continue
-        words.append(Word(left, top, width, height, text, confidence))
+        line = (label, row.get("block_num"), row.get("par_num"), row.get("line_num"))
+        words.append(Word(left, top, width, height, text, confidence, line))
     return words
 
 
 def same_physical_line(word: Word, line: TextLine) -> bool:
     """Match columns split into different OCR blocks back onto one row."""
-    centre_tolerance = max(4.0, min(word.height, line.height) * 0.5)
+    # A small mark ("x", "*") on a row must still join the row, so the
+    # tolerance follows the taller of the word and the row.
+    centre_tolerance = max(4.0, max(word.height, line.height) * 0.45)
     if abs(word.centre - line.centre) > centre_tolerance:
         return False
 
@@ -267,10 +289,59 @@ def same_physical_line(word: Word, line: TextLine) -> bool:
     return True
 
 
+def line_slopes(words: list[Word]) -> list[tuple[float, float]]:
+    """Measure the slope of each wide Tesseract line, as (centre y, slope).
+
+    A curved or tilted receipt makes a row rise or fall from left to right, so
+    a price at the right edge can sit nearer to the next row than to its name.
+    """
+    lines: dict[tuple[object, ...], list[Word]] = {}
+    for word in words:
+        if word.line:
+            lines.setdefault(word.line, []).append(word)
+    if not words:
+        return []
+    page_width = max(w.right for w in words) - min(w.left for w in words)
+    slopes: list[tuple[float, float]] = []
+    for members in lines.values():
+        if len(members) < 3:
+            continue
+        xs = [w.middle for w in members]
+        ys = [w.centre for w in members]
+        if max(xs) - min(xs) < page_width * 0.3:
+            continue
+        mean_x = sum(xs) / len(xs)
+        mean_y = sum(ys) / len(ys)
+        spread = sum((x - mean_x) ** 2 for x in xs)
+        slope = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys)) / spread
+        # A word from the row above or below would give a steep slope.
+        height = median(w.height for w in members)
+        fit = max(abs(y - mean_y - slope * (x - mean_x)) for x, y in zip(xs, ys))
+        if abs(slope) < 0.15 and fit < height * 0.5:
+            slopes.append((mean_y, slope))
+    return slopes
+
+
+def level_words(words: list[Word]) -> list[Word]:
+    """Move each word up or down to undo the slope of the rows near it."""
+    slopes = line_slopes(words)
+    if not slopes:
+        return words
+    height = median(w.height for w in words)
+    left = min(w.left for w in words)
+    levelled: list[Word] = []
+    for word in words:
+        near = [s for y, s in slopes if abs(y - word.centre) <= height * 6]
+        slope = median(near) if near else median(s for _, s in slopes)
+        shift = round(slope * (word.middle - left))
+        levelled.append(replace(word, top=word.top - shift))
+    return levelled
+
+
 def group_words(words: list[Word]) -> list[dict[str, object]]:
     """Rebuild rows geometrically so a right-aligned price stays with its item."""
     grouped: list[TextLine] = []
-    for word in sorted(words, key=lambda item: (item.centre, item.left)):
+    for word in sorted(level_words(words), key=lambda item: (item.centre, item.left)):
         matches = [line for line in grouped if same_physical_line(word, line)]
         if matches:
             min(matches, key=lambda line: abs(word.centre - line.centre)).words.append(word)
@@ -284,7 +355,10 @@ def group_words(words: list[Word]) -> list[dict[str, object]]:
         if not text:
             continue
         confidence = sum(word.confidence for word in ordered) / len(ordered) / 100
-        output.append({"text": text, "confidence": round(confidence, 4)})
+        row: dict[str, object] = {"text": text, "confidence": round(confidence, 4)}
+        if ordered[-1].alternatives:
+            row["priceAlternatives"] = list(ordered[-1].alternatives)
+        output.append(row)
     return output
 
 
@@ -293,8 +367,10 @@ def fuse_words(passes: list[list[Word]], min_confidence: float = 60) -> list[Wor
 
     One pass can join two receipt rows into one tall, unreadable word (for
     example an item code with the "2 x" row under it) where another pass reads
-    both rows cleanly. Words are taken in order of confidence, and a word is
-    dropped when it covers much of a word that is already kept. A longer
+    both rows cleanly. Words are taken in order of support (the total
+    confidence of all passes that read the same text at that spot, so passes
+    that agree win over one confident pass), and a word is dropped when it
+    covers much of a word that is already kept. A longer
     reading that contains a kept word ("1.19" over "19") replaces it.
     """
 
@@ -307,15 +383,28 @@ def fuse_words(passes: list[list[Word]], min_confidence: float = 60) -> list[Wor
             return True
         return shared > 0.3 * min(a.width * a.height, b.width * b.height)
 
-    words = [w for p in passes for w in p if w.confidence >= min_confidence]
+    everything = [w for p in passes for w in p]
+    words = [w for w in everything if w.confidence >= min_confidence]
     if not words:
         return []
     # A word much taller than the printed text is a background logo or two
     # rows read as one.
     usual = median(word.height for word in words)
     words = [word for word in words if word.height <= usual * 1.3]
+    # Passes that agree on a reading make it stronger: the support of a word
+    # is the total confidence of every pass that read the same text there.
+    def same_spot(a: Word, b: Word) -> bool:
+        shared = max(0, min(a.right, b.right) - max(a.left, b.left)) * max(
+            0, min(a.bottom, b.bottom) - max(a.top, b.top)
+        )
+        return shared > 0.5 * min(a.width * a.height, b.width * b.height)
+
+    support = {
+        id(w): sum(o.confidence for o in everything if o.text == w.text and same_spot(w, o))
+        for w in words
+    }
     kept: list[Word] = []
-    for word in sorted(words, key=lambda w: -w.confidence):
+    for word in sorted(words, key=lambda w: (-support[id(w)], -w.confidence)):
         clashes = [k for k in kept if overlaps(word, k)]
         if not clashes:
             kept.append(word)
@@ -324,7 +413,19 @@ def fuse_words(passes: list[list[Word]], min_confidence: float = 60) -> list[Wor
             for k in clashes
         ):
             kept = [k for k in kept if k not in clashes] + [word]
-    return kept
+    # Keep the other price readings at the same spot. The server can use one
+    # when the receipt total shows that the kept reading is wrong.
+    with_alternatives: list[Word] = []
+    for word in kept:
+        if PRICE_WORD.fullmatch(word.text):
+            others = sorted({
+                o.text
+                for o in everything
+                if o.text != word.text and PRICE_WORD.fullmatch(o.text) and same_spot(word, o)
+            })
+            word = replace(word, alternatives=tuple(others))
+        with_alternatives.append(word)
+    return with_alternatives
 
 
 def candidate_row_counts(lines: list[dict[str, object]]) -> tuple[int, int]:
@@ -353,13 +454,37 @@ def candidate_score(lines: list[dict[str, object]]) -> float:
     return complete * 20 - isolated_prices * 4 + readable * 0.25 + confidence * 0.1
 
 
+# Printed text is near black after the contrast steps. Ink from the back of
+# thin receipt paper, a watermark or a pen mark is grey and falls above this.
+DARK_INK_LEVEL = 110
+
+
+def dark_ink_only(prepared: bytes) -> bytes:
+    """Keep only near-black pixels, so text that shows through the paper goes."""
+    with Image.open(io.BytesIO(prepared)) as image:
+        binary = image.convert("L").point(lambda v: 0 if v < DARK_INK_LEVEL else 255)
+        output = io.BytesIO()
+        binary.save(output, format="PNG", optimize=True)
+        return output.getvalue()
+
+
 def extract_lines(image_bytes: bytes) -> tuple[list[dict[str, object]], dict[str, int]]:
     """Try receipt-friendly layouts and keep the stronger complete reading."""
     prepared = prepare_image(image_bytes)
     # PSM 11 independently finds sparse text and often recovers faint product
     # rows missed by the column- and block-oriented modes.
-    strategies = ((4, 0), (4, 2), (6, 0), (11, 0))
-    passes = [tesseract_words(prepared, psm, threshold) for psm, threshold in strategies]
+    # Threshold 9 in the diagnostics marks a pass on the dark-ink-only image.
+    dark = dark_ink_only(prepared)
+    strategies = ((4, 0), (4, 2), (6, 0), (11, 0), (4, 9), (6, 9))
+    passes = [
+        tesseract_words(
+            dark if threshold == 9 else prepared,
+            psm,
+            0 if threshold == 9 else threshold,
+            (psm, threshold),
+        )
+        for psm, threshold in strategies
+    ]
     candidates = [
         (psm, threshold, group_words(words))
         for (psm, threshold), words in zip(strategies, passes)
@@ -369,8 +494,9 @@ def extract_lines(image_bytes: bytes) -> tuple[list[dict[str, object]], dict[str
     candidates.append((0, 0, group_words(fuse_words(passes))))
     psm, threshold, lines = max(candidates, key=lambda candidate: candidate_score(candidate[2]))
     # The fused reading has the clearest names. Use it unless it finds fewer
-    # product rows than the best single pass.
-    if candidate_row_counts(candidates[-1][2])[0] >= candidate_row_counts(lines)[0]:
+    # price rows than the best single pass finds product rows. A "2 x 1.99"
+    # row has no name but is still a price row.
+    if sum(candidate_row_counts(candidates[-1][2])) >= candidate_row_counts(lines)[0]:
         psm, threshold, lines = candidates[-1]
     complete, isolated_prices = candidate_row_counts(lines)
     mean_confidence = (
