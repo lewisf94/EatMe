@@ -106,8 +106,12 @@ def flatten_illumination(image: Image.Image) -> Image.Image:
     )
 
 
-def crop_receipt(image: Image.Image) -> Image.Image:
-    """Trim a dark table or worktop using the receipt's bright page area."""
+def crop_receipt(image: Image.Image, colour: Image.Image | None = None) -> Image.Image:
+    """Trim a dark table or worktop using the receipt's bright page area.
+
+    With the colour photo, a coloured surface such as a wooden table is
+    trimmed too: receipt paper is close to grey, so it has low saturation.
+    """
     sample = paper_light(image)
     pixels = list(sample.get_flattened_data())
     width, height = sample.size
@@ -116,6 +120,12 @@ def crop_receipt(image: Image.Image) -> Image.Image:
     # cut those product rows away.
     brightest = sorted(pixels)[int(len(pixels) * 0.99)]
     bright = max(40, brightest * 0.45)
+    if colour is not None:
+        saturation = colour.convert("HSV").getchannel("S").resize(sample.size, Image.Resampling.BOX)
+        pixels = [
+            value if grey <= 60 else 0
+            for value, grey in zip(pixels, saturation.get_flattened_data())
+        ]
     min_column_fill = 0.28
     min_row_fill = 0.28
 
@@ -162,8 +172,8 @@ def prepare_image(image_bytes: bytes) -> bytes:
             raise ValueError("receipt image has too many pixels")
         if source.width < 32 or source.height < 32:
             raise ValueError("receipt image dimensions are too small")
-        image = ImageOps.exif_transpose(source).convert("L")
-        image = crop_receipt(image)
+        colour = ImageOps.exif_transpose(source).convert("RGB")
+        image = crop_receipt(colour.convert("L"), colour)
         image = flatten_illumination(image)
         prepared_size = prepared_dimensions(image.width, image.height)
         if prepared_size != image.size:
@@ -210,9 +220,17 @@ def tesseract_words(image_bytes: bytes, psm: int, thresholding_method: int) -> l
         check=True,
         timeout=OCR_TIMEOUT_SECONDS,
     )
+    return parse_tsv(completed.stdout.decode("utf-8", errors="replace"))
+
+
+def parse_tsv(tsv: str) -> list[Word]:
+    """Read Tesseract's TSV output into positioned words."""
     rows = csv.DictReader(
-        io.StringIO(completed.stdout.decode("utf-8", errors="replace")),
+        io.StringIO(tsv),
         delimiter="\t",
+        # Tesseract does not quote its TSV. A word that starts with a quote
+        # mark must not swallow the rows after it.
+        quoting=csv.QUOTE_NONE,
     )
     words: list[Word] = []
     for row in rows:

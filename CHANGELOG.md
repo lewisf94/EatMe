@@ -11,6 +11,11 @@ Notable Home Assistant app changes are recorded here.
   stops the quantity.
 - Receipt scan: a spaced-out "T o t a l" line is no longer added as a
   product.
+- Receipt scan: Tesco receipts with a quantity column now work. The number
+  before each name sets the quantity. A name printed on two or three rows is
+  joined into one name. Clubcard price rows ("Cc £3.00") are no longer added
+  as products. A "£1.30 each" row sets the unit price. A product without a
+  readable price is still added, with no price.
 - New developer check: `pnpm --filter @eatme/server receipt:check` runs real
   receipt photos through the OCR app and the parser, and compares the result
   with an expected item list. Put the photos in `test-receipts/`. Git ignores

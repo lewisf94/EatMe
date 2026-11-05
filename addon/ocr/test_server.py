@@ -11,6 +11,7 @@ from server import (
     flatten_illumination,
     fuse_words,
     group_words,
+    parse_tsv,
     prepared_dimensions,
 )
 
@@ -153,3 +154,28 @@ class FuseWordsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TesseractOutputTests(unittest.TestCase):
+    def test_a_word_that_starts_with_a_quote_mark_keeps_the_next_rows(self) -> None:
+        header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext"
+        rows = [
+            "5\t1\t1\t1\t1\t1\t10\t10\t40\t20\t91\t\"Gunday",
+            "5\t1\t1\t1\t1\t2\t60\t10\t40\t20\t92\t08:00",
+            "5\t1\t1\t1\t2\t1\t10\t40\t40\t20\t93\tMILK",
+        ]
+        words = parse_tsv("\n".join([header, *rows]))
+        self.assertEqual([w.text for w in words], ['"Gunday', "08:00", "MILK"])
+
+
+class ColourCropTests(unittest.TestCase):
+    def test_crop_leaves_out_a_bright_coloured_background(self) -> None:
+        """White paper on a bright yellow table: only the paper is kept."""
+        colour = Image.new("RGB", (600, 1000), (240, 220, 40))
+        draw = ImageDraw.Draw(colour)
+        draw.rectangle([(150, 100), (450, 900)], fill=(235, 235, 230))
+        for y in range(130, 880, 30):
+            draw.rectangle([(170, y), (400, y + 8)], fill=(30, 30, 30))
+        cropped = crop_receipt(colour.convert("L"), colour)
+        self.assertLess(cropped.width, 400)
+        self.assertLess(cropped.height, 900)

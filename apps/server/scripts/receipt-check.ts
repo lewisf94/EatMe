@@ -100,7 +100,8 @@ function compare(expected: Expected, parsed: ParsedLine[]): { rows: Row[]; extra
 function cases(args: string[]): string[] {
   const targets = args.length ? args : [join(repoRoot, "test-receipts")];
   return targets.flatMap((t) => {
-    const p = resolve(t);
+    // pnpm runs the script in apps/server; resolve paths from where it was typed.
+    const p = resolve(process.env.INIT_CWD ?? process.cwd(), t);
     if (!existsSync(p)) {
       console.error(`Not found: ${p}`);
       return [];
@@ -133,7 +134,7 @@ for (const photo of photos) {
   console.log(`\n${basename(photo)}  (${ocr.lines.length} OCR lines, merchant ${parsed.merchant})`);
   for (const r of rows) {
     const got = r.got
-      ? `${r.got.normalizedText} x${r.got.quantity} ${r.got.lineTotal?.toFixed(2)}`
+      ? `${r.got.normalizedText} x${r.got.quantity} ${r.got.lineTotal?.toFixed(2) ?? "no price"}`
       : "-";
     const mark = r.status === "ok" ? "ok  " : "FAIL";
     console.log(

@@ -7,6 +7,10 @@
   where another pass reads both rows. Words much taller than the printed
   text, such as a background logo, are ignored. The app uses this combined
   reading unless it finds fewer product rows than the best single pass.
+- Fix: a word that starts with a quote mark no longer hides the rows after
+  it.
+- The crop now leaves out a coloured background, such as a table, around the
+  receipt. Only grey or white areas count as paper.
 - On a test Aldi photo with grey printing behind the text, "Extra Fine Beans"
   and "Chicken Fillet" are now read correctly.
 

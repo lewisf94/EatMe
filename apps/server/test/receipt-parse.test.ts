@@ -180,3 +180,52 @@ describe("parseReceipt on OCR rows that lost part of the text", () => {
     expect(r.lines.map((l) => l.normalizedText)).toEqual(["baked beans", "pesto", "bread"]);
   });
 });
+
+describe("parseReceipt on a Tesco receipt with a quantity column", () => {
+  const r = parseReceipt({
+    lines: [
+      { text: "Batley Extra" },
+      { text: "1 Lucozade Sport Drink £4.50" },
+      { text: "X 500ml |" },
+      { text: "Cc £3.00" },
+      { text: "1 Rowse Organic Squeezy Honey £3.35" },
+      { text: "340g" },
+      { text: "Co £3.00 -£0.35" },
+      { text: "1 Tesco Summer Fruit Platter" },
+      { text: "Price Marked:" },
+      { text: "1 Whole Milk £0.85" },
+      { text: "2 Tesco Angel Cake £2.60" },
+      { text: "Vanilla 6 Pack 160g" },
+      { text: "£1.30 each" },
+      { text: "£4.00" },
+      { text: "1 Cadbury" },
+      { text: "chocolate mini" },
+      { text: "Co £2.45 £1.10" },
+      { text: "Tesco Cheese & Onion Crisps" },
+      { text: "6x £1.10" },
+      { text: "Tesco Ready Salted Crisps" },
+      { text: "TOTAL £20.50" },
+      { text: "Thank you for shopping" },
+    ],
+  });
+
+  it("joins long names, reads the quantity column and skips Clubcard rows", () => {
+    expect(r.lines.map((l) => [l.normalizedText, l.quantity, l.unitPrice, l.lineTotal])).toEqual([
+      ["lucozade sport drink x 500ml", 1, 4.5, 4.5],
+      ["rowse organic squeezy honey 340g", 1, 3.35, 3.35],
+      ["tesco summer fruit platter", 1, null, null],
+      ["whole milk", 1, 0.85, 0.85],
+      ["tesco angel cake vanilla 6 pack 160g", 2, 1.3, 2.6],
+      ["cadbury chocolate mini", 1, 4, 4],
+      ["tesco cheese onion crisps", 1, 1.1, 1.1],
+      ["tesco ready salted crisps", 1, null, null],
+    ]);
+  });
+
+  it("does not use the quantity column on a receipt without one", () => {
+    const aldi = parseReceipt({
+      lines: [{ text: "1 Tesco Milk £1.00" }, { text: "MIXED HERBS 1.04" }, { text: "340g" }],
+    });
+    expect(aldi.lines.map((l) => l.normalizedText)).toEqual(["1 tesco milk", "mixed herbs"]);
+  });
+});

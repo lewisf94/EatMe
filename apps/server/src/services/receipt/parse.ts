@@ -53,6 +53,20 @@ const UNIT_ONLY = /^[^a-z0-9]*([0-9OQ]{1,3})[.,](\d{2})\s*$/i;
 // A UK date on the receipt (dd/mm/yy or dd/mm/yyyy).
 const DATE = /\b([0-3]?\d)[/.-]([01]?\d)[/.-](\d{2}|\d{4})\b/;
 
+// Tesco prints a quantity column before each name ("2 Tesco Angel Cake £2.60")
+// and continues a long name on the next rows without a price.
+const LEAD_QTY = /^\s*(\d{1,2})\s+(?=[a-z]{3})/i;
+// Clubcard price rows ("Cc £3.00 -£0.35"). OCR reads Cc as Co.
+const CLUBCARD = /^\s*c[co]\s+-?£?\s*\d/i;
+// A unit price row under a multiple ("£1.30 each").
+const EACH = /^\W*£?\s*(\d{1,3})[.,](\d{2})\s*each\b/i;
+// A row that is only a price ("£4.00"), when OCR put the price on its own row.
+const PRICE_ONLY = /^[^a-z0-9]*£?\s*(\d{1,3})[.,](\d{2})\s*[^a-z0-9]*$/i;
+// Rows in a long name that are not part of the name.
+const NOT_NAME = /^\s*price\s*marked/i;
+// The end of the product rows.
+const END = /\b(sub-?total|total|balance|amount due|to pay)\b/i;
+
 /** Alias key: lowercase, strip price/qty/vat noise and punctuation, collapse space. */
 export function normalize(text: string): string {
   return text
@@ -87,12 +101,122 @@ function detectDate(ocr: OcrResult): string | null {
   return null;
 }
 
+type Block = {
+  quantity: number;
+  parts: string[];
+  price: number | null;
+  unitPrice: number | null;
+  /** The price came on a continuation row, so the name is complete. */
+  closed: boolean;
+  confidence: number | null;
+};
+
+const words = (s: string) => (s.match(/[a-z]{3,}/gi) ?? []).length;
+
+/**
+ * Parse a receipt with a quantity column (Tesco). Each product starts at a row
+ * with a leading quantity and takes up to three name rows after it. A Clubcard
+ * row or a total ends a product. A price on a row of its own goes to the
+ * nearest product without a price. Gives null when the receipt has no
+ * quantity column.
+ */
+function parseQuantityColumn(ocr: OcrResult): ParsedLine[] | null {
+  const texts = ocr.lines.map((l) => l.text.trim());
+  const starts = texts.filter((t) => LEAD_QTY.test(t) && PRICE.test(t)).length;
+  if (starts < 3) return null;
+
+  const blocks: Block[] = [];
+  // Lone prices, by the block count when they were seen.
+  const lone: Array<{ after: number; price: number }> = [];
+  let open: Block | null = null;
+  const begin = (quantity: number, text: string, confidence: number | null) => {
+    open = { quantity, parts: [], price: null, unitPrice: null, closed: false, confidence };
+    blocks.push(open);
+    addRow(open, text, true);
+  };
+  const addRow = (b: Block, text: string, first: boolean) => {
+    const m = PRICE.exec(text);
+    if (m && m[1] !== "-" && b.price == null) {
+      b.price = Number(`${m[2]}.${m[3]}`);
+      if (!first) b.closed = true;
+    }
+    const name = normalize(first ? text.replace(LEAD_QTY, "") : text);
+    if (/[a-z]/.test(name)) b.parts.push(name);
+  };
+
+  for (const [at, text] of texts.entries()) {
+    if (!text) continue;
+    if (END.test(text)) break;
+    const confidence = ocr.lines[at].confidence ?? null;
+    const qty = LEAD_QTY.exec(text);
+    if (qty && !BAG.test(text)) {
+      begin(Math.max(1, Number(qty[1])), text, confidence);
+      continue;
+    }
+    if (CLUBCARD.test(text) || SKIP.test(text) || BAG.test(text)) {
+      open = null;
+      continue;
+    }
+    const each = EACH.exec(text);
+    if (each) {
+      if (open) (open as Block).unitPrice = Number(`${each[1]}.${each[2]}`);
+      continue;
+    }
+    const only = PRICE_ONLY.exec(text);
+    if (only) {
+      const price = Number(`${only[1]}.${only[2]}`);
+      if (open && !(open as Block).closed && (open as Block).price == null) {
+        (open as Block).price = price;
+      } else lone.push({ after: blocks.length, price });
+      continue;
+    }
+    // A row needs two letters, a size ("340g") or a price ("6x £1.10" ends a
+    // long name). Lone marks ("|", "i") are noise.
+    const nameLike = /[a-z].*[a-z]|\d[a-z]/i.test(text);
+    if (NOT_NAME.test(text) || (!nameLike && !PRICE.test(text))) continue;
+    const b = open as Block | null;
+    if (b && !b.closed && b.parts.length < 4) addRow(b, text, false);
+    else if (blocks.length && words(text) >= 2) begin(1, text, confidence);
+  }
+
+  // A lone price goes to the next product without a price, else the last one.
+  for (const { after, price } of lone) {
+    const target =
+      blocks.slice(after).find((b) => b.price == null) ??
+      blocks
+        .slice(0, after)
+        .reverse()
+        .find((b) => b.price == null);
+    if (target) target.price = price;
+  }
+
+  return blocks
+    .filter((b) => b.parts.join("").replace(/[0-9\s]/g, "").length >= 2)
+    .map((b) => {
+      const total = b.price;
+      let unit = b.unitPrice;
+      if (unit != null && total != null && Math.abs(unit * b.quantity - total) > 0.011) unit = null;
+      return {
+        rawText: b.parts.join(" "),
+        normalizedText: b.parts.join(" "),
+        quantity: b.quantity,
+        unitPrice:
+          unit ??
+          (total != null && b.quantity > 1 ? Number((total / b.quantity).toFixed(2)) : total),
+        lineTotal: total,
+        confidence: b.confidence,
+      };
+    });
+}
+
 /**
  * Turn raw OCR lines into candidate product lines: keep lines with a name and a
  * (positive) price, dropping totals/tender/loyalty/store noise, carrier bags and
  * discounts. Pure — the same OCR always yields the same lines (unit-tested).
  */
 export function parseReceipt(ocr: OcrResult): ParsedReceipt {
+  const column = parseQuantityColumn(ocr);
+  if (column) return { merchant: detectMerchant(ocr), purchasedAt: detectDate(ocr), lines: column };
   const lines: ParsedLine[] = [];
   // Quantity-only rows, by OCR line index, and the product row index of each
   // product line, so a quantity row can find its neighbour afterwards.
