@@ -11,6 +11,15 @@
   it.
 - The crop now leaves out a coloured background, such as a table, around the
   receipt. Only grey or white areas count as paper.
+- Three extra passes on images that keep only near-black ink. Text printed
+  on the back of thin receipt paper, and grey marks over the letters, are
+  removed.
+- Rows that curve or tilt are levelled before words are put into rows, so a
+  price at the right edge stays with its own product.
+- When passes read a word differently, the reading that most passes agree on
+  wins. The other readings of each price are sent to EatMe, which can check
+  them against the receipt total.
+- On test photos of two Tesco receipts, all lines are now read correctly.
 - On a test Aldi photo with grey printing behind the text, "Extra Fine Beans"
   and "Chicken Fillet" are now read correctly.
 

@@ -229,3 +229,94 @@ describe("parseReceipt on a Tesco receipt with a quantity column", () => {
     expect(aldi.lines.map((l) => l.normalizedText)).toEqual(["1 tesco milk", "mixed herbs"]);
   });
 });
+
+describe("parseReceipt on hard OCR rows", () => {
+  it("uses another price reading when it makes the lines add up to the total", () => {
+    const r = parseReceipt({
+      lines: [
+        { text: "OX0 CUBES 0.83" },
+        { text: "TWIN GARLIC 1.06", priceAlternatives: ["1.00"] },
+        { text: "KER TOMATO170 1.25 ||" },
+        { text: "TOTAL 3.08", priceAlternatives: ["9.08"] },
+      ],
+    });
+    expect(r.lines.map((l) => [l.normalizedText, l.lineTotal])).toEqual([
+      ["oxo cubes", 0.83],
+      ["twin garlic", 1],
+      ["ker tomato170", 1.25],
+    ]);
+  });
+
+  it("keeps the first reading when no other reading matches the total", () => {
+    const r = parseReceipt({
+      lines: [
+        { text: "TWIN GARLIC 1.06", priceAlternatives: ["1.50"] },
+        { text: "PLUMS 1.39" },
+        { text: "TOTAL 9.99" },
+      ],
+    });
+    expect(r.lines.map((l) => l.lineTotal)).toEqual([1.06, 1.39]);
+  });
+
+  it("reads a quantity row where OCR read the x as a quote mark", () => {
+    const r = parseReceipt({
+      lines: [
+        { text: "388067 CHICKEN FILLET 1KG 6.69 A" },
+        { text: "2 \u201d 0.69" },
+        { text: "726862 RTH LIME / COCONUT 1.38 A" },
+      ],
+    });
+    expect(r.lines.map((l) => [l.normalizedText, l.quantity])).toEqual([
+      ["chicken fillet 1kg", 1],
+      ["rth lime coconut", 2],
+    ]);
+  });
+
+  it("drops a spaced-out total read with a short word", () => {
+    const r = parseReceipt({
+      lines: [
+        { text: "NUTS MIXED 1.75 A" },
+        { text: "PEANUTS SALTED 0.59 A" },
+        { text: "Toa t a 1 2.34" },
+      ],
+    });
+    expect(r.lines.map((l) => l.normalizedText)).toEqual(["nuts mixed", "peanuts salted"]);
+  });
+});
+
+describe("parseReceipt on a curved Tesco receipt", () => {
+  const r = parseReceipt({
+    lines: [
+      { text: "1 Rowse Organic Squeezy Honey £3.35" },
+      { text: "| Co £3.00 -£0.35" },
+      { text: "1 Tesco Finest Super Seeded £1.75" },
+      { text: "2 Tesco Angel Cake Slices - £2.60" },
+      { text: "Vanilla 6 Pack 160g" },
+      { text: "£1.30 each £4.00" },
+      { text: "1 Cadbury" },
+      { text: "Rolls cakes 10 Pack" },
+      { text: "| Co £2.45 |" },
+      { text: "1 Tesco Cheese & Onion Crisps £1.10" },
+      { text: "6x25g" },
+      { text: "Tesco Ready Salted Crisps £1.10" },
+    ],
+  });
+
+  it("reads a dash before a price as text, not as a discount", () => {
+    expect(r.lines[2]).toMatchObject({ quantity: 2, unitPrice: 1.3, lineTotal: 2.6 });
+  });
+
+  it("gives a price on the unit price row to the next product", () => {
+    expect(r.lines[3]).toMatchObject({
+      normalizedText: "cadbury rolls cakes 10 pack",
+      lineTotal: 4,
+    });
+  });
+
+  it("starts a new product at a second priced row", () => {
+    expect(r.lines.slice(4).map((l) => [l.normalizedText, l.lineTotal])).toEqual([
+      ["tesco cheese onion crisps 25g", 1.1],
+      ["tesco ready salted crisps", 1.1],
+    ]);
+  });
+});

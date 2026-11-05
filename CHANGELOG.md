@@ -16,6 +16,13 @@ Notable Home Assistant app changes are recorded here.
   joined into one name. Clubcard price rows ("Cc £3.00") are no longer added
   as products. A "£1.30 each" row sets the unit price. A product without a
   readable price is still added, with no price.
+- Receipt scan: when the products do not add up to the receipt total, and
+  another OCR reading of one price makes them add up, EatMe uses that
+  reading. Install EatMe OCR 0.1.8, which sends these readings.
+- Receipt scan: "Slices - £2.60" is no longer read as a discount. A price on
+  the same row as "£1.30 each" goes to the next product. OCR marks before or
+  after a row ("| Co £2.45", "1.25 ||") no longer hide it. "OX0" is read as
+  "OXO".
 - New developer check: `pnpm --filter @eatme/server receipt:check` runs real
   receipt photos through the OCR app and the parser, and compares the result
   with an expected item list. Put the photos in `test-receipts/`. Git ignores

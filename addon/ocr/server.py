@@ -327,12 +327,13 @@ def level_words(words: list[Word]) -> list[Word]:
     slopes = line_slopes(words)
     if not slopes:
         return words
-    height = median(w.height for w in words)
     left = min(w.left for w in words)
     levelled: list[Word] = []
     for word in words:
-        near = [s for y, s in slopes if abs(y - word.centre) <= height * 6]
-        slope = median(near) if near else median(s for _, s in slopes)
+        # The median of the three nearest measured rows: the paper can curve,
+        # but one badly read row must not tilt its neighbours.
+        nearest = sorted(slopes, key=lambda item: abs(item[0] - word.centre))[:3]
+        slope = median(s for _, s in nearest)
         shift = round(slope * (word.middle - left))
         levelled.append(replace(word, top=word.top - shift))
     return levelled
@@ -456,13 +457,21 @@ def candidate_score(lines: list[dict[str, object]]) -> float:
 
 # Printed text is near black after the contrast steps. Ink from the back of
 # thin receipt paper, a watermark or a pen mark is grey and falls above this.
+# The darker level also removes a grey mark that touches the letters.
 DARK_INK_LEVEL = 110
+DARKEST_INK_LEVEL = 50
 
 
-def dark_ink_only(prepared: bytes) -> bytes:
-    """Keep only near-black pixels, so text that shows through the paper goes."""
+def dark_ink_only(prepared: bytes, level: int = DARK_INK_LEVEL, thicken: bool = False) -> bytes:
+    """Keep only near-black pixels, so text that shows through the paper goes.
+
+    At the darkest level thin dot-matrix strokes break up, so they can be
+    made one pixel thicker on each side.
+    """
     with Image.open(io.BytesIO(prepared)) as image:
-        binary = image.convert("L").point(lambda v: 0 if v < DARK_INK_LEVEL else 255)
+        binary = image.convert("L").point(lambda v: 0 if v < level else 255)
+        if thicken:
+            binary = binary.filter(ImageFilter.MinFilter(3))
         output = io.BytesIO()
         binary.save(output, format="PNG", optimize=True)
         return output.getvalue()
@@ -473,14 +482,15 @@ def extract_lines(image_bytes: bytes) -> tuple[list[dict[str, object]], dict[str
     prepared = prepare_image(image_bytes)
     # PSM 11 independently finds sparse text and often recovers faint product
     # rows missed by the column- and block-oriented modes.
-    # Threshold 9 in the diagnostics marks a pass on the dark-ink-only image.
-    dark = dark_ink_only(prepared)
-    strategies = ((4, 0), (4, 2), (6, 0), (11, 0), (4, 9), (6, 9))
+    # Thresholds 9 and 8 in the diagnostics mark passes on the dark-ink-only
+    # images.
+    images = {9: dark_ink_only(prepared), 8: dark_ink_only(prepared, DARKEST_INK_LEVEL, thicken=True)}
+    strategies = ((4, 0), (4, 2), (6, 0), (11, 0), (4, 9), (6, 9), (4, 8))
     passes = [
         tesseract_words(
-            dark if threshold == 9 else prepared,
+            images.get(threshold, prepared),
             psm,
-            0 if threshold == 9 else threshold,
+            0 if threshold in images else threshold,
             (psm, threshold),
         )
         for psm, threshold in strategies

@@ -47,8 +47,8 @@ const VAT_MARKER = /\s+(?:x|\*)\s*$/i;
 const ITEM_CODE = /^\s*(?:\S{1,2}\s+)?\d{5,7}\s+(?=.*[a-z]{2})/i;
 // A line with only a quantity and a unit price ("2 x 1.99"). Aldi prints it
 // above the product line and Lidl below it; Tesseract often reads x as "xX",
-// and the leading 0 of the price as O or Q.
-const QTY_ONLY = /(?:^|[^\d])(\d{1,2})\s*[x×@]{1,2}\s*£?\s*([0-9OQ]{1,3})[.,](\d{2})\s*$/i;
+// or ”, and the leading 0 of the price as O or Q.
+const QTY_ONLY = /(?:^|[^\d])(\d{1,2})\s*[x×@”"]{1,2}\s*£?\s*([0-9OQ]{1,3})[.,](\d{2})\s*$/i;
 // A line with only a unit price ("0.39"), when OCR lost the "2 x" before it.
 // Tesseract can read the leading 0 as O or Q.
 const UNIT_ONLY = /^[^a-z0-9]*([0-9OQ]{1,3})[.,](\d{2})\s*$/i;
@@ -361,12 +361,12 @@ export function parseReceipt(ocr: OcrResult): ParsedReceipt {
   });
 
   // A receipt total in a spaced-out font ("T o t a l") can fail the SKIP
-  // check. Drop a line with no real word whose price is the sum of all the
-  // lines before it.
+  // check. Drop a line with no word of four letters ("Toa t a 1") whose price
+  // is the sum of all the lines before it.
   let running = 0;
   for (const [at, index] of [...productAt]) {
     const line = lines[index];
-    const noWord = !/[a-z]{3}/.test(line.normalizedText);
+    const noWord = !/[a-z]{4}/.test(line.normalizedText);
     if (index >= 2 && noWord && Math.abs((line.lineTotal ?? 0) - running) < 0.005) {
       productAt.delete(at);
       lines.splice(index, 1);
