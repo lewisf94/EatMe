@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.1.8
+
+- Combine the most confident words from all four recognition passes into one
+  extra reading. One pass can join two receipt rows into one unreadable word
+  where another pass reads both rows. Words much taller than the printed
+  text, such as a background logo, are ignored. The app uses this combined
+  reading unless it finds fewer product rows than the best single pass.
+- Fix: a word that starts with a quote mark no longer hides the rows after
+  it.
+- The crop now leaves out a coloured background, such as a table, around the
+  receipt. Only grey or white areas count as paper.
+- Three extra passes on images that keep only near-black ink. Text printed
+  on the back of thin receipt paper, and grey marks over the letters, are
+  removed.
+- Rows that curve or tilt are levelled before words are put into rows, so a
+  price at the right edge stays with its own product.
+- When passes read a word differently, the reading that most passes agree on
+  wins. The other readings of each price are sent to EatMe, which can check
+  them against the receipt total.
+- On test photos of two Tesco receipts, all lines are now read correctly.
+- On a test Aldi photo with grey printing behind the text, "Extra Fine Beans"
+  and "Chicken Fillet" are now read correctly.
+
 ## 0.1.7
 
 - Fix: a receipt photo that is darker at one end lost the product rows at that
