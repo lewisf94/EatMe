@@ -14,6 +14,7 @@ import {
   IconGear,
 } from "./ui/icons";
 import TokenGate from "./ui/TokenGate";
+import OfflineReminder from "./ui/OfflineReminder";
 import WarmTooltip from "./ui/WarmTooltip";
 
 const Today = lazy(() => import("./pages/Today"));
@@ -124,6 +125,7 @@ export default function App() {
   return (
     <div className="eatme">
       <SideNav />
+      <OfflineReminder />
       {/* Each screen fades up on arrival; MotionConfig in main.tsx turns this
           off when the phone asks for reduced motion. */}
       <motion.div

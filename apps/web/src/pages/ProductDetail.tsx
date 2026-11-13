@@ -13,6 +13,7 @@ import {
 import { api, type LabelContainer } from "../api";
 import { printLabelSheet } from "../labels";
 import { loadProduct, submitLotEvent, usePending } from "../offline";
+import { useReconnectCount } from "../connection";
 import { today, fractionLabel } from "../ui";
 import { FreshnessTimeline, freshOf, lotFreshInput, clockLabel, ClockIcon } from "../ui/freshness";
 import { SyncStatus } from "../ui/SyncStatus";
@@ -61,6 +62,7 @@ export default function ProductDetail() {
   const [offline, setOffline] = useState(false);
   const [syncedAt, setSyncedAt] = useState<number | null>(null);
   const td = today();
+  const reconnected = useReconnectCount(); // reload when the server comes back
 
   const reload = useCallback(() => {
     loadProduct(id).then(
@@ -83,7 +85,7 @@ export default function ProductDetail() {
     void api.categories().then(setCats);
     void api.locations().then(setLocs);
     void api.labelContainers(id).then(setContainers, () => setContainers([]));
-  }, [reload]);
+  }, [reload, reconnected]);
 
   const guard = (p: Promise<unknown>) =>
     p.then(reload, (e) => setError(e instanceof Error ? e.message : "Update failed"));
