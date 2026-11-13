@@ -29,6 +29,16 @@ Notable Home Assistant app changes are recorded here.
   this folder.
 - Install EatMe OCR 0.1.8 too.
 
+## 0.11.8
+
+- The app shows an orange reminder at the top of every screen when the phone
+  cannot reach the EatMe server: "Can't reach EatMe. Is Tailscale on? Turn it
+  on, then come back here." It has a "Try again" button.
+- The app checks the server when it opens, when you come back to it, and every
+  20 seconds while it cannot reach the server. The reminder goes away by itself
+  when the server answers. Today, All food and the product page then load fresh
+  data, and changes made while offline are sent.
+
 ## 0.11.7
 
 - Receipt scan: a quantity row with a short OCR mark before it, for example

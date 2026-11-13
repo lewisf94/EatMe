@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { InventoryRow, Location } from "@eatme/shared";
 import { api, isAbort } from "../api";
 import { loadInventory } from "../offline";
+import { useReconnectCount } from "../connection";
 import { today } from "../ui";
 import { SwipeProductRow, UndoBar, useSwipeArchive } from "../ui/swipeArchive";
 import { SyncStatus } from "../ui/SyncStatus";
@@ -20,6 +21,7 @@ export default function Inventory() {
   const [offline, setOffline] = useState(false);
   const td = today();
   const swipe = useSwipeArchive();
+  const back = useReconnectCount(); // reload when the server comes back
 
   useEffect(() => {
     void api.locations().then(setLocs);
@@ -62,7 +64,7 @@ export default function Inventory() {
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [load]);
+  }, [load, back]);
 
   const locName = (id: string | null) => locs.find((l) => l.id === id)?.name ?? "";
   const shown = rows.filter((r) => !swipe.hidden.has(r.productId));
