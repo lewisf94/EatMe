@@ -1,3 +1,4 @@
+import io
 import unittest
 
 from PIL import Image, ImageDraw
@@ -8,8 +9,12 @@ from server import (
     candidate_row_counts,
     candidate_score,
     crop_receipt,
+    dark_ink_only,
     flatten_illumination,
+    fuse_words,
     group_words,
+    level_words,
+    parse_tsv,
     prepared_dimensions,
 )
 
@@ -127,5 +132,119 @@ class UnevenLightTests(unittest.TestCase):
         self.assertLess(abs(lit - darker), 25)
 
 
+class FuseWordsTests(unittest.TestCase):
+    def test_clean_words_from_another_pass_replace_a_merged_tall_word(self) -> None:
+        merged = [Word(250, 1379, 120, 112, "ees", 26), Word(534, 1376, 150, 48, "EXTRA", 96)]
+        clean = [
+            Word(250, 1379, 130, 48, "660363", 90),
+            Word(720, 1379, 120, 49, "FINE", 96),
+            Word(874, 1382, 150, 48, "BEANS", 96),
+            Word(843, 1442, 100, 48, "0.39", 89),
+        ]
+        texts = sorted(word.text for word in fuse_words([merged, clean]))
+        self.assertEqual(texts, ["0.39", "660363", "BEANS", "EXTRA", "FINE"])
+
+    def test_a_longer_reading_replaces_a_part_of_it(self) -> None:
+        part = [Word(1316, 1328, 50, 48, "19", 95)]
+        whole = [Word(1250, 1326, 116, 50, "1.19", 88)]
+        self.assertEqual([word.text for word in fuse_words([part, whole])], ["1.19"])
+
+    def test_the_same_word_at_a_small_offset_is_kept_once(self) -> None:
+        first = [Word(1414, 1331, 27, 48, "A", 95)]
+        second = [Word(1440, 1331, 29, 48, "A", 96)]
+        self.assertEqual(len(fuse_words([first, second])), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class TesseractOutputTests(unittest.TestCase):
+    def test_a_word_that_starts_with_a_quote_mark_keeps_the_next_rows(self) -> None:
+        header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext"
+        rows = [
+            "5\t1\t1\t1\t1\t1\t10\t10\t40\t20\t91\t\"Gunday",
+            "5\t1\t1\t1\t1\t2\t60\t10\t40\t20\t92\t08:00",
+            "5\t1\t1\t1\t2\t1\t10\t40\t40\t20\t93\tMILK",
+        ]
+        words = parse_tsv("\n".join([header, *rows]))
+        self.assertEqual([w.text for w in words], ['"Gunday', "08:00", "MILK"])
+
+
+class ColourCropTests(unittest.TestCase):
+    def test_crop_leaves_out_a_bright_coloured_background(self) -> None:
+        """White paper on a bright yellow table: only the paper is kept."""
+        colour = Image.new("RGB", (600, 1000), (240, 220, 40))
+        draw = ImageDraw.Draw(colour)
+        draw.rectangle([(150, 100), (450, 900)], fill=(235, 235, 230))
+        for y in range(130, 880, 30):
+            draw.rectangle([(170, y), (400, y + 8)], fill=(30, 30, 30))
+        cropped = crop_receipt(colour.convert("L"), colour)
+        self.assertLess(cropped.width, 400)
+        self.assertLess(cropped.height, 900)
+
+
+def line_word(left: int, top: int, text: str, line: int, confidence: float = 90) -> Word:
+    return Word(left, top, 100, 40, text, confidence, ("pass", 1, 1, line))
+
+
+class CurvedRowTests(unittest.TestCase):
+    def test_a_price_on_a_sloped_row_stays_with_its_name(self) -> None:
+        """Rows fall 8 pixels for each 100 pixels to the right."""
+        words = []
+        for row, name in enumerate(["CHEESE", "SALTED", "HONEY"]):
+            base = 100 + row * 60
+            words += [
+                line_word(100, base, "1", row),
+                line_word(250, base + 12, "TESCO", row),
+                line_word(400, base + 24, name, row),
+                line_word(550, base + 36, "CRISPS", row),
+            ]
+        # Row 1 starts at 160. The slope puts its price 72 pixels lower, nearer
+        # to row 2 (220) than to row 1 without levelling.
+        words.append(Word(1000, 160 + 72, 100, 40, "1.10", 90))
+        rows = [str(line["text"]) for line in group_words(words)]
+        self.assertEqual(rows[1], "1 TESCO SALTED CRISPS 1.10")
+
+    def test_one_bad_row_does_not_tilt_the_rows_near_it(self) -> None:
+        words = []
+        for row in range(4):
+            slope = 0.08 if row == 1 else 0.0
+            for i, x in enumerate((100, 300, 500)):
+                words.append(line_word(x, round(100 + row * 60 + slope * x), f"W{i}", row))
+        levelled = level_words(words)
+        tops = {w.top for w in levelled if w.line[3] == 3}
+        self.assertEqual(len(tops), 1)
+
+
+class AgreementTests(unittest.TestCase):
+    def test_passes_that_agree_win_over_one_confident_pass(self) -> None:
+        passes = [
+            [Word(1367, 870, 159, 58, "£1.65", 85)],
+            [Word(1367, 870, 159, 58, "£1.65", 53)],
+            [Word(1367, 870, 159, 58, "£1.68", 90)],
+        ]
+        fused = fuse_words(passes)
+        self.assertEqual([w.text for w in fused], ["£1.65"])
+        self.assertEqual(fused[0].alternatives, ("£1.68",))
+
+    def test_the_other_price_readings_reach_the_row(self) -> None:
+        passes = [
+            [word(100, 900, 200, 50, "GARLIC"), Word(800, 900, 120, 50, "1.06", 95)],
+            [Word(800, 900, 120, 50, "1.00", 90)],
+        ]
+        rows = group_words(fuse_words(passes))
+        self.assertEqual(rows[0]["priceAlternatives"], ["1.00"])
+
+
+class DarkInkTests(unittest.TestCase):
+    def test_grey_text_from_the_back_of_the_paper_is_removed(self) -> None:
+        image = Image.new("L", (200, 100), 255)
+        draw = ImageDraw.Draw(image)
+        draw.rectangle([(10, 10), (60, 40)], fill=20)
+        draw.rectangle([(100, 10), (150, 40)], fill=170)
+        output = io.BytesIO()
+        image.save(output, format="PNG")
+        with Image.open(io.BytesIO(dark_ink_only(output.getvalue()))) as dark:
+            self.assertEqual(dark.getpixel((30, 25)), 0)
+            self.assertEqual(dark.getpixel((120, 25)), 255)

@@ -25,3 +25,7 @@ firmware/magtag/settings.toml
 # Third-party CAD reference files (Adafruit MagTag case). Not licensed for
 # redistribution here; keep them on your own computer only.
 CAD/Reference Models/
+
+# Real receipt photos for `pnpm --filter @eatme/server receipt:check`.
+# Personal data: keep them out of the repository.
+test-receipts/

@@ -7,7 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "check": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "receipt:check": "tsx scripts/receipt-check.ts"
   },
   "dependencies": {
     "@eatme/shared": "workspace:*",
