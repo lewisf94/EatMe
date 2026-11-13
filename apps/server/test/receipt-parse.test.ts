@@ -320,3 +320,109 @@ describe("parseReceipt on a curved Tesco receipt", () => {
     ]);
   });
 });
+
+describe("rows that share one product", () => {
+  const names = (texts: string[]) =>
+    parseReceipt({ lines: texts.map((text) => ({ text })) }).lines.map((l) => [
+      l.normalizedText,
+      l.quantity,
+      l.lineTotal,
+    ]);
+
+  it("gives a weight row's price to the name above it", () => {
+    expect(names(["BANANAS LOOSE", "0.730 kg @ £0.90/kg 0.66", "MILK 1.45"])).toEqual([
+      ["bananas loose", 1, 0.66],
+      ["milk", 1, 1.45],
+    ]);
+  });
+
+  it("reads a weight row when OCR misreads its first 0", () => {
+    expect(names(["M CARROTS LOOSE", "@.512 kg @ £0.65/kg £0.33"])).toEqual([
+      ["m carrots loose", 1, 0.33],
+    ]);
+  });
+
+  it("ignores a weight row under a product that has its price", () => {
+    expect(names(["Bananas Loose 0.84 A", "0.932 kg x 0.90 £/kg", "Milk 1.45 A"])).toEqual([
+      ["bananas loose", 1, 0.84],
+      ["milk", 1, 1.45],
+    ]);
+  });
+
+  it("gives a quantity row with a total to the name above it", () => {
+    const r = parseReceipt({ lines: [{ text: "LEMONS" }, { text: "3 @ £0.35 1.05" }] });
+    expect(r.lines).toHaveLength(1);
+    expect(r.lines[0]).toMatchObject({
+      normalizedText: "lemons",
+      quantity: 3,
+      unitPrice: 0.35,
+      lineTotal: 1.05,
+    });
+  });
+
+  it("gives a price on its own row to the name above it", () => {
+    expect(names(["MILK 1.45", "IRRESISTIBLE SOURDOUGH", "£2.15", "BUTTER 2.20"])).toEqual([
+      ["milk", 1, 1.45],
+      ["irresistible sourdough", 1, 2.15],
+      ["butter", 1, 2.2],
+    ]);
+  });
+
+  it("still reads a lone unit price as the quantity of the next product", () => {
+    // The first row lost its price. "0.39" is the unit price of the garlic.
+    expect(names(["384145 NUTS MIXED", "0.39", "401122 XL GARLIC EACH 0.78"])).toEqual([
+      ["xl garlic each", 2, 0.78],
+    ]);
+  });
+
+  it("still gives an Aldi quantity row to the product under it", () => {
+    expect(names(["384145 NUTS MIXED", "2 x 1.99", "401122 NUT BARS 3.98"])).toEqual([
+      ["nut bars", 2, 3.98],
+    ]);
+  });
+});
+
+describe("receipt faults from other supermarkets", () => {
+  const parse = (texts: string[]) => parseReceipt({ lines: texts.map((text) => ({ text })) });
+
+  it("reads a minus sign after the amount as a discount", () => {
+    const r = parse(["BEEF MINCE 500G £3.29", "MORE CARD SAVING £0.50-", "MUSHROOMS £0.99"]);
+    expect(r.lines.map((l) => l.normalizedText)).toEqual(["beef mince 500g", "mushrooms"]);
+  });
+
+  it("reads a price that an OCR mark touches", () => {
+    expect(parse(["M SAVERS PASTA 500G £0.41]"]).lines[0]).toMatchObject({ lineTotal: 0.41 });
+  });
+
+  it("stops at the total, so VAT rows are not products", () => {
+    const r = parse(["Butter 1.89 B", "TOTAL 1.89", "CARD 1.89", "B 20% VAT 1.89"]);
+    expect(r.lines.map((l) => l.normalizedText)).toEqual(["butter"]);
+  });
+
+  it("keeps a product with the brand name Total", () => {
+    const r = parse(["FAGE TOTAL 5% YOGURT 450G £2.75", "EGGS £1.95", "BALANCE DUE £4.70"]);
+    expect(r.lines.map((l) => l.normalizedText)).toEqual(["fage total 5 yogurt 450g", "eggs"]);
+  });
+
+  it("reads a date with a four-digit year", () => {
+    expect(parse(["Morrisons", "12/11/2026 09:31"]).purchasedAt).toBe("2026-11-12");
+  });
+
+  it("finds the shop from its loyalty scheme when the name is unreadable", () => {
+    const r = parse(["a", "Supermarkets Ltd", "MILK £1.65", "NECTAR PRICE SAVING -£0.25"]);
+    expect(r.merchant).toBe("Sainsbury's");
+  });
+
+  it("allows for discounts when it checks the lines against the total", () => {
+    // 1.00 + 2.00 - 0.50 = 2.50: the lines add up, so no price is changed.
+    const r = parseReceipt({
+      lines: [
+        { text: "MILK 1.00", priceAlternatives: ["1.50"] },
+        { text: "BREAD 2.00" },
+        { text: "MULTIBUY SAVING -0.50" },
+        { text: "TOTAL 2.50" },
+      ],
+    });
+    expect(r.lines.map((l) => l.lineTotal)).toEqual([1, 2]);
+  });
+});

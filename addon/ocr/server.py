@@ -40,6 +40,10 @@ NON_PRODUCT_LIKE = re.compile(
 )
 
 
+# The tallest word that is kept, as a multiple of the usual word height.
+MAX_WORD_HEIGHT = 1.6
+
+
 @dataclass(frozen=True)
 class Word:
     left: int
@@ -389,9 +393,10 @@ def fuse_words(passes: list[list[Word]], min_confidence: float = 60) -> list[Wor
     if not words:
         return []
     # A word much taller than the printed text is a background logo or two
-    # rows read as one.
+    # rows read as one. A word in small letters with a tall letter and a tail
+    # ("Sourdough") is about 1.3 times the usual height and must stay.
     usual = median(word.height for word in words)
-    words = [word for word in words if word.height <= usual * 1.3]
+    words = [word for word in words if word.height <= usual * MAX_WORD_HEIGHT]
     # Passes that agree on a reading make it stronger: the support of a word
     # is the total confidence of every pass that read the same text there.
     def same_spot(a: Word, b: Word) -> bool:

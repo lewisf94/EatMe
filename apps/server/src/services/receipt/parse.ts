@@ -22,9 +22,19 @@ const MERCHANTS: Array<[RegExp, string]> = [
   [/\baldi\b/i, "Aldi"],
   [/\blidl\b/i, "Lidl"],
   [/waitrose/i, "Waitrose"],
-  [/co-?op/i, "Co-op"],
+  [/\bco[\s-]?op(?:erative)?\b/i, "Co-op"],
   [/marks\s*&?\s*spencer|m&s/i, "M&S"],
   [/iceland/i, "Iceland"],
+];
+
+const MERCHANT_SIGNS: Array<[RegExp, string]> = [
+  [/clubcard/i, "Tesco"],
+  [/\bnectar\b/i, "Sainsbury's"],
+  [/asda\.com|asda rewards/i, "Asda"],
+  [/more card/i, "Morrisons"],
+  [/lidl plus/i, "Lidl"],
+  [/mywaitrose/i, "Waitrose"],
+  [/\bsparks\b/i, "M&S"],
 ];
 
 // Lines that are never products: totals, tender, loyalty, tax, store/legal noise.
@@ -36,7 +46,8 @@ const BAG = /\b(carrier\s*bag|bag\s*for\s*life|\bbag\b(?!el))/i;
 
 // Trailing price like "£1.29", "1,29", "1 29 A" (OCR split), or "-0.50". A
 // minus sign counts only next to the price: "Slices - £2.60" is not a discount.
-const PRICE = /(-?)£?\s*(\d{1,3})\s*(?:[.,]|\s)\s*(\d{2})\s*[A-Za-z*]?\s*$/;
+// Some tills print the minus sign of a discount after the amount ("£0.50-").
+const PRICE = /(-?)£?\s*(\d{1,3})\s*(?:[.,]|\s)\s*(\d{2})\s*(-)?\s*[A-Za-z*]?\s*$/;
 // Leading quantity: "2 x", "2 @", "2X", or a bare small integer + space.
 const QTY = /^\s*(\d{1,2})\s*(?:x|@)\s*/i;
 // Some UK receipts print an isolated VAT marker between the product and price.
@@ -52,8 +63,17 @@ const QTY_ONLY = /(?:^|[^\d])(\d{1,2})\s*[x×@”"]{1,2}\s*£?\s*([0-9OQ]{1,3})[
 // A line with only a unit price ("0.39"), when OCR lost the "2 x" before it.
 // Tesseract can read the leading 0 as O or Q.
 const UNIT_ONLY = /^[^a-z0-9]*([0-9OQ]{1,3})[.,](\d{2})\s*$/i;
+// A loose item sold by weight ("0.842 kg @ £0.95/kg"). Most supermarkets
+// print the name on one row and the weight, with the price, on the next row.
+// OCR can read the leading 0 as @ or O ("@.512 kg").
+const WEIGHT = /^\W*[\dOQ]{0,2}\s*[.,]\s*\d{1,3}\s*kg\b/i;
+// A quantity row that also has the line total ("3 @ £0.45   £1.35").
+const QTY_TOTAL =
+  /^\W*(\d{1,2})\s*[x×@]\s*£?\s*(\d{1,3})[.,](\d{2})\s+£?\s*(\d{1,3})[.,](\d{2})\s*[a-z*]?\s*$/i;
+// "Total" is also a yoghurt brand ("FAGE TOTAL 5% YOGURT").
+const TOTAL_BRAND = /\bfage\b|\btotal\s*\d{1,2}\s*%/i;
 // A UK date on the receipt (dd/mm/yy or dd/mm/yyyy).
-const DATE = /\b([0-3]?\d)[/.-]([01]?\d)[/.-](\d{2}|\d{4})\b/;
+const DATE = /\b([0-3]?\d)[/.-]([01]?\d)[/.-](\d{4}|\d{2})\b/;
 
 // Tesco prints a quantity column before each name ("2 Tesco Angel Cake £2.60")
 // and continues a long name on the next rows without a price.
@@ -73,8 +93,14 @@ const END = /\b(sub-?total|total|balance|amount due|to pay)\b/i;
 // before the text ("| Co £2.45") hide what the row starts with.
 const TRAILING_MARKS = /(\d[.,]\d{2})(?:\s+(?:[^a-z0-9\s]{1,3}|[a-z][^a-z0-9\s]{0,2}))+\s*$/i;
 const LEADING_MARKS = /^(?:[^a-z0-9£€\s-]{1,3}\s+)+/i;
+// A mark that touches the price ("£0.41]").
+const TOUCHING_MARKS = /(\d[.,]\d{2})[\][|(){}!:;'"`.,_~]+\s*$/;
 const clean = (text: string) =>
-  text.trim().replace(TRAILING_MARKS, "$1").replace(LEADING_MARKS, "");
+  text
+    .trim()
+    .replace(TRAILING_MARKS, "$1")
+    .replace(TOUCHING_MARKS, "$1")
+    .replace(LEADING_MARKS, "");
 
 /** Alias key: lowercase, strip price/qty/vat noise and punctuation, collapse space. */
 export function normalize(text: string): string {
@@ -100,6 +126,10 @@ function detectMerchant(ocr: OcrResult): string | null {
     .map((l) => l.text)
     .join(" ");
   for (const [re, name] of MERCHANTS) if (re.test(head)) return name;
+  // The shop name at the top can be unreadable. The shop's own words lower
+  // on the receipt (its loyalty scheme, its web address) also name it.
+  const all = ocr.lines.map((l) => l.text).join("\n");
+  for (const [re, name] of [...MERCHANT_SIGNS, ...MERCHANTS]) if (re.test(all)) return name;
   return null;
 }
 
@@ -258,24 +288,31 @@ function toLine(b: Block): ParsedLine {
   };
 }
 
-const TOTAL = /^(?!.*sub-?\s*total).*\b(total|balance due|amount due)\b/i;
+const TOTAL = /^(?!.*sub-?\s*total).*\b(total|balance|amount due|to pay)\b/i;
 
 /**
  * Check the lines against the receipt total. When they do not add up, and one
  * other OCR reading of one price makes them add up, use that reading. OCR
  * often misreads one digit ("1.06" for "1.00") in only some of its passes.
  */
-function matchTotal(ocr: OcrResult, lines: ParsedLine[], priceRows: Map<ParsedLine, number>) {
-  const totalRow = ocr.lines.find((l) => TOTAL.test(l.text) && PRICE.test(clean(l.text)));
+function matchTotal(
+  ocr: OcrResult,
+  lines: ParsedLine[],
+  priceRows: Map<ParsedLine, number>,
+  discounts = 0,
+) {
+  const totalRow = ocr.lines.find(
+    (l) => TOTAL.test(l.text) && !TOTAL_BRAND.test(l.text) && PRICE.test(clean(l.text)),
+  );
   if (!totalRow) return;
   const read = (t: string) => {
     const m = PRICE.exec(t);
     return m && m[1] !== "-" ? Number(`${m[2]}.${m[3]}`) : null;
   };
-  const totals = [
-    read(clean(totalRow.text)),
-    ...(totalRow.priceAlternatives ?? []).map(read),
-  ].filter((t): t is number => t != null);
+  // The receipt total is the sum of the lines less the discount rows.
+  const totals = [read(clean(totalRow.text)), ...(totalRow.priceAlternatives ?? []).map(read)]
+    .filter((t): t is number => t != null)
+    .flatMap((t) => (discounts > 0 ? [t + discounts, t] : [t]));
   const sum = lines.reduce((s, l) => s + (l.lineTotal ?? 0), 0);
   const near = (a: number, b: number) => Math.abs(a - b) < 0.005;
   if (totals.some((t) => near(sum, t))) return;
@@ -311,54 +348,120 @@ export function parseReceipt(ocr: OcrResult): ParsedReceipt {
   // product line, so a quantity row can find its neighbour afterwards.
   const multiples: Array<{ at: number; quantity: number; unitPrice: number }> = [];
   const productAt = new Map<number, number>();
-  ocr.lines.forEach((l, at) => {
-    const raw = clean(l.text);
-    if (!raw) return;
-    if (SKIP.test(raw) || BAG.test(raw)) return;
-
-    const multiple = QTY_ONLY.exec(raw);
-    // OCR can add a short stray mark before the quantity ("ge 2x 0.65"). A
-    // word of three or more letters means the row is a product, not a quantity.
-    if (multiple && !/[a-z]{3}/i.test(raw.slice(0, multiple.index))) {
-      multiples.push({
-        at,
-        quantity: Number(multiple[1]),
-        unitPrice: Number(`${Number(multiple[2].replace(/[OQ]/gi, "0"))}.${multiple[3]}`),
-      });
-      return;
-    }
-
-    // The quantity is worked out later from the neighbouring product's total.
-    const unit = UNIT_ONLY.exec(raw);
-    if (unit) {
-      const pounds = Number(unit[1].replace(/[OQ]/gi, "0"));
-      multiples.push({ at, quantity: 0, unitPrice: Number(`${pounds}.${unit[2]}`) });
-      return;
-    }
-
-    const priceM = PRICE.exec(raw);
-    const negative = priceM?.[1] === "-";
-    const price = priceM ? Number(`${priceM[2]}.${priceM[3]}`) : null;
-    // Drop discount lines (negative price) and lines with no price at all — the
-    // latter are usually headers/addresses, not items.
-    if (price == null || negative) return;
-
-    const qtyM = QTY.exec(raw);
-    const quantity = qtyM ? Math.max(1, Number(qtyM[1])) : 1;
-
-    const name = normalize(raw);
-    if (name.replace(/[0-9\s]/g, "").length < 2) return; // needs real letters
-
+  const texts = ocr.lines.map((l) => clean(l.text));
+  const priceOf = (text: string | undefined) => {
+    const m = text ? PRICE.exec(text) : null;
+    if (!m) return null;
+    return { value: Number(`${m[2]}.${m[3]}`), negative: m[1] === "-" || m[4] === "-" };
+  };
+  const add = (at: number, raw: string, name: string, quantity: number, price: number) => {
     productAt.set(at, lines.length);
     lines.push({
       rawText: raw,
       normalizedText: name,
       quantity,
-      unitPrice: quantity > 1 && price != null ? Number((price / quantity).toFixed(2)) : price,
+      unitPrice: quantity > 1 ? Number((price / quantity).toFixed(2)) : price,
       lineTotal: price,
-      confidence: l.confidence ?? null,
+      confidence: ocr.lines[at].confidence ?? null,
     });
-  });
+  };
+  // A row with a name and no price, directly before the current row. Its
+  // price can be on the next row, with a weight or a quantity.
+  let pending: { raw: string; name: string } | null = null;
+  let discounts = 0;
+  for (const [at, raw] of texts.entries()) {
+    const named = pending;
+    pending = null;
+    if (!raw) continue;
+    const brand = TOTAL_BRAND.test(raw);
+    // Rows after the total are payment and VAT rows ("A 0% VAT 15.64").
+    if (END.test(raw) && !brand && PRICE.test(raw) && lines.length) break;
+    if ((SKIP.test(raw) && !brand) || BAG.test(raw)) {
+      const saving = priceOf(raw);
+      if (saving?.negative) discounts += saving.value;
+      continue;
+    }
+    const priced = priceOf(raw);
+
+    if (WEIGHT.test(raw)) {
+      if (named && priced && !priced.negative) {
+        add(at, `${named.raw} ${raw}`, named.name, 1, priced.value);
+      }
+      continue;
+    }
+
+    const withTotal = QTY_TOTAL.exec(raw);
+    if (withTotal) {
+      const quantity = Number(withTotal[1]);
+      const unitPrice = Number(`${withTotal[2]}.${withTotal[3]}`);
+      const total = Number(`${withTotal[4]}.${withTotal[5]}`);
+      if (quantity >= 1 && Math.abs(quantity * unitPrice - total) < 0.011) {
+        if (named) {
+          add(at, `${named.raw} ${raw}`, named.name, quantity, total);
+          lines[lines.length - 1].unitPrice = unitPrice;
+        } else multiples.push({ at, quantity, unitPrice });
+        continue;
+      }
+    }
+
+    // A neighbouring product row with this total explains a quantity row.
+    const explains = (total: number) =>
+      [texts[at + 1], texts[at - 1]].some((t) => {
+        const p = priceOf(t);
+        return p != null && !p.negative && Math.abs(p.value - total) < 0.011;
+      });
+
+    const multiple = QTY_ONLY.exec(raw);
+    // OCR can add a short stray mark before the quantity ("ge 2x 0.65"). A
+    // word of three or more letters means the row is a product, not a quantity.
+    if (multiple && !/[a-z]{3}/i.test(raw.slice(0, multiple.index))) {
+      const quantity = Number(multiple[1]);
+      const unitPrice = Number(`${Number(multiple[2].replace(/[OQ]/gi, "0"))}.${multiple[3]}`);
+      // "LEMONS" then "3 @ £0.35": the row gives the price of the name above.
+      if (named && quantity >= 1 && !explains(quantity * unitPrice)) {
+        add(
+          at,
+          `${named.raw} ${raw}`,
+          named.name,
+          quantity,
+          Number((quantity * unitPrice).toFixed(2)),
+        );
+        lines[lines.length - 1].unitPrice = unitPrice;
+      } else multiples.push({ at, quantity, unitPrice });
+      continue;
+    }
+
+    // The quantity is worked out later from the neighbouring product's total.
+    const unit = UNIT_ONLY.exec(raw);
+    if (unit) {
+      const price = Number(`${Number(unit[1].replace(/[OQ]/gi, "0"))}.${unit[2]}`);
+      const next = priceOf(texts[at + 1]);
+      const times = next && price > 0 ? next.value / price : 0;
+      const isUnit = times > 1.99 && times < 20.01 && Math.abs(times - Math.round(times)) < 0.02;
+      // A name row and then a price row: the price belongs to the name.
+      if (named && !isUnit) add(at, `${named.raw} ${raw}`, named.name, 1, price);
+      else multiples.push({ at, quantity: 0, unitPrice: price });
+      continue;
+    }
+
+    if (!priced) {
+      // Maybe the name of a product whose price is on the next row.
+      const name = normalize(raw);
+      if (/[a-z]{3}/.test(name) && !DATE.test(raw)) pending = { raw, name };
+      continue;
+    }
+    if (priced.negative) {
+      discounts += priced.value;
+      continue;
+    }
+
+    const qtyM = QTY.exec(raw);
+    const quantity = qtyM ? Math.max(1, Number(qtyM[1])) : 1;
+
+    const name = normalize(raw);
+    if (name.replace(/[0-9\s]/g, "").length < 2) continue; // needs real letters
+    add(at, raw, name, quantity, priced.value);
+  }
 
   // A receipt total in a spaced-out font ("T o t a l") can fail the SKIP
   // check. Drop a line with no word of four letters ("Toa t a 1") whose price
@@ -397,6 +500,6 @@ export function parseReceipt(ocr: OcrResult): ParsedReceipt {
     }
   }
   for (const [at, index] of productAt) priceRows.set(lines[index], at);
-  matchTotal(ocr, lines, priceRows);
+  matchTotal(ocr, lines, priceRows, discounts);
   return { merchant: detectMerchant(ocr), purchasedAt: detectDate(ocr), lines };
 }
