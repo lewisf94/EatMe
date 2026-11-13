@@ -144,6 +144,17 @@ class FuseWordsTests(unittest.TestCase):
         texts = sorted(word.text for word in fuse_words([merged, clean]))
         self.assertEqual(texts, ["0.39", "660363", "BEANS", "EXTRA", "FINE"])
 
+    def test_a_word_with_a_tall_letter_and_a_tail_is_kept(self) -> None:
+        # "Sourdough" is taller than the words near it, but it is one row.
+        row = [
+            word(40, 100, 200, 82, "Sourdough"),
+            word(260, 118, 90, 62, "Loaf"),
+            word(700, 118, 90, 62, "1.99"),
+            word(40, 200, 120, 62, "Butter"),
+            word(700, 200, 90, 62, "1.89"),
+        ]
+        self.assertIn("Sourdough", [w.text for w in fuse_words([row])])
+
     def test_a_longer_reading_replaces_a_part_of_it(self) -> None:
         part = [Word(1316, 1328, 50, 48, "19", 95)]
         whole = [Word(1250, 1326, 116, 50, "1.19", 88)]

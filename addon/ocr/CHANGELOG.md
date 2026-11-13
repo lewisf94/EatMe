@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.9
+
+- Fix: a word in small letters with a tall letter and a tail, for example
+  "Sourdough" or "Sainsbury's", was dropped from the combined reading
+  because it is taller than the words near it. Receipts printed in small
+  letters (Lidl) lost parts of product names. Only words more than 1.6
+  times the usual height are now ignored.
+
 ## 0.1.8
 
 - Combine the most confident words from all four recognition passes into one

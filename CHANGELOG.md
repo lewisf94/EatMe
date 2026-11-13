@@ -2,6 +2,31 @@
 
 Notable Home Assistant app changes are recorded here.
 
+## 0.11.10
+
+- Receipt scan: loose items sold by weight now work (Sainsbury's, Asda,
+  Morrisons, Waitrose). The name is on one row and the weight and price are
+  on the next row ("0.842 kg @ £0.95/kg £0.80"). Before, the weight row
+  became the product name.
+- Receipt scan: a name row followed by a quantity row ("3 @ £0.45 £1.35") or
+  by a row with only a price is now one product.
+- Receipt scan: rows after the receipt total, such as Lidl's VAT rows
+  ("A 0% VAT 15.64"), are no longer added as products.
+- Receipt scan: a discount with the minus sign after the amount ("£0.50-")
+  is no longer added as a product. A price that an OCR mark touches
+  ("£0.41]") is read.
+- Receipt scan: a product with the brand name Total ("FAGE TOTAL 5% YOGURT")
+  is no longer dropped as a total row.
+- Receipt scan: the check against the receipt total now allows for discount
+  rows.
+- Receipt scan: "CO OP" is recognised as Co-op. When the shop name at the top
+  is unreadable, the loyalty scheme or web address names the shop. A date
+  with a four-digit year ("12/11/2026") is read correctly.
+- New developer check: `apps/server/scripts/receipt-samples.py` draws
+  invented receipts in the layouts of eight UK supermarkets as photo-like
+  images for `receipt:check`. The same receipts are unit tests.
+- Install EatMe OCR 0.1.9 too.
+
 ## 0.11.9
 
 - Receipt scan: a row with only a unit price, for example "0.39" when OCR
